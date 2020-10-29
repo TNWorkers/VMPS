@@ -103,7 +103,7 @@ int main (int argc, char* argv[])
 	int N = args.get<int>("N",L);
 	int S = args.get<int>("S",0);
 	size_t D = args.get<size_t>("D",2ul);
-	size_t maxPower = args.get<size_t>("maxPower",1ul);
+	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
 	
@@ -128,7 +128,7 @@ int main (int argc, char* argv[])
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
-	double Epenalty = args.get<double>("Epenalty",10.);
+	double Epenalty = args.get<double>("Epenalty",1e4);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
 	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);

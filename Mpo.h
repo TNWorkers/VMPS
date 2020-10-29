@@ -42,7 +42,7 @@ class Mpo : public MpoTerms<Symmetry,Scalar>
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	static constexpr size_t Nq = Symmetry::Nq;
 	typedef typename Symmetry::qType qType;
-    typename Symmetry::qType qVac = Symmetry::qvacuum();
+	typename Symmetry::qType qVac = Symmetry::qvacuum();
 	
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;

@@ -1228,7 +1228,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		}
 	}
 	
-	if (N_sites>4)
+	if (N_sites>4 and GlobParam.CALC_S_ON_EXIT)
 	{
 		size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
 		

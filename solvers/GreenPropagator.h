@@ -130,7 +130,7 @@ public:
 	
 	GreenPropagator(){};
 	
-	// BASIC CONTRUCTOR
+	// BASIC CONSTRUCTOR
 	/**
 	\param label_input : prefix for saved files (e.g. type of Green's function, Hamiltonian parameters)
 	\param tmax_input : maximal propagation time
@@ -144,10 +144,12 @@ public:
 	*/
 	GreenPropagator (string label_input, 
 	                 double tmax_input, int Nt_input, 
-	                 double wmin_input, double wmax_input, int Nw_input=501,
+	                 int Ns_input=1, 
+	                 double wmin_input=-10., double wmax_input=10., int Nw_input=501,
 	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501,
 	                 GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), tmax(tmax_input), Nt(Nt_input),
+	 Ns(Ns_input),
 	 wmin(wmin_input), wmax(wmax_input), Nw(Nw_input),
 	 Q_RANGE_CHOICE(Q_RANGE_CHOICE_input), Nq(Nq_input),
 	 GREENINT_CHOICE(GREENINT)
@@ -162,43 +164,43 @@ public:
 	
 	// LOADING CONSTRUCTORS FOLLOW:
 	
-	// LOAD: MATRIX, NO CELL
-	/**
-	Reads G(t,x) from a matrix, so that G(ω,q) can be recalculated.
-	\param label_input : prefix for saved files (e.g. type of Green's function, Hamiltonian parameters)
-	\param Lcell_input : unit cell length
-	\param Ncells_input : number of unit cells
-	\param tmax_input : maximal propagation time
-	\param Gtx_input : input of complex G(ω,q)
-	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
-	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
-	*/
-	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const MatrixXcd &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
-	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
-	{
-		Gtx = Gtx_input;
-		
-		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
-		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
-		#else
-		assert(GREENINT!=DIRECT);
-		Nt = Gtx.rows()-1;
-		#endif
-		Nq = Nq_input;
-		Lhetero = Lcell*Ncells;
-		
-		make_xarrays(Lhetero,Lcell,Ncells);
-		set_qlims(Q_RANGE_CHOICE);
-		
-		for (int l=0; l<Lhetero; ++l)
-		{
-			if (xvals[l] == 0) Gloct = Gtx.col(l);
-		}
-		
-		GreenPropagatorGlobal::tmax = tmax;
-		calc_intweights();
-	}
+//	// LOAD: MATRIX, NO CELL
+//	/**
+//	Reads G(t,x) from a matrix, so that G(ω,q) can be recalculated.
+//	\param label_input : prefix for saved files (e.g. type of Green's function, Hamiltonian parameters)
+//	\param Lcell_input : unit cell length
+//	\param Ncells_input : number of unit cells
+//	\param tmax_input : maximal propagation time
+//	\param Gtx_input : input of complex G(ω,q)
+//	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
+//	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
+//	*/
+//	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const MatrixXcd &Gtx_input, 
+//	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
+//	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+//	{
+//		Gtx = Gtx_input;
+//		
+//		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
+//		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+//		#else
+//		assert(GREENINT!=DIRECT);
+//		Nt = Gtx.rows()-1;
+//		#endif
+//		Nq = Nq_input;
+//		Lhetero = Lcell*Ncells;
+//		
+//		make_xarrays(Lhetero,Lcell,Ncells,Ns);
+//		set_qlims(Q_RANGE_CHOICE);
+//		
+//		for (int l=0; l<Lhetero; ++l)
+//		{
+//			if (xvals[l] == 0) Gloct = Gtx.col(l);
+//		}
+//		
+//		GreenPropagatorGlobal::tmax = tmax;
+//		calc_intweights();
+//	}
 	
 	// LOAD: MATRIX, CELL
 	/**
@@ -210,16 +212,14 @@ public:
 	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
-	GreenPropagator (string label_input, double tmax_input, const vector<vector<MatrixXcd>> &Gtx_input, 
+	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, int Ns_input, double tmax_input, const vector<vector<MatrixXcd>> &Gtx_input, 
 	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
-	:label(label_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), Ns(Ns_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
-		Lcell = Gtx_input.size();
+		GtxCell.resize(Lcell/Ns); for (int i=0; i<Lcell/Ns; ++i) GtxCell[i].resize(Lcell/Ns);
 		
-		GtxCell.resize(Lcell); for (int i=0; i<Lcell; ++i) GtxCell[i].resize(Lcell);
-		
-		for (int i=0; i<Lcell; ++i)
-		for (int j=0; j<Lcell; ++j)
+		for (int i=0; i<Lcell/Ns; ++i)
+		for (int j=0; j<Lcell/Ns; ++j)
 		{
 			GtxCell[i][j] = Gtx_input[i][j];
 		}
@@ -234,76 +234,76 @@ public:
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
 		
-		make_xarrays(Lhetero,Lcell,Ncells);
+		make_xarrays(Lhetero,Lcell,Ncells,Ns);
 		set_qlims(Q_RANGE_CHOICE);
 		
-		GloctCell.resize(Lcell);
+		GloctCell.resize(Lcell/Ns);
 		for (int i=0; i<Lcell; ++i)
 		for (int n=0; n<Ncells; ++n)
 		{
-			if (dcell[n*Lcell] == 0) GloctCell[i] = GtxCell[i][i].col(n);
+			if (dcell[n*Lcell] == 0) GloctCell[i] = GtxCell[i%(Lcell/Ns)][i%(Lcell/Ns)].col(n);
 		}
 		
 		GreenPropagatorGlobal::tmax = tmax;
 		calc_intweights();
 	}
 	
-	// LOAD: HDF5, NO CELL
-	/**
-	Reads G(t,x) with unit cell resolution from file, so that G(ω,q) can be recalculated.
-	\param label_input : prefix for saved files (e.g. type of Green's function)
-	\param Lcell_input : unit cell length
-	\param tmax_input : maximal propagation time
-	\param files : input vector of files, a sum is performed over all data
-	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
-	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
-	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
-	*/
-	GreenPropagator (string label_input, int Lcell_input, double tmax_input, const vector<string> &files, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
-	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
-	{
-		#ifdef GREENPROPAGATOR_USE_HDF5
-		for (const auto &file:files)
-		{
-			MatrixXd MtmpRe, MtmpIm;
-			HDF5Interface Reader(file+".h5",READ);
-			Reader.load_matrix(MtmpRe,"txRe","G");
-			Reader.load_matrix(MtmpIm,"txIm","G");
-			Reader.close();
-			
-			if (Gtx.size() == 0)
-			{
-				Gtx = MtmpRe+1.i*MtmpIm;
-			}
-			else
-			{
-				Gtx += MtmpRe+1.i*MtmpIm;
-			}
-		}
-		#endif
-		
-		Ncells = 1;
-		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
-		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
-		#else
-		assert(GREENINT!=DIRECT);
-		Nt = Gtx.rows()-1;
-		#endif
-		Nq = Nq_input;
-		Lhetero = Lcell;
-		
-		make_xarrays(Lhetero,Lcell,Ncells);
-		set_qlims(Q_RANGE_CHOICE);
-		
-		for (int l=0; l<Lhetero; ++l)
-		{
-			if (xvals[l] == 0) Gloct = Gtx.col(l);
-		}
-		
-		GreenPropagatorGlobal::tmax = tmax;
-		calc_intweights();
-	}
+//	// LOAD: HDF5, NO CELL
+//	/**
+//	Reads G(t,x) with unit cell resolution from file, so that G(ω,q) can be recalculated.
+//	\param label_input : prefix for saved files (e.g. type of Green's function)
+//	\param Lcell_input : unit cell length
+//	\param tmax_input : maximal propagation time
+//	\param files : input vector of files, a sum is performed over all data
+//	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
+//	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
+//	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
+//	*/
+//	GreenPropagator (string label_input, int Lcell_input, double tmax_input, const vector<string> &files, 
+//	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
+//	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+//	{
+//		#ifdef GREENPROPAGATOR_USE_HDF5
+//		for (const auto &file:files)
+//		{
+//			MatrixXd MtmpRe, MtmpIm;
+//			HDF5Interface Reader(file+".h5",READ);
+//			Reader.load_matrix(MtmpRe,"txRe","G");
+//			Reader.load_matrix(MtmpIm,"txIm","G");
+//			Reader.close();
+//			
+//			if (Gtx.size() == 0)
+//			{
+//				Gtx = MtmpRe+1.i*MtmpIm;
+//			}
+//			else
+//			{
+//				Gtx += MtmpRe+1.i*MtmpIm;
+//			}
+//		}
+//		#endif
+//		
+//		Ncells = 1;
+//		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
+//		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+//		#else
+//		assert(GREENINT!=DIRECT);
+//		Nt = Gtx.rows()-1;
+//		#endif
+//		Nq = Nq_input;
+//		Lhetero = Lcell;
+//		
+//		make_xarrays(Lhetero,Lcell,Ncells,Ns);
+//		set_qlims(Q_RANGE_CHOICE);
+//		
+//		for (int l=0; l<Lhetero; ++l)
+//		{
+//			if (xvals[l] == 0) Gloct = Gtx.col(l);
+//		}
+//		
+//		GreenPropagatorGlobal::tmax = tmax;
+//		calc_intweights();
+//	}
 	
 	// LOAD: HDF5, CELL
 	/**
@@ -317,15 +317,15 @@ public:
 	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
-	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const vector<string> &files, 
+	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, int Ns_input, double tmax_input, const vector<string> &files, 
 	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
-	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), Ns(Ns_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
-		GtxCell.resize(Lcell); for (int i=0; i<Lcell; ++i) {GtxCell[i].resize(Lcell);}
+		GtxCell.resize(Lcell/Ns); for (int i=0; i<Lcell/Ns; ++i) {GtxCell[i].resize(Lcell/Ns);}
 		#ifdef GREENPROPAGATOR_USE_HDF5
 		for (const auto &file:files)
-		for (int i=0; i<Lcell; ++i)
-		for (int j=0; j<Lcell; ++j)
+		for (int i=0; i<Lcell/Ns; ++i)
+		for (int j=0; j<Lcell/Ns; ++j)
 		{
 			MatrixXd MtmpRe, MtmpIm;
 			HDF5Interface Reader(file+".h5",READ);
@@ -354,18 +354,19 @@ public:
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
 		
-		make_xarrays(Lhetero,Lcell,Ncells);
+		make_xarrays(Lhetero,Lcell,Ncells,Ns);
 		set_qlims(Q_RANGE_CHOICE);
 		
-		GloctCell.resize(Lcell);
+		GloctCell.resize(Lcell/Ns);
 		for (int i=0; i<Lcell; ++i)
 		for (int n=0; n<Ncells; ++n)
 		{
-			if (dcell[n*Lcell] == 0) GloctCell[i] = GtxCell[i][i].col(n);
+			if (dcellFT[n*Lcell] == 0) GloctCell[i%(Lcell/Ns)] = GtxCell[i%(Lcell/Ns)][i%(Lcell/Ns)].col(n);
 		}
 		
 		GreenPropagatorGlobal::tmax = tmax;
 		calc_intweights();
+		cout << "load complete!" << endl;
 	}
 	
 	/**
@@ -499,7 +500,7 @@ private:
 	int NQ = 0;
 	double tmax, wmin, wmax, qmin, qmax;
 	Q_RANGE Q_RANGE_CHOICE = MPI_PPI;
-	int Lhetero, Lcell, Ncells;
+	int Lhetero, Lcell, Ncells, Ns;
 	int dLphys = 1;
 	
 	double tol_compr = 1e-4; // compression tolerance during time propagation
@@ -523,6 +524,7 @@ private:
 	vector<int> xinds; // site indices from 0 to Lhetero-1
 	vector<int> dcell; // relative distance from excitation centre in unit cells
 	vector<int> icell; // site indices within unit cell
+	vector<int> dcellFT;
 	
 	vector<Mps<Symmetry,complex<double>>> OxPhiFull;
 	
@@ -549,7 +551,7 @@ private:
 	void calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const vector<Mps<Symmetry,complex<double>>> &Psi);
 	
 	void calc_intweights();
-	void make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, bool PRINT=false);
+	void make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, int Ns=1, bool PRINT=false);
 	void set_qlims (Q_RANGE CHOICE);
 	
 	void propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
@@ -602,7 +604,7 @@ compute (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPh
 	
 	if (Q_RANGE_CHOICE == MPI_PPI) assert(Ncells%2 == 0 and "Please use an even number of unit cells!");
 	
-	make_xarrays(Lhetero,Lcell,Ncells);
+	make_xarrays(Lhetero,Lcell,Ncells,Ns);
 //	calc_intweights();
 	
 	propagate(H, OxPhi, OxPhi0, Eg, TIME_FORWARDS);
@@ -750,7 +752,7 @@ compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Od
 	
 	if (Q_RANGE_CHOICE == MPI_PPI) assert(Ncells%2 == 0 and "Please use an even number of unit cells!");
 	
-	make_xarrays(Lhetero,Lcell,Ncells);
+	make_xarrays(Lhetero,Lcell,Ncells,Ns);
 //	calc_intweights();
 	
 	propagate_thermal(H, Odag, Phi, OxPhi0, TIME_FORWARDS);
@@ -937,7 +939,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 	assert(Lhetero%Lcell == 0);
 	
 //	calc_intweights();
-	make_xarrays(Lhetero,Lcell,Ncells);
+	make_xarrays(Lhetero,Lcell,Ncells,Ns);
 	
 	GtxCell.resize(Lcell);
 	for (int i=0; i<Lcell; ++i)
@@ -1207,7 +1209,8 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 	//			}
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
 				{
-					lout << "δE=" << TDVP[z][i].get_deltaE().transpose() << endl;
+					std::streamsize ss = std::cout.precision();
+					lout << "δE=" << setprecision(4) << TDVP[z][i].get_deltaE().transpose() << setprecision(ss) << endl;
 				}
 			}
 			//---------------------------------------------------------------------------------------------------------------
@@ -1307,7 +1310,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 	assert(Lhetero%Lcell == 0);
 	
 //	calc_intweights();
-	make_xarrays(Lhetero,Lcell,Ncells);
+	make_xarrays(Lhetero,Lcell,Ncells,Ns);
 	
 	GtxCell.resize(Lcell);
 	for (int i=0; i<Lcell; ++i)
@@ -1721,7 +1724,7 @@ measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, strin
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, bool PRINT)
+make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, int Ns, bool PRINT)
 {
 	xinds.resize(Lhetero_input);
 	xvals.resize(Lhetero_input);
@@ -1743,15 +1746,22 @@ make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, bool PRINT)
 		dcell.push_back(d);
 	}
 	
+	for (int d=0; d<Ncells_input*Ns; ++d)
+	for (int i=0; i<Lcell_input/Ns; ++i)
+	{
+		dcellFT.push_back(d);
+	}
+	
 	for (int i=0; i<Lhetero_input; ++i)
 	{
 		dcell[i] -= x0/Lcell_input;
+		dcellFT[i] -= x0/Lcell_input*Ns;
 	}
 	
 	if (PRINT and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
 	for (int i=0; i<Lhetero; ++i)
 	{
-		lout << "i=" << xinds[i] << ", x=" << xvals[i] << ", icell=" << icell[i] << ", dcell=" << dcell[i] << endl;
+		lout << "i=" << xinds[i] << ", x=" << xvals[i] << ", icell=" << icell[i] << ", dcell=" << dcell[i] << ", dcellFT=" << dcellFT[i] << endl;
 	}
 }
 
@@ -1948,6 +1958,49 @@ FTcell_xq()
 	}
 }
 
+//template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+//void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+//FTcellww_xq (bool TRANSPOSE)
+//{
+//	IntervalIterator q(qmin,qmax,Nq);
+//	ArrayXd qvals = q.get_abscissa();
+//	
+//	GwqCell.resize(Lcell);
+//	for (int i=0; i<Lcell; ++i) GwqCell[i].resize(Lcell);
+//	
+//	G0qCell.resize(Lcell);
+//	for (int i=0; i<Lcell; ++i) G0qCell[i].resize(Lcell);
+//	
+//	Stopwatch<> FourierWatch;
+//	
+//	for (int i=0; i<Lcell; ++i)
+//	for (int j=0; j<Lcell; ++j)
+//	{
+//		GwqCell[i][j].resize(Nw,Nq); GwqCell[i][j].setZero();
+//		G0qCell[i][j].resize(Nq); G0qCell[i][j].setZero();
+//		
+//		for (int iq=0; iq<Nq; ++iq)
+//		for (int n=0; n<Ncells; ++n)
+//		{
+//			if (TRANSPOSE)
+//			{
+//				GwqCell[i][j].col(iq) += GwxCell[j][i].col(n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+//				G0qCell[i][j](iq) += G0xCell[j][i](n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+//			}
+//			else
+//			{
+//				GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+//				G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+//			}
+//		}
+//	}
+//	
+//	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+//	{
+//		lout << FourierWatch.info(label+" FT intercell x→q (const ω)") << endl;
+//	}
+//}
+
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 FTcellww_xq (bool TRANSPOSE)
@@ -1955,32 +2008,42 @@ FTcellww_xq (bool TRANSPOSE)
 	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd qvals = q.get_abscissa();
 	
-	GwqCell.resize(Lcell);
-	for (int i=0; i<Lcell; ++i) GwqCell[i].resize(Lcell);
+	int Ls = Lcell/Ns;
 	
-	G0qCell.resize(Lcell);
-	for (int i=0; i<Lcell; ++i) G0qCell[i].resize(Lcell);
+	GwqCell.resize(Ls);
+	for (int i=0; i<Ls; ++i) GwqCell[i].resize(Ls);
+	
+	G0qCell.resize(Ls);
+	for (int i=0; i<Ls; ++i) G0qCell[i].resize(Ls);
 	
 	Stopwatch<> FourierWatch;
+	
+	for (int i=0; i<Ls; ++i)
+	for (int j=0; j<Ls; ++j)
+	{
+		GwqCell[i][j].resize(Nw,Nq); GwqCell[i][j].setZero();
+		G0qCell[i][j].resize(Nq); G0qCell[i][j].setZero();
+	}
 	
 	for (int i=0; i<Lcell; ++i)
 	for (int j=0; j<Lcell; ++j)
 	{
-		GwqCell[i][j].resize(Nw,Nq); GwqCell[i][j].setZero();
-		G0qCell[i][j].resize(Nq); G0qCell[i][j].setZero();
 		
-		for (int iq=0; iq<Nq; ++iq)
 		for (int n=0; n<Ncells; ++n)
 		{
-			if (TRANSPOSE)
+//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", d=" << dcell[n*Lcell] << ", i_=" << (n*Lcell+i)%Ls << ", j_=" << (n*Lcell+j)%Ls << ", n_=" << n*Lcell << ", dFT=" << dcellFT[n*Lcell]+(i-j)/Ls << endl;
+			for (int iq=0; iq<Nq; ++iq)
 			{
-				GwqCell[i][j].col(iq) += GwxCell[j][i].col(n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
-				G0qCell[i][j](iq) += G0xCell[j][i](n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
-			}
-			else
-			{
-				GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
-				G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+				if (TRANSPOSE)
+				{
+					GwqCell[(n*Lcell+i)%Ls][(n*Lcell+j)%Ls].col(iq) += GwxCell[j][i].col(n) * exp(+1.i*qvals(iq)*double(dcellFT[n*Lcell]+(j-i)/Ls));
+					G0qCell[(n*Lcell+i)%Ls][(n*Lcell+j)%Ls](iq)     += G0xCell[j][i]    (n) * exp(+1.i*qvals(iq)*double(dcellFT[n*Lcell]+(j-i)/Ls));
+				}
+				else
+				{
+					GwqCell[(n*Lcell+i)%Ls][(n*Lcell+j)%Ls].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcellFT[n*Lcell]+(i-j)/Ls));
+					G0qCell[(n*Lcell+i)%Ls][(n*Lcell+j)%Ls](iq)     += G0xCell[i][j]    (n) * exp(-1.i*qvals(iq)*double(dcellFT[n*Lcell]+(i-j)/Ls));
+				}
 			}
 		}
 	}
@@ -2772,11 +2835,24 @@ save (bool IGNORE_CELL) const
 					#ifdef GREENPROPAGATOR_USE_HDF5
 					if (PRINT) lout << label << " saving " 
 							        << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] "
-							        << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
 							        << endl;
 					target_tx.create_group(make_string("G",i,j));
 					target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
 					target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
+					#else
+					saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+					saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+					#endif
+				}
+				
+				for (int i=0; i<Lcell/Ns; ++i)
+				for (int j=0; j<Lcell/Ns; ++j)
+				{
+					string Gstring = make_string("G",i,j);
+					#ifdef GREENPROPAGATOR_USE_HDF5
+					if (PRINT) lout << label << " saving " 
+							        << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
+							        << endl;
 					target_wq.create_group(make_string("G",i,j));
 					target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
 					target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
@@ -2787,8 +2863,6 @@ save (bool IGNORE_CELL) const
 						target_wq.save_matrix(MatrixXd(G0qCell[i][j].imag()),"0qIm",Gstring);
 					}
 					#else
-					saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-					saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
 					saveMatrix(GwqCell[i][j].real(), make_string(label,"_G=ωqRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
 					saveMatrix(GwqCell[i][j].imag(), make_string(label,"_G=ωqIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
 					if (G0qCell.size() > 0)
@@ -2806,15 +2880,23 @@ save (bool IGNORE_CELL) const
 				{
 					string Gstring = make_string("G",i);
 					#ifdef GREENPROPAGATOR_USE_HDF5
-					if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
-					target_wq.create_group(make_string("G",i));
-					target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
 					target_tx.create_group(make_string("G",i));
 					target_tx.save_matrix(MatrixXd(GloctCell[i].real()),"t0Re",make_string("G",i));
 					target_tx.save_matrix(MatrixXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
 					#else
-					save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
 					save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
+					#endif
+				}
+				for (int i=0; i<Lcell/Ns; ++i)
+				{
+					string Gstring = make_string("G",i);
+					#ifdef GREENPROPAGATOR_USE_HDF5
+					if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
+					if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
+					target_wq.create_group(make_string("G",i));
+					target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
+					#else
+					save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
 					#endif
 				}
 			}

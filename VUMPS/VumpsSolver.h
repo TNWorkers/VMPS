@@ -236,7 +236,7 @@ public:
 	
 	/**chain length*/
 	size_t N_sites;
-
+	
 	bool USER_SET_GLOBPARAM    = false;
 	bool USER_SET_DYNPARAM     = false;
 	bool USER_SET_LANCZOSPARAM = false;
@@ -1851,20 +1851,24 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		lout << Vout.state.info() << endl;
 		lout << endl;
 	}
-	for (size_t l=0; l<N_sites; l++)
+	
+	if (GlobParam.CALC_S_ON_EXIT)
 	{
-		auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
-		ofstream Filer(make_string("sv_final_",l,".dat"));
-		size_t index=0;
-		for (size_t i=0; i<svs.size(); i++)
+		for (size_t l=0; l<N_sites; l++)
 		{
-			for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+			auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
+			ofstream Filer(make_string("sv_final_",l,".dat"));
+			size_t index=0;
+			for (size_t i=0; i<svs.size(); i++)
 			{
-				Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
-				index++;
+				for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+				{
+					Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
+					index++;
+				}
 			}
+			Filer.close();
 		}
-		Filer.close();
 	}
 }
 
@@ -2126,7 +2130,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, size_t x0)
 {
-	size_t Lhetero = Ncells * V.state.length();
+	N_sites = V.state.length();
+	size_t Lhetero = Ncells * N_sites;
 	
 	// If ground state loaded from file, need to recalculate environments
 	if (HeffA.size() == 0)
@@ -2154,6 +2159,7 @@ vector<Mps<Symmetry,Scalar>> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
             const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult)
 {
+	N_sites = V.state.length();
 	size_t Lhetero = Ncells * N_sites;
 	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
 	

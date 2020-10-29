@@ -389,6 +389,17 @@ info() const
 	stringstream ss;
 	ss << "Umps: ";
 	ss << Symmetry::name() << ", ";
+	ss << ", " << Symmetry::name() << ", ";
+	if (Nq != 0)
+	{
+		ss << "(";
+		for (size_t q=0; q<Nq; ++q)
+		{
+			ss << Symmetry::kind()[q];
+			if (q!=Nq-1) {ss << ",";}
+		}
+		ss << ")=(" << Sym::format<Symmetry>(Qtot) << "), ";
+	}
 	ss << "Lcell=" << N_sites << ", ";
 	ss << "Mmax=" << calc_Mmax() << " (";
 	if (Symmetry::NON_ABELIAN)
