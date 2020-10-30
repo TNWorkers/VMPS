@@ -43,7 +43,8 @@ parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='freq') # freq, time
 parser.add_argument('-spec', action='store', default='A1P')
-parser.add_argument('-L', action='store', type=int, default=32)
+parser.add_argument('-L', action='store', type=int, default=2)
+parser.add_argument('-Ncells', action='store', type=int, default=16)
 parser.add_argument('-Ly', action='store', type=int, default=1)
 parser.add_argument('-tol', action='store', type=float, default=0.01)
 parser.add_argument('-dt', action='store', type=float, default=0.1)
@@ -90,6 +91,8 @@ tolDeltaS = args.tol
 tmax = args.tmax
 
 L = args.L
+Ns = L/2;
+Ncells = args.Ncells
 
 long_spec = {'A1P':'one-particle', 'PES':'photoemission', 'IPE':'inv. photoemission', 'SSF':'spin', 'PSZ':'charge', 'CSF':'charge', 'HSF':'hybridization'}
 
@@ -166,7 +169,7 @@ def analytical_2p():
 	
 	return kvals, Evals
 
-def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax):
+def filename_wq(set,spec,L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax):
 	res = set+'/'
 	res += spec
 	res += '_tfc='+str(tfc)
@@ -179,17 +182,17 @@ def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,w
 	res += '_V='+str(V)
 #	res += '_dt='+str(dt)
 #	res += '_tolΔS='+str(tolDeltaS)
-	res += '_L='+str(L)
+	res += '_L='+str(L)+'x'+str(Ncells)
 #	res += '_dLphys='+str(2)
 	res += '_tmax='+str(tmax)
 	res += '_INT='+INT
 	res += '_qmin=0_qmax=2'
-	res += '_wmin='+str(wmin)+'_wmax='+str(wmax)
+	res += '_wmin='+str(wmin)+'_wmax='+str(wmax)+'_Ns='+str(Ns)
 	res += '.h5'
 	print(res)
 	return res
 
-def filename_tx(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax):
+def filename_tx(set,spec,L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax):
 	res = set+'/'
 	res += spec
 	res += '_tfc='+str(tfc)
@@ -200,7 +203,7 @@ def filename_tx(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax):
 	res += '_Efc='+str(Ef)+","+str(Ec)
 	res += '_U='+str(U)
 	res += '_V='+str(V)
-	res += '_L='+str(L)
+	res += '_L='+str(L)+'x'+str(Ncells)
 	res += '_tmax='+str(tmax)
 	res += '_INT='+INT
 	res += '.h5'
@@ -212,15 +215,15 @@ def open_Gwq (spec,index):
 	Gstr = 'G'+str(index)+str(index)
 	
 	if spec == 'A1P':
-		G = h5py.File(filename_wq(set,'PES',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,'PES',L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 	else:
-		G = h5py.File(filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,spec,L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 	
 	res  = np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
 	if spec == 'A1P':
 		
-		G = h5py.File(filename_wq(set,'IPE',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,'IPE',L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 		
 		res += np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
@@ -229,7 +232,7 @@ def open_Gwq (spec,index):
 def open_Gtx (spec,index):
 	
 	Gstr = 'G'+str(index)+str(index)
-	G = h5py.File(filename_tx(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax),'r')
+	G = h5py.File(filename_tx(set,spec,L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax),'r')
 	res  = np.asarray(G[Gstr]['txRe'])+1.j*np.asarray(G[Gstr]['txIm'])
 #	if spec == 'PSZ':
 #		res *= 2.
@@ -254,6 +257,8 @@ if args.plot == 'freq':
 		data = -1./pi* imag(open_Gwq(spec,0)) -1./pi* imag(open_Gwq(spec,1))
 	else:
 		data = -1./pi* imag(open_Gwq(spec,index))
+	
+	print("wpoints=",len(data[:,0]),"qpoints=",len(data[0,:]))
 	
 	fig, ax = plt.subplots()
 	im = ax.imshow(data, origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,2*pi,wmin,wmax])

@@ -27,6 +27,9 @@ public:
 	void reload (string wd, const vector<string> &specs_input, string label, int L, int Ncells, int Ns, double tmax, 
 	             double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA);
 	
+	const Umps<Symmetry,Scalar> &ground() const {return g.state;};
+	const double &energy() const {return g.energy;};
+	
 private:
 	
 	size_t L, Lhetero, Ncells;
@@ -160,8 +163,7 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
 		Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, VMPS::TIME_DIR(spec), true); // COUNTERPROPAGATE=true
-//		Green[z].FT_allSites();
-		Green[z].save(false); // IGNORE_CELL=false
+		Green[z].save(false); // IGNORE_TX=false
 	}
 }
 
@@ -178,10 +180,9 @@ reload (string wd, const vector<string> &specs_input, string label, int L, int N
 	{
 		string spec = specs[z];
 		Green[z] = GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double>> 
-		          (wd+spec+"_"+label,L,Ncells,Ns,tmax,{wd+spec+"_"+label+make_string("_L=",Lhetero,"_tmax=",tmax,"_INT=",INT)},QR,qpoints,INT);
-		Green[z].recalc_FTw(wmin,wmax,wpoints);
-//		Green[z].FT_allSites();
-		Green[z].save(true); // IGNORE_CELL=true
+		          (wd+spec+"_"+label,L,Ncells,Ns,tmax,{wd+spec+"_"+label+make_string("_L=",L,"x",Ncells,"_tmax=",tmax,"_INT=",INT)},QR,qpoints,INT);
+		Green[z].recalc_FTwCell(wmin,wmax,wpoints, VMPS::TIME_DIR(spec));
+		Green[z].save(true); // IGNORE_TX=true
 	}
 }
 

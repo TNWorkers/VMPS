@@ -130,7 +130,7 @@ int main (int argc, char* argv[])
 	// Parameter fuer den Grundzustand:
 	VUMPS::CONTROL::GLOB GlobSweepParams;
 	GlobSweepParams.min_iterations = args.get<size_t>("min_iterations",100ul);
-	GlobSweepParams.max_iterations = args.get<size_t>("max_iterations",200ul);
+	GlobSweepParams.max_iterations = args.get<size_t>("max_iterations",150ul);
 	GlobSweepParams.Minit = args.get<size_t>("Minit",1ul);
 	GlobSweepParams.Mlimit = args.get<size_t>("Mlimit",800ul);
 	GlobSweepParams.Qinit = args.get<size_t>("Qinit",1ul);
@@ -178,6 +178,9 @@ int main (int argc, char* argv[])
 	H.transform_base(Q,false); // PRINT=false
 	lout << H.info() << endl;
 	
+	MODEL Haux(5*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+	Haux.transform_base(Q,false); // PRINT=false
+	
 //	//-----<Test von komplexem Hopping>-----
 //	// Referenz:
 //	// "Persistent current of a Hubbard ring threaded with a magnetic flux", Yu & Fowler (1991)
@@ -214,16 +217,31 @@ int main (int argc, char* argv[])
 	VectorXd occ = Eugen.eigenvalues().head(Lfinite/2);
 	VectorXd unocc = Eugen.eigenvalues().tail(Lfinite/2);
 	double e0free = 2.*occ.sum()/Lfinite;
-	lout << setprecision(16) << "e0free/L="<<Lfinite<<",half-filling)=" << e0free << endl;
+	lout << setprecision(16) << "e0free/L=("<<Lfinite<<",half-filling)=" << e0free << endl;
 	
 	SpectralManager<MODEL> SpecMan;
-	if (RELOAD)
+	if (!RELOAD)
 	{
-		SpecMan.reload(wd, specs, param_base, L, Ncells, Ns, tmax, wmin, wmax, wpoints, QR, qpoints, INT);
+		SpecMan = SpectralManager<MODEL>(specs, H, params, GlobSweepParams, Q, Ncells, params_hetero, "gs_"+base, LOAD_GS, SAVE_GS);
+		
+		if (U==0. and V==0. and N==L)
+		{
+			lout << "hopping matrix diagonalization: " << e0free << ", VUMPS (should be slightly lower): " << SpecMan.energy() << endl;
+		}
+		
+		for (int l=0; l<L; ++l)
+		{
+			lout << "l=" << l << ", n=" << isReal(avg(SpecMan.ground(), H.n(l), SpecMan.ground())) << endl;
+			lout << "l=" << l << ", d=" << isReal(avg(SpecMan.ground(), H.d(l), SpecMan.ground())) << endl;
+		}
+		lout << "SdagS(cf)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,1), SpecMan.ground())) << endl;
+		lout << "SdagS(cc)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,2), SpecMan.ground())) << endl;
+		lout << "SdagS(ff)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(1,3), SpecMan.ground())) << endl;
+		
+		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 	else
 	{
-		SpecMan = SpectralManager<MODEL>(specs, H, params, GlobSweepParams, Q, Ncells, params_hetero, "gs_"+base, LOAD_GS, SAVE_GS);
-		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
+		SpecMan.reload(wd, specs, param_base, L, Ncells, Ns, tmax, wmin, wmax, wpoints, QR, qpoints, INT);
 	}
 }
