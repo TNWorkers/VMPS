@@ -695,6 +695,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 				t_QR += QRtimer.time();
 				Stopwatch<> LRtimer;
 				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 				t_LR += LRtimer.time();
 			}
 		}
@@ -751,6 +752,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			t_QR += QRtimer.time();
 			Stopwatch<> LRtimer2;
 			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 			t_LR += LRtimer2.time();
 		}
 		
@@ -761,6 +763,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		t_QR += QRtimer.time();
 		Stopwatch<> LRtimer;
 		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 		t_LR += LRtimer.time();
 		
 		err_state /= this->N_sites;

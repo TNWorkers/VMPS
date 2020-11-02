@@ -61,16 +61,16 @@ typedef VMPS::HeisenbergSU2 MODEL;
 //#include "models/DoubleHeisenbergSU2.h"
 //typedef VMPS::DoubleHeisenbergSU2 MODELC;
 
-ArrayXXd permute_random (const ArrayXXd &A)
-{
-	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
-	P.setIdentity();
-	srand(time(0));
-	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
-	MatrixXd A_p = P.transpose() * A.matrix() * P;
-//	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
-	return A_p.array();
-}
+//ArrayXXd permute_random (const ArrayXXd &A)
+//{
+//	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
+//	P.setIdentity();
+//	srand(time(0));
+//	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
+//	MatrixXd A_p = P.transpose() * A.matrix() * P;
+////	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
+//	return A_p.array();
+//}
 
 // returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
@@ -192,7 +192,8 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
 	}
-	if (CALC_NEUTRAL_GAP) base += make_string("_Epenalty=",Epenalty);
+	string base_excited = base;
+	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
@@ -239,7 +240,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	ArrayXXd hopping;
-	if (L!=12 and L!=20 and L!=30 and L!=40 and L!=60)
+	if (L!=12 and L!=20 and L!=24 and L!=26 and L!=30 and L!=40 and L!=60)
 	{
 		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
 	}
@@ -333,7 +334,7 @@ int main (int argc, char* argv[])
 		if (CALC_NEUTRAL_GAP)
 		{
 			lout << "CALC_NEUTRAL_GAP" << endl;
-			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
+			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base_excited);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
 			DMRG2.Epenalty = Epenalty;
