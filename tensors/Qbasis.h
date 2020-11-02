@@ -814,18 +814,18 @@ print() const
 		//ss << q_Phys;
 		tt << plain.size();
 
-		// uu << curr_num;
-		uu << "(";
-		for (auto it = plain.cbegin(); it != plain.cend(); it++)
-		// for (const auto & [ident, num] : plain)
-		{
-			auto [ident,num] = *it;
-			if (std::distance(it,plain.cend()) == 1)
-				uu << ident << "(" << num << ")";
-			else
-				uu << ident << "(" << num << ")" << ", ";
-		}
-		uu << ")";
+		uu << curr_num;
+		// uu << "(";
+		// for (auto it = plain.cbegin(); it != plain.cend(); it++)
+		// // for (const auto & [ident, num] : plain)
+		// {
+		// 	auto [ident,num] = *it;
+		// 	if (std::distance(it,plain.cend()) == 1)
+		// 		uu << ident << "(" << num << ")";
+		// 	else
+		// 		uu << ident << "(" << num << ")" << ", ";
+		// }
+		// uu << ")";
 		t.add(ss.str());
 		t.add(tt.str());
 		t.add(uu.str());
