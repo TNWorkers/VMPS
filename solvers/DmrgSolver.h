@@ -612,7 +612,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
-        
+	
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
@@ -695,6 +695,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 				t_QR += QRtimer.time();
 				Stopwatch<> LRtimer;
 				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 				t_LR += LRtimer.time();
 			}
 		}
@@ -751,6 +752,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			t_QR += QRtimer.time();
 			Stopwatch<> LRtimer2;
 			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 			t_LR += LRtimer2.time();
 		}
 		
@@ -761,6 +763,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		t_QR += QRtimer.time();
 		Stopwatch<> LRtimer;
 		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 		t_LR += LRtimer.time();
 		
 		err_state /= this->N_sites;
@@ -967,22 +970,6 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
 			Heff[SweepStat.pivot].A0proj[n] = Aout.data;
-			
-			// push new blocks of result as zero matrices into A
-//			for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
-//			for (int q=0; q<Heff[SweepStat.pivot].A0proj[n][s].dim; ++q)
-//			{
-//				qarray2<Symmetry::Nq> cmp = {Heff[SweepStat.pivot].A0proj[n][s].in[q], Heff[SweepStat.pivot].A0proj[n][s].out[q]};
-//				auto qA = Vout.state.A[SweepStat.pivot][s].dict.find(cmp);
-//				if (qA == Vout.state.A[SweepStat.pivot][s].dict.end())
-//				{
-//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff[SweepStat.pivot].A0proj[n][s].block[q].rows(),
-//					                                         Heff[SweepStat.pivot].A0proj[n][s].block[q].cols());
-//					ZeroBlock.setZero();
-//					Vout.state.A[SweepStat.pivot][s].push_back(cmp,ZeroBlock);
-//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
-//				}
-//			}
 		}
 	}
 	
@@ -1085,13 +1072,13 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	if (Psi0.size() > 0)
 	{
 		Heff2.Epenalty = Epenalty;
-		Heff2.PL.resize(Psi0.size());
-		Heff2.PR.resize(Psi0.size());
-		for (int n=0; n<Psi0.size(); ++n)
-		{
-			Heff2.PL[n] = Heff[loc1()].PL[n];
-			Heff2.PR[n] = Heff[loc2()].PR[n];
-		}
+//		Heff2.PL.resize(Psi0.size());
+//		Heff2.PR.resize(Psi0.size());
+//		for (int n=0; n<Psi0.size(); ++n)
+//		{
+//			Heff2.PL[n] = Heff[loc1()].PL[n];
+//			Heff2.PR[n] = Heff[loc2()].PR[n];
+//		}
 		
 		// contract A0pair
 		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0pair(Psi0.size());
@@ -1118,24 +1105,8 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
-			for (int s=0; s<Aout.data.size(); ++s) Aout.data[s] = Aout.data[s].cleaned();
+//			for (int s=0; s<Aout.data.size(); ++s) Aout.data[s] = Aout.data[s].cleaned();
 			Heff2.A0proj[n] = Aout.data;
-			
-			// push new blocks of result as zero matrices into A
-//			for (int s=0; s<Heff2.A0proj[n].size(); ++s)
-//			for (int q=0; q<Heff2.A0proj[n][s].dim; ++q)
-//			{
-//				qarray2<Symmetry::Nq> cmp = {Heff2.A0proj[n][s].in[q], Heff2.A0proj[n][s].out[q]};
-//				auto qA = g.state.data[s].dict.find(cmp);
-//				if (qA == g.state.data[s].dict.end())
-//				{
-//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff2.A0proj[n][s].block[q].rows(),
-//					                                         Heff2.A0proj[n][s].block[q].cols());
-//					ZeroBlock.setZero();
-//					g.state.data[s].push_back(cmp,ZeroBlock);
-//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
-//				}
-//			}
 		}
 	}
 	
@@ -1260,7 +1231,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		}
 	}
 	
-	if (N_sites>4)
+	if (N_sites>4 and GlobParam.CALC_S_ON_EXIT)
 	{
 		size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
 		
@@ -1301,10 +1272,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
-                // Set limits for alpha for the upcoming halfsweep
-                min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
-                max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
-                
+		// Set limits for alpha for the upcoming halfsweep
+		min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
+		max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
 		    max_alpha_rsvd == 0. and
 		    MESSAGE_ALPHA == false)
@@ -1318,9 +1289,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
-
-                DynParam.doSomething(j);
-
+		
+		DynParam.doSomething(j);
+		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
 		if (j%DynParam.Mincr_per(j) == 0)
@@ -1515,8 +1486,9 @@ build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n]);
-//		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
+//		cout << "BUILDING LEFT ENVIRONMENT AT loc=" << loc << endl;
+		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n], false, true);
+		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
 	}
 }
 
@@ -1526,8 +1498,9 @@ build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n]);
-//		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
+//		cout << "BUILDING RIGHT ENVIRONMENT AT loc=" << loc << endl;
+		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n], false, true);
+		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
 	}
 }
 

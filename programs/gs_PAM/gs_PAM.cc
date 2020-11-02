@@ -71,6 +71,7 @@ int main (int argc, char* argv[])
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
 	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
+	bool CALC_TRIPLET_GAP = args.get<bool>("CALC_TRIPLET_GAP",false);
 	
 	// Steuert die Menge der Ausgaben
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
@@ -82,16 +83,17 @@ int main (int argc, char* argv[])
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
 	
 	// Parameter fuer den Grundzustand:
-	VUMPS::CONTROL::GLOB GlobParams;
-	GlobParams.min_iterations = args.get<size_t>("min_iterations",50ul);
-	GlobParams.max_iterations = args.get<size_t>("max_iterations",200ul);
-	GlobParams.Minit = args.get<size_t>("Minit",2ul);
-	GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
-	GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
-	GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
-	GlobParams.tol_var = args.get<double>("tol_var",1e-5);
-	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
-	GlobParams.max_iter_without_expansion = 30ul;
+	VUMPS::CONTROL::GLOB GlobSweepParams;
+	GlobSweepParams.min_iterations = args.get<size_t>("min_iterations",50ul);
+	GlobSweepParams.max_iterations = args.get<size_t>("max_iterations",200ul);
+	GlobSweepParams.Minit = args.get<size_t>("Minit",1ul);
+	GlobSweepParams.Mlimit = args.get<size_t>("Mlimit",500ul);
+	GlobSweepParams.Qinit = args.get<size_t>("Qinit",1ul);
+	GlobSweepParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
+	GlobSweepParams.tol_var = args.get<double>("tol_var",1e-5);
+	GlobSweepParams.tol_state = args.get<double>("tol_state",1e-4);
+	GlobSweepParams.max_iter_without_expansion = 30ul;
+	GlobSweepParams.CALC_S_ON_EXIT = false;
 	
 	// Gemeinsame Parameter bei unendlichen und offenen Randbedingungen
 	vector<Param> params_common;
@@ -165,9 +167,9 @@ int main (int argc, char* argv[])
 	double e0free = 2.*occ.sum()/Lfinite;
 	lout << setprecision(16) << "e0free/(L="<<Lfinite<<",half-filling)=" << e0free << endl;
 	
-	if (CALC_NEUTRAL_GAP)
+	if (CALC_NEUTRAL_GAP or CALC_TRIPLET_GAP)
 	{
-		// Grundzustand fuer unendliches System
+		// Grundzustand fuer endliches System
 		Eigenstate<MODELC::StateXcd> g;
 		
 		MODELC H(L,params_OBC,BC::OPEN);
@@ -175,46 +177,79 @@ int main (int argc, char* argv[])
 		
 		MODELC::Solver Salvator(VERB);
 		
-		DMRG::CONTROL::GLOB GlobParamsOBC;
-		GlobParamsOBC.min_halfsweeps = 30;
-		GlobParamsOBC.max_halfsweeps = 60;
-		GlobParamsOBC.CONVTEST = DMRG::CONVTEST::VAR_HSQ;
-		
-		DMRG::CONTROL::DYN DynParamsOBC;
-		size_t lim2site = args.get<size_t>("lim2site",30ul);
-		DynParamsOBC.iteration = [lim2site] (size_t i) {return DMRG::ITERATION::ONE_SITE;};
+		DMRG::CONTROL::GLOB GlobSweepParamsOBC;
+		GlobSweepParamsOBC.min_halfsweeps = args.get<size_t>("min_halfsweeps",10ul);
+		GlobSweepParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
+		GlobSweepParamsOBC.Minit = args.get<size_t>("Minit",2ul);
+		GlobSweepParamsOBC.Qinit = args.get<size_t>("Qinit",2ul);
+		GlobSweepParamsOBC.CALC_S_ON_EXIT = false;
 		
 		Salvator.userSetGlobParam();
-		Salvator.GlobParam = GlobParamsOBC;
-		Salvator.userSetDynParam();
-		Salvator.DynParam = DynParamsOBC;
+		Salvator.GlobParam = GlobSweepParamsOBC;
 		
-		Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		Salvator.edgeState(H, g, Q);
 		
-		MODELC::Solver Salvator2(VERB);
-		Salvator2.userSetGlobParam();
-		Salvator2.GlobParam = GlobParamsOBC;
-		Salvator2.userSetDynParam();
-		Salvator2.DynParam = DynParamsOBC;
-		
-		Salvator2.push_back(g.state);
-		
+		Eigenstate<MODELC::StateXcd> gt;
 		Eigenstate<MODEL::StateXcd> excited1;
-		excited1.state = g.state;
-		excited1.state.setRandom();
-		excited1.state.sweep(0,DMRG::BROOM::QR);
-		excited1.state /= sqrt(dot(excited1.state,excited1.state));
-		excited1.state.eps_svd = 1e-8;
-		Salvator2.Epenalty = args.get<double>("Epenalty",1e4);
 		
-		double overlap = abs(dot(g.state,excited1.state));
-		lout << "initial overlap=" << overlap << endl;
-		Salvator2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
-		lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
-		overlap = abs(dot(g.state,excited1.state));
-		lout << "overlap=" << overlap << endl;
+		if (CALC_TRIPLET_GAP)
+		{
+			qarray<MODEL::Symmetry::Nq> Qt = {3,N};
+			
+			MODELC::Solver Salvator2(VERB);
+			Salvator2.userSetGlobParam();
+			Salvator2.GlobParam = GlobSweepParamsOBC;
+			
+			Salvator2.edgeState(H, gt, Qt);
+			
+			lout << endl;
+			lout << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << gt.energy << ", triplet gap=" << gt.energy-g.energy << setprecision(6) << endl;
+			
+			ofstream Filer(make_string("tgap_L=",L,"_",param_base,".dat"));
+			Filer << "#E0\tEtriplet\ttriplet gap" << endl;
+			Filer << setprecision(16) << g.energy << "\t" << gt.energy << "\t" << gt.energy-g.energy << endl;
+			Filer.close();
+		}
+		if (CALC_NEUTRAL_GAP)
+		{
+			MODELC::Solver Salvator2(VERB);
+			Salvator2.userSetGlobParam();
+			Salvator2.GlobParam = GlobSweepParamsOBC;
+			GlobSweepParamsOBC.CONVTEST = DMRG::CONVTEST::VAR_HSQ;
+			Salvator2.Epenalty = args.get<double>("Epenalty",1e4);
+			
+			DMRG::CONTROL::DYN DynParamsOBC;
+			DMRG::ITERATION::OPTION ITALG = static_cast<DMRG::ITERATION::OPTION>(args.get<int>("ITALG",2));
+			DynParamsOBC.iteration = [ITALG] (size_t i) {return ITALG;}; // [lim2site]
+			
+			Salvator2.userSetDynParam();
+			Salvator2.DynParam = DynParamsOBC;
+			
+			Salvator2.push_back(g.state);
+			
+			excited1.state = g.state;
+			excited1.state.setRandom();
+			excited1.state.sweep(0,DMRG::BROOM::QR);
+			excited1.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // eliminates large numbers
+			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+			excited1.state.eps_svd = 1e-8;
+			
+			double overlap = abs(dot(g.state,excited1.state));
+			lout << endl << "initial overlap=" << overlap << endl;
+			Salvator2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
+			lout << "excited1.energy=" << setprecision(16) << excited1.energy << setprecision(6) << endl;
+			overlap = abs(dot(g.state,excited1.state));
+			lout << "overlap=" << overlap << endl;
+			
+			ofstream Filer(make_string("ngap_L=",L,"_",param_base,".dat"));
+			Filer << "#E0\tEneutral\tneutral gap\toverlap" << endl;
+			Filer << setprecision(16) << g.energy << "\t" << excited1.energy << "\t" << excited1.energy-g.energy << "\t" << overlap << endl;
+			Filer.close();
+		}
 		
-		lout << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << excited1.energy << ", gap=" << excited1.energy-g.energy << setprecision(6) << endl;
+		lout << endl;
+		if (CALC_TRIPLET_GAP) lout << termcolor::bold << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << gt.energy << ", triplet gap=" << gt.energy-g.energy << setprecision(6) << termcolor::reset << endl;
+		if (CALC_NEUTRAL_GAP) lout << termcolor::bold << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << excited1.energy << ", neutral gap=" << excited1.energy-g.energy << setprecision(6) << termcolor::reset << endl;
 	}
 	else
 	{
@@ -230,7 +265,7 @@ int main (int argc, char* argv[])
 		// VUMPS-Solver
 		MODELC::uSolver Salvator(VERB);
 		Salvator.userSetGlobParam();
-		Salvator.GlobParam = GlobParams;
+		Salvator.GlobParam = GlobSweepParams;
 		Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 		
 		lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << endl;

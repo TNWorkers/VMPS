@@ -38,8 +38,8 @@ struct PivotMatrix2
 	vector<qarray<Symmetry::Nq> > qOp34;
 	
 	// stuff for excited states
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
+//	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
+//	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
 	double Epenalty = 0;
 	
