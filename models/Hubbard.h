@@ -33,6 +33,7 @@ public:
 	
 	static qarray<0> singlet (int N) {return qarray<0>{};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr int spinfac = 2;
 	
 	template<typename Symmetry_>
 	static void add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 

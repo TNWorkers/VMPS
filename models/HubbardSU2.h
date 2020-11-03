@@ -66,6 +66,7 @@ public:
 	
 	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr int spinfac = 1;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;

@@ -48,8 +48,6 @@ typedef VMPS::PeierlsHubbardSU2xU1 MODEL; // complex
 #include "solvers/SpectralManager.h"
 #include "models/ParamCollection.h"
 
-vector<GreenPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>>> Green;
-
 MatrixXcd onsite (int L, double Eevn, double Eodd)
 {
 	MatrixXcd res(L,L); res.setZero();
@@ -59,6 +57,13 @@ MatrixXcd onsite (int L, double Eevn, double Eodd)
 		res(i+1,i+1) = Eodd;
 	}
 	return res;
+}
+
+double n = 1.;
+GreenPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>> Gfull;
+static double integrand (double mu, void*)
+{
+	return MODEL::spinfac * Gfull.integrate_Glocw_cell(mu) - n;
 }
 
 int main (int argc, char* argv[])
@@ -78,6 +83,7 @@ int main (int argc, char* argv[])
 	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
 	int Ns = args.get<int>("Ns",L/2);
 	int N = args.get<int>("N",L); // Teilchenzahl
+	n = double(N)/L;
 	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
 	lout << "L=" << L << ", N=" << N << ", Ly=" << Ly << ", Ncells=" << Ncells << ", Lhetero=" << Lhetero << ", Ns=" << Ns << endl;
@@ -103,7 +109,6 @@ int main (int argc, char* argv[])
 	vector<string> specs = args.get_list<string>("specs",{"HSF","CSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
 	string specstring = "";
 	int Nspec = specs.size();
-	Green.resize(Nspec);
 	size_t Mlim = args.get<size_t>("Mlim",800ul); // Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.2);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
@@ -243,5 +248,17 @@ int main (int argc, char* argv[])
 	else
 	{
 		SpecMan.reload(wd, specs, param_base, L, Ncells, Ns, tmax, wmin, wmax, wpoints, QR, qpoints, INT);
+	}
+	
+	// μ berechnen
+	auto itPES = find(specs.begin(), specs.end(), "PES");
+	auto itIPE = find(specs.begin(), specs.end(), "IPE");
+	if (itPES != specs.end() and itIPE != specs.end())
+	{
+		SpecMan.make_A1P(Gfull, wd, param_base, Ns, tmax, -20., +20., 1001, QR, qpoints, INT, true);
+		RootFinder R(integrand,wmin,wmax);
+		lout << "μ=" << R.root() << endl;
+		Gfull.mu = R.root();
+		Gfull.save(true); // IGNORE_TX=true
 	}
 }

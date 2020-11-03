@@ -4,6 +4,7 @@
 #include "GreenPropagator.h"
 #include "models/SpectralFunctionHelpers.h"
 #include "DmrgLinearAlgebra.h"
+#include "RootFinder.h" // from ALGS
 
 template<typename Hamiltonian>
 class SpectralManager
@@ -29,6 +30,10 @@ public:
 	
 	const Umps<Symmetry,Scalar> &ground() const {return g.state;};
 	const double &energy() const {return g.energy;};
+	
+	void make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, int Ns, 
+	               double tmax, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
+	               bool SAVE_N_MU=true);
 	
 private:
 	
@@ -169,12 +174,58 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 
 template<typename Hamiltonian>
 void SpectralManager<Hamiltonian>::
-reload (string wd, const vector<string> &specs_input, string label, int L, int Ncells, int Ns, double tmax, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT)
+make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, int Ns, double tmax, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, bool SAVE_N_MU)
 {
+	auto itPES = find(specs.begin(), specs.end(), "PES");
+	auto itIPE = find(specs.begin(), specs.end(), "IPE");
+	
+	if (itPES != specs.end() and itIPE != specs.end())
+	{
+		int iPES = distance(specs.begin(), itPES);
+		int iIPE = distance(specs.begin(), itIPE);
+		
+		// Add PES+IPE
+		vector<vector<MatrixXcd>> GinA1P(L); for (int i=0; i<L; ++i) {GinA1P[i].resize(L);}
+		for (int i=0; i<L; ++i) 
+		for (int j=0; j<L; ++j)
+		{
+			GinA1P[i][j].resize(Green[iPES].get_GtxCell()[0][0].rows(),
+				                Green[iPES].get_GtxCell()[0][0].cols());
+			GinA1P[i][j].setZero();
+		}
+		
+		for (int i=0; i<L; ++i)
+		for (int j=0; j<L; ++j)
+		{
+			GinA1P[i][j] += Green[iPES].get_GtxCell()[i][j] + Green[iIPE].get_GtxCell()[i][j];
+		}
+		Gfull = GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> >(wd+"A1P"+"_"+label,L,Ncells,Ns,tmax,GinA1P,QR,qpoints,INT);
+		Gfull.recalc_FTwCell(wmin,wmax,wpoints);
+		
+		if (SAVE_N_MU)
+		{
+			IntervalIterator mu(wmin,wmax,501);
+			for (mu=mu.begin(); mu!=mu.end(); ++mu)
+			{
+				mu << Gfull.integrate_Glocw_cell(*mu);
+				mu.save(make_string(wd,"n(μ)_tmax=",tmax,"_",label,".dat"));
+			}
+		}
+	}
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+reload (string wd, const vector<string> &specs_input, string label, int L_input, int Ncells_input, int Ns, double tmax, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT)
+{
+	L = L_input;
+	Ncells = Ncells_input;
+	Lhetero = L*Ncells;
+	x0 = Lhetero/2;
 	specs = specs_input;
 	Nspec = specs.size();
+	
 	Green.resize(Nspec);
-	int Lhetero = L*Ncells;
 	
 	for (int z=0; z<Nspec; ++z)
 	{
