@@ -219,8 +219,9 @@ int main (int argc, char* argv[])
 	int Lfinite = args.get<int>("Lfinite",1000);
 	auto Hfree = hopping_PAM(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix()+onsite(Lfinite,Ec,Ef));
-	VectorXd occ = Eugen.eigenvalues().head(Lfinite/2);
-	VectorXd unocc = Eugen.eigenvalues().tail(Lfinite/2);
+	cout << "N*Lfinite/(L*2)=" << N*Lfinite/(L*2) << endl;
+	VectorXd occ = Eugen.eigenvalues().head(N*Lfinite/(L*2));
+	VectorXd unocc = Eugen.eigenvalues().tail(N*Lfinite/(L*2));
 	double e0free = 2.*occ.sum()/Lfinite;
 	lout << setprecision(16) << "e0free/L=("<<Lfinite<<",half-filling)=" << e0free << endl;
 	
@@ -229,7 +230,7 @@ int main (int argc, char* argv[])
 	{
 		SpecMan = SpectralManager<MODEL>(specs, H, params, GlobSweepParams, Q, Ncells, params_hetero, "gs_"+base, LOAD_GS, SAVE_GS);
 		
-		if (U==0. and V==0. and N==L)
+		if (U==0. and V==0.)
 		{
 			lout << "hopping matrix diagonalization: " << e0free << ", VUMPS (should be slightly lower): " << SpecMan.energy() << endl;
 		}
@@ -242,6 +243,8 @@ int main (int argc, char* argv[])
 		lout << "SdagS(cf)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,1), SpecMan.ground())) << endl;
 		lout << "SdagS(cc)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,2), SpecMan.ground())) << endl;
 		lout << "SdagS(ff)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(1,3), SpecMan.ground())) << endl;
+		
+		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
 		
 		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}

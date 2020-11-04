@@ -35,6 +35,40 @@ public:
 	               double tmax, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	               bool SAVE_N_MU=true);
 	
+	Mpo<Symmetry,Scalar> get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor=1., size_t locy=0);
+	
+	static bool TIME_DIR (std::string spec)
+	{
+		// true=forwards in time
+		// false=backwards in time
+		return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="ICSF" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
+	}
+	
+	static string DAG (std::string spec)
+	{
+		string res;
+		if (spec == "PES")        res = "IPE";
+		if (spec == "PESUP")      res = "IPEUP";
+		if (spec == "PESDN")      res = "IPEDN";
+		else if (spec == "SSF")   res = "SDAGSF";
+		else if (spec == "SSZ")   res = "SSZ";
+		else if (spec == "IPE")   res = "PES";
+		else if (spec == "IPEUP") res = "PESUP";
+		else if (spec == "IPEDN") res = "PESDN";
+		else if (spec == "AES")   res = "APS";
+		else if (spec == "APS")   res = "AES";
+		else if (spec == "CSF")   res = "CSF";
+		else if (spec == "ICSF")   res = "ICSF";
+		else if (spec == "PSZ")   res = "PSZ";
+		else if (spec == "IPZ")   res = "IPZ";
+		else if (spec == "PSF")   res = "PDAGSF";
+		else if (spec == "HSF")   res = "IHSF";
+		else if (spec == "IHS")   res = "HSF";
+		else if (spec == "HTF")   res = "IHTF";
+		else if (spec == "ITS")   res = "HTF";
+		return res;
+	}
+	
 private:
 	
 	size_t L, Lhetero, Ncells;
@@ -102,11 +136,11 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 			if (specs[z] == "HSF")
 			{
 				Hamiltonian Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
-				Oshift[z][l] = avg(g.state, VMPS::get_Op<Hamiltonian,Symmetry,Scalar>(Haux,l,specs[z]), g.state);
+				Oshift[z][l] = avg(g.state, get_Op(Haux,l,specs[z]), g.state);
 			}
 			else
 			{
-				Oshift[z][l] = avg(g.state, VMPS::get_Op<Hamiltonian,Symmetry,Scalar>(H,l,specs[z]), g.state);
+				Oshift[z][l] = avg(g.state, get_Op(H,l,specs[z]), g.state);
 			}
 			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
 		}
@@ -119,7 +153,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		O[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
-			O[z][l] = VMPS::get_Op<Hamiltonian,Symmetry,Scalar>(H_hetero, Lhetero/2+l, specs[z]);
+			O[z][l] = get_Op(H_hetero, Lhetero/2+l, specs[z]);
 			O[z][l].scale(1.,-Oshift[z][l]);
 			O[z][l].transform_base(Q,false,L); // PRINT=false
 			cout << O[z][l].info() << endl;
@@ -167,7 +201,7 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 		Green[z].set_tol_DeltaS(tol_DeltaS);
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
-		Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, VMPS::TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -232,9 +266,288 @@ reload (string wd, const vector<string> &specs_input, string label, int L_input,
 		string spec = specs[z];
 		Green[z] = GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double>> 
 		          (wd+spec+"_"+label,L,Ncells,Ns,tmax,{wd+spec+"_"+label+make_string("_L=",L,"x",Ncells,"_tmax=",tmax,"_INT=",INT)},QR,qpoints,INT);
-		Green[z].recalc_FTwCell(wmin,wmax,wpoints, VMPS::TIME_DIR(spec));
+		Green[z].recalc_FTwCell(wmin,wmax,wpoints, TIME_DIR(spec));
 		Green[z].save(true); // IGNORE_TX=true
 	}
+}
+
+template<typename Hamiltonian>
+Mpo<typename Hamiltonian::Symmetry,typename Hamiltonian::Mpo::Scalar_> SpectralManager<Hamiltonian>::
+get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_t locy)
+{
+	Mpo<Symmetry,Scalar> Res;
+	
+	// spin structure factor
+	if (spec == "SSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.S(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.Scomp(SP,loc,locy);
+		}
+	}
+	else if (spec == "SDAGSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.Sdag(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.Scomp(SM,loc,locy);
+		}
+	}
+	else if (spec == "SSZ")
+	{
+		if constexpr (!Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.Scomp(SZ,loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// photemission
+	else if (spec == "PES" or spec == "PESUP")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
+		{
+			Res = H.c(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.template c<UP>(loc,locy);
+		}
+	}
+	else if (spec == "PESDN")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
+		{
+			Res = H.c(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.template c<DN>(loc,locy);
+		}
+	}
+	// inverse photoemission
+	else if (spec == "IPE" or spec == "IPEUP")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
+		{
+			Res = H.cdag(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.template cdag<UP>(loc,locy,factor);
+		}
+	}
+	else if (spec == "IPEDN")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
+		{
+			Res = H.cdag(loc,locy,factor);
+		}
+		else
+		{
+			Res = H.template cdag<DN>(loc,locy,factor);
+		}
+	}
+	// charge structure factor
+	else if (spec == "CSF" or spec == "ICSF")
+	{
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.n(loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// Auger electron spectroscopy
+	else if (spec == "AES")
+	{
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.cc(loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// Appearance potential spectroscopy
+	else if (spec == "APS")
+	{
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.cdagcdag(loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// pseudospin structure factor
+	else if (spec == "PSF")
+	{
+		if constexpr (Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.T(loc,locy);
+		}
+		else
+		{
+			Res = H.Tp(loc,locy);
+		}
+	}
+	// pseudospin structure factor
+	else if (spec == "PDAGSF")
+	{
+		if constexpr (Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.Tdag(loc,locy);
+		}
+		else
+		{
+			Res = H.Tm(loc,locy);
+		}
+	}
+	// pseudospin structure factor: z-component
+	else if (spec == "PSZ" or spec == "IPZ")
+	{
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.Tz(loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// hybridization structure factor
+	else if (spec == "HSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc(loc,loc+1,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+		else
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc<UP,UP>(loc,loc+1,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+	}
+	// inverse hybridization structure factor
+	else if (spec == "IHSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc(loc+1,loc,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+		else
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc<UP,UP>(loc+1,loc,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+	}
+	// hybridization triplet structure factor
+	else if (spec == "HTS")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc3(loc,loc+1,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+		else
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc<UP,DN>(loc,loc+1,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+	}
+	// inverse hybridization triplet structure factor
+	else if (spec == "IHTF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc3(loc+1,loc,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "IHTF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+		else
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc<DN,UP>(loc+1,loc,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "IHTF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+	}
+	else
+	{
+		throw;
+	}
+	
+	Res.set_locality(loc);
+	return Res;
 }
 
 #endif

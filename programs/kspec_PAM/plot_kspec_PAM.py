@@ -325,9 +325,12 @@ elif args.plot == 'tslice':
 
 if args.save:
 	
-	figname = plotname+'.pdf'
-	savefig(figname, bbox_inches='tight')
-	os.system('pdfcrop '+figname+' '+figname)
+	figname = plotname
+	if (index==0 or index==1):
+		figname += '_b='+str(index)
+	savefig(figname+'.png', bbox_inches='tight')
+	savefig(figname+'.pdf', bbox_inches='tight')
+	os.system('pdfcrop '+figname+'.pdf'+' '+figname+'.pdf')
 
 plt.show()
 
