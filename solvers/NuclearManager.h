@@ -1,6 +1,8 @@
 #ifndef NUCLEAR_MANAGER
 #define NUCLEAR_MANAGER
 
+#include <boost/algorithm/string.hpp>
+
 #include "models/HubbardU1.h"
 #include "solvers/DmrgSolver.h"
 #include "HDF5Interface.h"
@@ -19,6 +21,9 @@ public:
 		Nlev = deg.rows();
 		L = deg.sum();
 		V0.triangularView<Lower>() = V0.transpose();
+		levelstring = str(labels_input);
+		replace_halves(levelstring);
+		
 		construct();
 	};
 	
@@ -40,9 +45,22 @@ public:
 		{
 			source.load_char(make_string("lev",i).c_str(), labels[i]);
 		}
+		levelstring = str(labels);
+		replace_halves(levelstring);
 		
 		construct();
 	};
+	
+	static void replace_halves (string &target)
+	{
+		boost::replace_all(target, "11/2", "¹¹⁄₂");
+		boost::replace_all(target, "13/2", "¹³⁄₂");
+		boost::replace_all(target, "1/2", "½");
+		boost::replace_all(target, "3/2", "³⁄₂");
+		boost::replace_all(target, "5/2", "⁵⁄₂");
+		boost::replace_all(target, "7/2", "⁷⁄₂");
+		boost::replace_all(target, "9/2", "⁹⁄₂");
+	}
 	
 	void construct()
 	{
@@ -59,9 +77,7 @@ public:
 		for (int i=0; i<Nlev; ++i)
 		for (int j=0; j<Nlev; ++j)
 		{
-//			double lambda = V0(i,j)/sqrt(deg(i)*deg(j));
 			Ghop.block(offset(i),offset(j),deg(i),deg(j)).setConstant(-G0*V0(i,j));
-//			lout << "block: " << offset(i) << ", " << offset(j) << ": " << deg(i) << "x" << deg(j) << "\t" << Ghop(i,j) << endl;
 		}
 		
 		for (int i=0; i<L; ++i)
@@ -86,13 +102,11 @@ public:
 				boost::rational<int> M1 = J1-m1;
 				boost::rational<int> M2 = J2-m2;
 				assert((J1+J2+M1+M2).denominator() == 1);
-				lout << "J1=" << J1 << ", M1=" << M1 << ", J2=" << J2 << ", M2=" << M2 << ": " << (J1+J2+M1+M2).numerator() << endl;
 				signblock(m1,m2) = pow(-1,(J1+J2+M1+M2).numerator());
 			}
 			
 			sign.block(offset(j1),offset(j2),deg(j1),deg(j2)) = signblock;
 		}
-		lout << sign << endl;
 		
 //		for (int j1=0; j1<Nlev; ++j1)
 //		for (int m1=0; m1<deg(j1); ++m1)
@@ -104,17 +118,9 @@ public:
 		
 		Ghop = (Ghop.array()*sign).matrix();
 		
-		lout << Ghop << endl;
-		
 		// G local
-//		Gloc.resize(L); Gloc.setZero();
-//		for (int i=0; i<Nlev; ++i)
-//		{
-//			Gloc.segment(offset(i),deg(i)).setConstant(-G0*V0(i,i));
-//		}
 		Gloc = Ghop.diagonal();
 		Ghop.diagonal().setZero();
-//		lout << "Gloc=" << Gloc.transpose() << endl;
 		
 		// onsite
 		onsite.resize(L); onsite.setZero();
@@ -122,53 +128,109 @@ public:
 		{
 			onsite.segment(offset(i),deg(i)).setConstant(eps0(i));
 		}
-		lout << "onsite=" << onsite.transpose() << endl;
+		
+//		PermutationMatrix<Dynamic,Dynamic> P(L);
+//		P.setIdentity();
+//		std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
+//		Ghop = P.inverse()*Ghop*P;
+//		onsite = P.inverse()*onsite;
+//		Gloc = P.inverse()*Gloc;
 	}
 	
-	void compute()
+	void compute (bool LOAD = false, bool SAVE = false)
 	{
 		// model
-		vector<Param> params;
-		params.push_back({"t",0.});
-		for (size_t l=0; l<L; ++l)
+		if (LOAD)
 		{
-			params.push_back({"t0",onsite(l),l});
-			params.push_back({"U",Gloc(l),l});
+			H = MODEL(L,{{"maxPower",1ul}});
+			H.load(make_string("H_Z=",Z,"_N=",N,"_G0=",G0,"_j=",levelstring));
+			lout << H.info() << endl;
 		}
-		params.push_back({"Vxyfull",ArrayXXd(2.*Ghop)}); // 2 compensates 0.5 in our definition
-		params.push_back({"maxPower",1ul});
-		
-		H = MODEL(L,params);
-		lout << H.info() << endl;
+		else
+		{
+			vector<Param> params;
+			params.push_back({"t",0.});
+			for (size_t l=0; l<L; ++l)
+			{
+				params.push_back({"t0",onsite(l),l});
+				params.push_back({"U",Gloc(l),l});
+			}
+			params.push_back({"Vxyfull",ArrayXXd(2.*Ghop)}); // 2 compensates 0.5 in our definition
+			params.push_back({"maxPower",1ul});
+			
+			H = MODEL(L,params);
+			lout << H.info() << endl;
+			
+			if (SAVE)
+			{
+				H.save(make_string("H_Z=",Z,"_N=",N,"_G0=",G0,"_j=",levelstring));
+			}
+		}
 		
 		DMRG::CONTROL::GLOB GlobParam;
-		GlobParam.min_halfsweeps = 10ul;
+		GlobParam.min_halfsweeps = 12ul;
 		GlobParam.max_halfsweeps = 100ul;
 		GlobParam.Minit = 100ul;
 		GlobParam.Qinit = 100ul;
-		GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
+		GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ;
 		GlobParam.CALC_S_ON_EXIT = false;
 		GlobParam.Mlimit = 500ul;
 		
 		DMRG::CONTROL::DYN  DynParam;
-		size_t lim2site = 30ul;
+		size_t lim2site = 6ul;
 		DynParam.iteration = [lim2site] (size_t i) {return (i<lim2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+		DynParam.max_alpha_rsvd = [] (size_t i) {return (i<16)? 1e4:0.;};
 		
 		g.resize(2*L+1);
 		avgN.resize(2*L+1);
 		n.resize(2*L+1);
+		
+		string filename = make_string("./PairingResult_Z=",Z,"_N=",N,"_G0=",G0,"_j=",levelstring,".h5");
+		HDF5Interface target(filename, WRITE);
+		target.save_vector(eps0,"eps0","");
+		target.save_vector(deg,"deg","");
+		
+		VectorXd energies(2*L+1);
 		
 		for (int Nshell=0; Nshell<=2*L; ++Nshell)
 		{
 			int A = N+Z+Nshell;
 			lout << "A=" << A << ", Z=" << Z << ", N=" << N+Nshell << ", Nshell=" << Nshell << endl;
 			qarray<MODEL::Symmetry::Nq> Q = {Nshell};
-			MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
-			DMRG.userSetGlobParam();
-			DMRG.userSetDynParam();
-			DMRG.GlobParam = GlobParam;
-			DMRG.DynParam = DynParam;
-			DMRG.edgeState(H, g[Nshell], Q, LANCZOS::EDGE::GROUND);
+			
+			Stopwatch<> Timer;
+			MODEL::Solver DMRG1(DMRG::VERBOSITY::ON_EXIT);
+			MODEL::Solver DMRG2(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<MODEL::StateXd> g1,g2;
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				{
+					DMRG1.userSetGlobParam();
+					DMRG1.userSetDynParam();
+					DMRG1.GlobParam = GlobParam;
+					DMRG1.DynParam = DynParam;
+					DMRG1.edgeState(H, g1, Q, LANCZOS::EDGE::GROUND);
+				}
+				#pragma omp section
+				{
+					DMRG2.userSetGlobParam();
+					DMRG2.userSetDynParam();
+					DMRG2.GlobParam = GlobParam;
+					DMRG2.DynParam = DynParam;
+//					if (Nshell>L)
+					{
+						SweepStatus SweepStat;
+						SweepStat.START_DIRECTION = DMRG::DIRECTION::LEFT;
+						DMRG2.set_SweepStatus(SweepStat);
+					}
+					DMRG2.edgeState(H, g2, Q, LANCZOS::EDGE::GROUND);
+				}
+			}
+			g[Nshell] = (g1.energy<=g2.energy)? g1:g2;
+			lout << Timer.info("ground state") << endl;
+			
+			energies(Nshell) = g[Nshell].energy;
 			if (Z==50 and N==50 and (Nshell==12 or Nshell==14 or Nshell==16))
 			{
 				double diff = abs(g[Nshell].energy-Sn_Eref(Nshell));
@@ -188,6 +250,8 @@ public:
 			n[Nshell].resize(Nlev);
 			avgN[Nshell].resize(Nlev);
 			
+//			ofstream Filer(make_string("./Z=",Z,"/avgN_Z=",Z,"_N=",N,"_Nshell=",Nshell,".dat"));
+			
 			int i0 = 0;
 			for (int j=0; j<Nlev; ++j)
 			{
@@ -203,51 +267,80 @@ public:
 				n[Nshell](j) *= 0.5;
 				
 				lout << "N(" << labels[j] << ")=" << avgN[Nshell](j) << "/" << 2*deg(j) << ", n=" << n[Nshell](j);
+//				Filer << eps0(j) << "\t" << avgN[Nshell](j) << "\t" << 2*deg(j) << "\t" << n[Nshell](j) << endl;
 				if (Z==50 and N==50 and Nshell==14)
 				{
-					lout << ", ref(N)=" << Sn_Nref14()(j) << ", ref(n)=" << Sn_nref14()(j);
+					lout << ", ref(N)=";
+					if (abs(Sn_Nref14()(j)-avgN[Nshell](j))<1e-1)
+					{
+						lout << termcolor::green;
+					}
+					else
+					{
+						lout << termcolor::red;
+					}
+					lout << Sn_Nref14()(j) << termcolor::reset;
+					
+					lout << ", ref(n)=";
+					if (abs(Sn_nref14()(j)-n[Nshell](j))<1e-1)
+					{
+						lout << termcolor::green;
+					}
+					else
+					{
+						lout << termcolor::red;
+					}
+					lout << Sn_nref14()(j) << termcolor::reset;
 				}
 				lout << endl;
 			}
+			target.create_group(make_string(Nshell));
+			target.save_scalar(g[Nshell].energy,"E0",make_string(Nshell));
+			target.save_vector(avgN[Nshell],"avgN",make_string(Nshell));
+			target.save_vector(n[Nshell],"n",make_string(Nshell));
 			lout << endl;
+//			Filer.close();
 		}
 		
-//		ofstream Filer(make_string("E.dat"));
-//		for (int N=0; N<=Nmax; N=N+1)
-//		{
-//			Filer << Nshell+N << "\t" << energies(N) << endl;
-//		}
-//		Filer.close();
-//		
-//		ofstream Delta1Filer(make_string("Delta1.dat"));
-//		for (int N=1; N<=Nmax-1; N=N+1)
-//		{
-//			double DeltaVal1 = 0.5*(2.*energies(N)-energies(N-1)-energies(N+1));
-//			
-//			lout << "Nn=" << Nshell+N << ", Delta=" << DeltaVal1 << endl;
-//			Delta1Filer << Nshell+N << "\t" << DeltaVal1 << endl;
-//		}
-//		Delta1Filer.close();
-//		
-//		ofstream Delta2Filer(make_string("Delta2.dat"));
-//		for (int N=1; N<=Nmax-1; N=N+2)
-//		{
-//			double DeltaVal2 = -0.5*(energies(N-1)+energies(N+1)-2.*energies(N));
-//			
-//			lout << "Nn=" << Nshell+N << ", Delta=" << DeltaVal2 << endl;
-//			Delta2Filer << Nshell+N << "\t" << DeltaVal2 << endl;
-//		}
-//		Delta2Filer.close();
-//		
-//		ofstream Delta3Filer(make_string("Delta3.dat"));
-//		for (int N=2; N<=Nmax; N=N+1)
-//		{
-//			double DeltaVal3 = -pow(-1,N) * (energies(N)-2.*energies(N-1)+energies(N-2));
-//			
-//			lout << "Nn=" << Nshell+N << ", Delta=" << DeltaVal3 << endl;
-//			Delta3Filer << Nshell+N << "\t" << DeltaVal3 << endl;
-//		}
-//		Delta3Filer.close();
+		MatrixXd Delta3(0,2);
+		for (int Nshell=1, i=0; Nshell<=2*L-1; ++Nshell, ++i)
+		{
+			double DeltaVal = 0.5*(2.*energies(Nshell)-energies(Nshell-1)-energies(Nshell+1));
+			
+//			lout << "Nn=" << Nshell+N << ", Delta3=" << DeltaVal << endl;
+			Delta3.conservativeResize(Delta3.rows()+1,Delta3.cols());
+			Delta3(i,0) = Nshell;
+			Delta3(i,1) = DeltaVal;
+		}
+		target.save_matrix(Delta3,"Delta3");
+		
+		MatrixXd Delta4(0,2);
+		for (int Nshell=2, i=0; Nshell<=2*L-1; ++Nshell, ++i)
+		{
+			double DeltaVal = 0.25*(energies(Nshell-2)-3.*energies(Nshell-1)+3.*energies(Nshell)-energies(Nshell+1));
+			
+//			lout << "Nn=" << Nshell+N << ", Delta4=" << DeltaVal << endl;
+			Delta4.conservativeResize(Delta4.rows()+1,Delta4.cols());
+			Delta4(i,0) = Nshell;
+			Delta4(i,1) = DeltaVal;
+		}
+		target.save_matrix(Delta4,"Delta4");
+		
+		MatrixXd Delta5(0,2);
+		for (int Nshell=2, i=0; Nshell<=2*L-2; ++Nshell, ++i)
+		{
+			double DeltaVal = -0.125*(6.*energies(Nshell-2)-4.*energies(Nshell+1)-4.*energies(Nshell-1)+energies(Nshell+2)+energies(Nshell-2));
+			
+//			lout << "Nn=" << Nshell+N << ", Delta5=" << DeltaVal << endl;
+			Delta5.conservativeResize(Delta5.rows()+1,Delta5.cols());
+			Delta5(i,0) = Nshell;
+			Delta5(i,1) = DeltaVal;
+		}
+		target.save_matrix(Delta5,"Delta5");
+		
+		lout << "saved: " << filename << endl;
+		
+		target.close();
 	}
 	
 	ArrayXd get_occ() const;
@@ -265,6 +358,7 @@ private:
 	int Nlev;
 	size_t L;
 	
+	string levelstring;
 	vector<string> labels;
 	VectorXi deg, offset;
 	VectorXd eps0;

@@ -117,8 +117,8 @@ int main (int argc, char* argv[])
 	double betainit = 0.;
 	double betaswitch = args.get<double>("betaswitch",10.);
 	double s_betainit = args.get<double>("s_betainit",log(2));
-	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
-	size_t Dlim = args.get<size_t>("Dlim",100ul);
+	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-7);
+	size_t Mlim = args.get<size_t>("Mlim",1000ul);
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
@@ -163,9 +163,9 @@ int main (int argc, char* argv[])
 				{
 					dbeta = boost::lexical_cast<double>(parsed_vals[j+1]);
 				}
-				else if (parsed_vals[j] == "Dlim")
+				else if (parsed_vals[j] == "Mlim")
 				{
-					Dlim = boost::lexical_cast<int>(parsed_vals[j+1]);
+					Mlim = boost::lexical_cast<int>(parsed_vals[j+1]);
 				}
 				else if (parsed_vals[j] == "tol")
 				{
@@ -190,7 +190,7 @@ int main (int argc, char* argv[])
 	}
 	if (BETAPROP)
 	{
-		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
+		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Mlim=",Mlim);
 	}
 	string base_excited = base;
 	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
@@ -205,7 +205,7 @@ int main (int argc, char* argv[])
 	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Mlimit = args.get<size_t>("Dlimit",10000ul); // for groundstate
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
 	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
 	
 	lout.set(base+".log",wd+"log");
@@ -645,7 +645,7 @@ int main (int argc, char* argv[])
 //		lout << endl;
 //		
 //		auto PsiT = g.state;
-//		PsiT.max_Nsv = Dlim;
+//		PsiT.max_Nsv = Mlim;
 //		TDVPPropagator<MODELC,MODELC::Symmetry,double,double,MODELC::StateXd> TDVPT(H,PsiT);
 //		
 //		ofstream Filer(make_string(wd,"thermodynC_",base,".dat"));
@@ -761,7 +761,7 @@ int main (int argc, char* argv[])
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
-			     << "Dlim=" << Dlim << ", "
+			     << "Mlim=" << Mlim << ", "
 			     << "tol=" << tol_beta_compr << ", "
 			     << boolalpha << "BETA1STEP=" << BETA1STEP
 			     << termcolor::reset << endl;
@@ -788,6 +788,10 @@ int main (int argc, char* argv[])
 			
 			Eigenstate<MODEL::StateXd> g;
 			MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
+			DMRG::CONTROL::GLOB GlobParam;
+			GlobParam.CALC_S_ON_EXIT = false;
+			DMRG.userSetGlobParam();
+			DMRG.GlobParam = GlobParam;
 			DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
 			
 			// Zero hopping may cause problems. Restart until the correct product state is reached.
@@ -845,13 +849,14 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		lout << endl;
 		
-		PsiT.max_Nsv = Dlim;
+		PsiT.max_Nsv = Mlim;
 		if (LOAD!="") lout << "preparing TDVP..." << endl;
 		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
 		lout << PsiT.info() << endl;
 		
 		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
-		Filer << "#T\tc\te\tchi\ts" << endl;
+		Filer << "#beta\tT\tc\te\tchi\ts" << endl;
+		Filer.close();
 		vector<double> cvec;
 		vector<double> evec;
 		vector<double> chivec;
@@ -862,18 +867,18 @@ int main (int argc, char* argv[])
 		vector<double> betasteps;
 		vector<double> betavals;
 		
-		if (betainit == 0.)
+		if (betainit < 1e-15)
 		{
 			betavals.push_back(0.01);
 			betasteps.push_back(0.01);
-//			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
 			{
 				betasteps.push_back(0.01);
 				double beta_last = betavals[betavals.size()-1];
 				betavals.push_back(beta_last+0.01);
-//				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			}
 		}
 		else
@@ -1032,14 +1037,16 @@ int main (int argc, char* argv[])
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;
+				Filer.open(make_string(wd,"thermodynGC_",base,".dat"), std::ios_base::app);
 				Filer << setprecision(16) 
+				      << beta << "\t"
 				      << 1./beta << "\t" 
 				      << cvec[i-1] << "\t" 
 				      << evec[i-1] << "\t" 
 				      << chivec[i-1] << "\t" 
 				      << svec[i-1] 
 				      << setprecision(6) << endl;
-				Filer.flush();
+				Filer.close();
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;
@@ -1047,6 +1054,6 @@ int main (int argc, char* argv[])
 			lout << endl;
 		}
 		
-		Filer.close();
+//		Filer.close();
 	}
 }

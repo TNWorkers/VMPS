@@ -1818,10 +1818,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	{
 		Aprev.resize(qloc[loc-1].size());
 	}
-
+	
 	Blocker<Symmetry,Scalar> Jim(A[loc],qloc[loc],inbase[loc],outbase[loc]);
 	auto Aclump = Jim.Aclump(DMRG::DIRECTION::RIGHT);
-
+	
 	bool RETURN_SPEC=false;
 	if (loc != 0)
 		RETURN_SPEC = true;
@@ -2081,7 +2081,9 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	
 	ArrayXd truncWeightSub(outbase[loc].Nq()); truncWeightSub.setZero();
 	ArrayXd entropySub(outbase[loc].Nq()); entropySub.setZero();
-	SVspec[loc].clear();
+	if (loc != this->N_sites-1) {SVspec[loc].clear();}
+	map<qarray<Nq>,ArrayXd> SVspec_;
+	double entropy;
 	
 	vector<Biped<Symmetry,MatrixType> > Aloc(qloc[loc].size());
 	vector<Biped<Symmetry,MatrixType> > Anext; 
@@ -2095,7 +2097,12 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	Biped<Symmetry,MatrixType> left, right;
 	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD or TOOL == DMRG::BROOM::BRUTAL_SVD)
 	{
-		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_svd, truncWeight(loc), S(loc), SVspec[loc], false); //false: DONT PRESERVE MULTIPLETS
+		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_svd, truncWeight(loc), entropy, SVspec_, false); //false: DONT PRESERVE MULTIPLETS
+		if (loc != this->N_sites-1)
+		{
+			S(loc) = entropy;
+			SVspec[loc] = SVspec_;
+		}
 		left = U;
 		right = Sigma.contract(Vdag);
 	}
@@ -2105,29 +2112,28 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		left = Q;
 		right = R;
 	}
-
+	
 	// cout << "loc=" << loc << ", entropy in rightSweepStep: " << S(loc) << endl;
 	Aloc = Jim.reblock(left, DMRG::DIRECTION::LEFT);
 	if (loc != this->N_sites-1 and DISCARD_V == false)
 	{
 		for (size_t s=0; s<qloc[loc+1].size(); ++s)
+		for (size_t q=0; q<A[loc+1][s].dim; ++q)
 		{
-			for (size_t q=0; q<A[loc+1][s].dim; ++q)
+			MatrixType Mtmp;
+			auto itright = right.dict.find({A[loc+1][s].in[q],A[loc+1][s].in[q]});
+			if (itright != right.dict.end())
 			{
-				MatrixType Mtmp;
-				auto itright = right.dict.find({A[loc+1][s].in[q],A[loc+1][s].in[q]});
-				if (itright != right.dict.end())
+				Mtmp = right.block[itright->second] * A[loc+1][s].block[q];
+				auto it = Anext[s].dict.find(qarray2<Nq>{A[loc+1][s].in[q], A[loc+1][s].out[q]});
+				if (Mtmp.size() != 0)
 				{
-					Mtmp = right.block[itright->second] * A[loc+1][s].block[q];
-					auto it = Anext[s].dict.find(qarray2<Nq>{A[loc+1][s].in[q], A[loc+1][s].out[q]});
-					if (Mtmp.size() != 0)
-					{
-						Anext[s].try_push_back(A[loc+1][s].in[q], A[loc+1][s].out[q], Mtmp);
-					}
+					Anext[s].try_push_back(A[loc+1][s].in[q], A[loc+1][s].out[q], Mtmp);
 				}
 			}
 		}
 	}
+	
 	// #ifndef DMRG_DONT_USE_OPENMP
 	// #pragma omp parallel for
 	// #endif
