@@ -25,7 +25,6 @@ struct SweepStatus
 {
 	int pivot = -1;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
-	DMRG::DIRECTION::OPTION START_DIRECTION = DMRG::DIRECTION::RIGHT;
 	size_t N_sweepsteps = 0;
 	size_t N_halfsweeps = 0;
 };
@@ -190,7 +189,7 @@ eigeninfo() const
 	stringstream ss;
 	ss << termcolor::colorize << termcolor::underline << "half-sweeps=" << SweepStat.N_halfsweeps;
 	ss << termcolor::reset;
-	ss << ", algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
+	ss << ", next algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
 	ss << ", ";
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
@@ -375,7 +374,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (SweepStat.pivot == -1)
 	{
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
-		if (SweepStat.START_DIRECTION == DMRG::DIRECTION::RIGHT)
+		if (GlobParam.INITDIR == DMRG::DIRECTION::RIGHT)
 		{
 			for (int l=N_sites-1; l>0; --l)
 			{
@@ -594,6 +593,10 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		lout << "• initial algorithm: ";
 		cout << termcolor::underline;
 		lout << DynParam.iteration(0);
+		cout << termcolor::reset;
+		lout << ", initial direction: ";
+		cout << termcolor::underline;
+		lout << GlobParam.INITDIR;
 		cout << termcolor::reset;
 		lout << endl;
 		
@@ -1315,6 +1318,16 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		halfsweep(H,Vout,EDGE); //SweepStat.N_halfsweeps gets incremented by 1!
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
+		// overwrite if alpha_rsvd was switched on
+		if (DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps-1) == 0. and DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps) != 0.)
+		{
+			Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << endl << "α_rsvd switched on to: " << Vout.state.alpha_rsvd << " for halfsweep " << SweepStat.N_halfsweeps << endl << endl;
+			}
+		}
+		
 		size_t j = SweepStat.N_halfsweeps;
 		
 		DynParam.doSomething(j);
@@ -1340,7 +1353,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 			}
 			lout << endl;
 		}
-				
+		
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
@@ -1446,9 +1459,9 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	// double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
 	//                        DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
 	// Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
-        double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
+	double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
 	Vout.state.alpha_rsvd = max(alpha_min, min(max_alpha_rsvd, Vout.state.alpha_rsvd));
-        
+	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)

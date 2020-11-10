@@ -296,6 +296,7 @@ struct DMRG
 			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
+			constexpr static DMRG::DIRECTION::OPTION INITDIR = DMRG::DIRECTION::RIGHT;
 			
 			#ifndef DMRG_CONTROL_DEFAULT_MIN_NSV
 			#define DMRG_CONTROL_DEFAULT_MIN_NSV 0
@@ -333,6 +334,7 @@ struct DMRG
 			std::string saveName            = std::string(CONTROL::DEFAULT::saveName);
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
+			DMRG::DIRECTION::OPTION INITDIR = CONTROL::DEFAULT::INITDIR;
 		};
 		
 		struct DYN

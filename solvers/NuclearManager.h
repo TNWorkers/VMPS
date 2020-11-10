@@ -55,6 +55,8 @@ public:
 	{
 		boost::replace_all(target, "11/2", "¹¹⁄₂");
 		boost::replace_all(target, "13/2", "¹³⁄₂");
+		boost::replace_all(target, "15/2", "¹⁵⁄₂");
+		boost::replace_all(target, "17/2", "¹⁷⁄₂");
 		boost::replace_all(target, "1/2", "½");
 		boost::replace_all(target, "3/2", "³⁄₂");
 		boost::replace_all(target, "5/2", "⁵⁄₂");
@@ -129,12 +131,14 @@ public:
 			onsite.segment(offset(i),deg(i)).setConstant(eps0(i));
 		}
 		
-//		PermutationMatrix<Dynamic,Dynamic> P(L);
-//		P.setIdentity();
-//		std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
-//		Ghop = P.inverse()*Ghop*P;
-//		onsite = P.inverse()*onsite;
-//		Gloc = P.inverse()*Gloc;
+		/*PermutationMatrix<Dynamic,Dynamic> P(L);
+		P.setIdentity();
+		std::random_device rd;
+		std::mt19937 g(rd());
+		std::shuffle(P.indices().data(), P.indices().data()+P.indices().size(), g);
+		Ghop = P.inverse()*Ghop*P;
+		onsite = P.inverse()*onsite;
+		Gloc = P.inverse()*Gloc;*/
 	}
 	
 	void compute (bool LOAD = false, bool SAVE = false)
@@ -217,13 +221,8 @@ public:
 					DMRG2.userSetGlobParam();
 					DMRG2.userSetDynParam();
 					DMRG2.GlobParam = GlobParam;
+					DMRG2.GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
 					DMRG2.DynParam = DynParam;
-//					if (Nshell>L)
-					{
-						SweepStatus SweepStat;
-						SweepStat.START_DIRECTION = DMRG::DIRECTION::LEFT;
-						DMRG2.set_SweepStatus(SweepStat);
-					}
 					DMRG2.edgeState(H, g2, Q, LANCZOS::EDGE::GROUND);
 				}
 			}

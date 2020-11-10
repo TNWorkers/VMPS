@@ -2967,7 +2967,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 {
-	if (this->alpha_rsvd > 0.)
+	if (this->alpha_rsvd > mynumeric_limits<Scalar>::epsilon())
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
@@ -2978,8 +2978,8 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 		}*/
 		
 		//Qbasis<Symmetry> QbasisR(Rmid_set, H->W[0][0][0][0].rows());
-        Qbasis<Symmetry> QbasisW;
-        QbasisW.pullData(H->W,0);
+		Qbasis<Symmetry> QbasisW;
+		QbasisW.pullData(H->W,0);
 		auto QbasisP = inbase[loc].combine(QbasisW);
 		
 		// create tensor P
@@ -3181,7 +3181,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 {
-	if (this->alpha_rsvd > 0.)
+	if (this->alpha_rsvd > mynumeric_limits<Scalar>::epsilon())
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
@@ -3192,9 +3192,9 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 		}
 		
 		Qbasis<Symmetry> QbasisL(Lmid_set, H->W[0][0][0].cols());*/
-
-        Qbasis<Symmetry> QbasisW;
-        QbasisW.pullData(H->W, 1);
+		
+		Qbasis<Symmetry> QbasisW;
+		QbasisW.pullData(H->W, 1);
 		auto QbasisP = outbase[loc].combine(QbasisW);
 		
 		// create tensor P
@@ -3229,11 +3229,11 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
 								                                         H->L.mid(qL), H->qOp[k], qW,
 								                                         H->L.in(qL), qloc[loc][s1], qP);
-
+								
 								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
-                                auto dict_entry = H->W[s1][s2][k].dict.find({H->L.mid(qL),qW});
-                                if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
+								auto dict_entry = H->W[s1][s2][k].dict.find({H->L.mid(qL),qW});
+								if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
 								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
 								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
 								{
