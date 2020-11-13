@@ -963,7 +963,6 @@ int main (int argc, char* argv[])
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
 			Stopwatch<> FullStepTimer;
-			lout << "i=" << i << endl;
 			
 			if (i!=betasteps.size())
 			{

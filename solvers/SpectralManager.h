@@ -2,7 +2,6 @@
 #define SPECTRAL_MANAGER
 
 #include "GreenPropagator.h"
-#include "models/SpectralFunctionHelpers.h"
 #include "DmrgLinearAlgebra.h"
 #include "RootFinder.h" // from ALGS
 
@@ -41,7 +40,7 @@ public:
 	{
 		// true=forwards in time
 		// false=backwards in time
-		return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="ICSF" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
+		return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPSZ" or spec=="ICSF" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
 	}
 	
 	static string DAG (std::string spec)
@@ -58,15 +57,29 @@ public:
 		else if (spec == "AES")   res = "APS";
 		else if (spec == "APS")   res = "AES";
 		else if (spec == "CSF")   res = "CSF";
-		else if (spec == "ICSF")   res = "ICSF";
+		else if (spec == "ICSF")  res = "ICSF";
 		else if (spec == "PSZ")   res = "PSZ";
-		else if (spec == "IPZ")   res = "IPZ";
+		else if (spec == "IPSZ")  res = "IPSZ";
 		else if (spec == "PSF")   res = "PDAGSF";
+		else if (spec == "PDAGSF")res = "PSF";
 		else if (spec == "HSF")   res = "IHSF";
+		else if (spec == "IHSF")  res = "HSF";
 		else if (spec == "IHS")   res = "HSF";
-		else if (spec == "HTF")   res = "IHTF";
-		else if (spec == "ITS")   res = "HTF";
+		else if (spec == "HTS")   res = "IHTS";
+		else if (spec == "IHTS")  res = "HTS";
 		return res;
+	}
+	
+	static bool CHECK_SPEC (string spec)
+	{
+		std::array<string,19> possible_specs = {"PES","PESUP","PESDN", //3,3
+		                                        "SSF","SSZ", //2,5
+		                                        "IPE","IPEUP","IPEDN", //3,8
+		                                        "AES","APS", //2,10
+		                                        "CSF","ICSF","PSZ","IPSZ","PSF", //5,15
+		                                        "HSF","IHSF", //2,17
+		                                        "HTS","IHTS"}; //17,19
+		return find(possible_specs.begin(), possible_specs.end(), spec) != possible_specs.end();
 	}
 	
 private:
@@ -93,6 +106,10 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 	             DMRG::VERBOSITY::OPTION VERB)
 :specs(specs_input), Ncells(Ncells_input)
 {
+	for (const auto &spec:specs)
+	{
+		assert(CHECK_SPEC(spec) and "Wrong spectral abbreviation!");
+	}
 	L = H.length();
 	Nspec = specs.size();
 	Lhetero = L*Ncells;
@@ -259,6 +276,11 @@ reload (string wd, const vector<string> &specs_input, string label, int L_input,
 	specs = specs_input;
 	Nspec = specs.size();
 	
+	for (const auto &spec:specs)
+	{
+		assert(CHECK_SPEC(spec) and "Wrong spectral abbreviation!");
+	}
+	
 	Green.resize(Nspec);
 	
 	for (int z=0; z<Nspec; ++z)
@@ -418,7 +440,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 	}
 	// pseudospin structure factor: z-component
-	else if (spec == "PSZ" or spec == "IPZ")
+	else if (spec == "PSZ" or spec == "IPSZ")
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
@@ -514,7 +536,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 	}
 	// inverse hybridization triplet structure factor
-	else if (spec == "IHTF")
+	else if (spec == "IHTS")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
@@ -524,7 +546,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHTF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
 				Res = MODEL::Zero(H.qPhys);
 			}
 		}
@@ -536,7 +558,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHTF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
 				Res = MODEL::Zero(H.qPhys);
 			}
 		}
