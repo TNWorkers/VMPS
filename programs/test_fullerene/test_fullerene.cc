@@ -411,14 +411,17 @@ int main (int argc, char* argv[])
 //				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
 //			}
 			
-			if (CALC_GS)
-			{
-				DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
-			}
+			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
 		}
 		else
 		{
-			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		}
+		
+		if (LOAD2!="")
+		{
+			excited1.state.load(LOAD2,excited1.energy);
+			lout << "loaded2: " << excited1.state.info() << endl;
 		}
 		
 		if (CALC_NEUTRAL_GAP)
@@ -453,11 +456,7 @@ int main (int argc, char* argv[])
 //				excited1 = init;
 //			}
 			
-			if (LOAD2!="")
-			{
-				excited1.state.load(LOAD2,excited1.energy);
-			}
-			else
+			if (LOAD2=="")
 			{
 				excited1.state = g.state;
 				excited1.state.setRandom();

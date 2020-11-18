@@ -23,6 +23,7 @@ public:
 	{
 		Nlev = deg.rows();
 		L = deg.sum();
+		lout << "Nlev=" << Nlev << ", L=" << L << endl;
 		V0.triangularView<Lower>() = V0.transpose();
 		levelstring = str(labels_input);
 //		replace_halves(levelstring);
@@ -41,6 +42,7 @@ public:
 		
 		Nlev = deg.rows();
 		L = deg.sum();
+		lout << "Nlev=" << Nlev << ", L=" << L << endl;
 		V0.triangularView<Lower>() = V0.transpose();
 		
 		labels.resize(Nlev);
@@ -82,7 +84,7 @@ private:
 	
 	MatrixXd V0, Ghop;
 	double G0;
-	VectorXd onsite, Gloc;
+	VectorXd onsite, Gloc, onsite_free;
 	
 	VMPS::HubbardU1 H;
 	vector<Eigenstate<MODEL::StateXd>> g;
@@ -157,6 +159,13 @@ construct()
 		onsite.segment(offset(i),deg(i)).setConstant(eps0(i));
 	}
 	
+	onsite_free.resize(2*L);
+	for (int i=0; i<L; ++i)
+	{
+		onsite_free(2*i) = onsite(i);
+		onsite_free(2*i+1) = onsite(i);
+	}
+	
 	/*PermutationMatrix<Dynamic,Dynamic> P(L);
 	P.setIdentity();
 	std::random_device rd;
@@ -228,7 +237,7 @@ compute (bool LOAD, bool SAVE)
 	if (LOAD)
 	{
 		H = MODEL(L,{{"maxPower",1ul}});
-		H.load(make_string("H_Z=",Z,"_Nclosed=",Nclosed,"_G0=",G0,"_j=",levelstring));
+		H.load(make_string("H_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0,"_j=",levelstring));
 		lout << H.info() << endl;
 	}
 	else
@@ -248,7 +257,7 @@ compute (bool LOAD, bool SAVE)
 		
 		if (SAVE)
 		{
-			H.save(make_string("H_Z=",Z,"_Nclosed=",Nclosed,"_G0=",G0,"_j=",levelstring));
+			H.save(make_string("H_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0,"_j=",levelstring));
 		}
 	}
 	
@@ -276,6 +285,7 @@ compute (bool LOAD, bool SAVE)
 	target.save_vector(deg,"deg","");
 	
 	VectorXd energies(2*L+1);
+	VectorXd energies_free(2*L+1);
 	
 	for (int Nshell=0; Nshell<=2*L; ++Nshell)
 	{
@@ -286,7 +296,9 @@ compute (bool LOAD, bool SAVE)
 		Stopwatch<> Timer;
 		MODEL::Solver DMRG1(DMRG::VERBOSITY::ON_EXIT);
 		MODEL::Solver DMRG2(DMRG::VERBOSITY::ON_EXIT);
-		Eigenstate<MODEL::StateXd> g1,g2,g3;
+		MODEL::Solver DMRG3(DMRG::VERBOSITY::ON_EXIT);
+		MODEL::Solver DMRG4(DMRG::VERBOSITY::ON_EXIT);
+		Eigenstate<MODEL::StateXd> g1,g2,g3,g4;
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -307,6 +319,31 @@ compute (bool LOAD, bool SAVE)
 				DMRG2.edgeState(H, g2, Q, LANCZOS::EDGE::GROUND);
 			}
 		}
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			{
+				DMRG3.userSetGlobParam();
+				DMRG3.userSetDynParam();
+				DMRG3.GlobParam = GlobParam;
+				DMRG3.DynParam = DynParam;
+				DMRG3.push_back(g1.state);
+				DMRG3.push_back(g2.state);
+				DMRG3.edgeState(H, g3, Q, LANCZOS::EDGE::GROUND);
+			}
+			#pragma omp section
+			{
+				DMRG4.userSetGlobParam();
+				DMRG4.userSetDynParam();
+				DMRG4.GlobParam = GlobParam;
+				DMRG4.GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
+				DMRG4.DynParam = DynParam;
+				DMRG4.push_back(g1.state);
+				DMRG4.push_back(g2.state);
+				DMRG4.edgeState(H, g4, Q, LANCZOS::EDGE::GROUND);
+			}
+		}
+		lout << g1.energy << "\t" << g2.energy << "\t" << g3.energy << "\t" << g4.energy << endl;
 		
 //			if (Nshell>1 and Nshell<2*L-1)
 //			{
@@ -324,9 +361,15 @@ compute (bool LOAD, bool SAVE)
 //			}
 		
 		g[Nshell] = (g1.energy<=g2.energy)? g1:g2;
+		if (g3.energy < g[Nshell].energy) g[Nshell] = g3;
+		if (g4.energy < g[Nshell].energy) g[Nshell] = g4;
 		lout << Timer.info("ground state") << endl;
 		
 		energies(Nshell) = g[Nshell].energy;
+		energies_free(Nshell) = onsite_free.head(Nshell).sum();
+		lout << "noninteracting energy=" << energies_free(Nshell) << endl;
+		if (Nshell > 1 and Nshell<2*L-1) assert(g[Nshell].energy < energies_free(Nshell));
+		
 		if (Z==50 and Nclosed==50 and REF and (Nshell==12 or Nshell==14 or Nshell==16))
 		{
 			double diff = abs(g[Nshell].energy-Sn_Eref(Nshell));
@@ -341,16 +384,17 @@ compute (bool LOAD, bool SAVE)
 			lout << "ref=" << Sn_Eref(Nshell) << endl;
 			lout << termcolor::reset;
 		}
-		lout << "E_B/A=" << abs(g[Nshell].energy)/Nshell << endl;
+//		lout << "E_B/A=" << abs(g[Nshell].energy)/Nshell << endl;
 		
 		n[Nshell].resize(Nlev);
 		avgN[Nshell].resize(Nlev);
 		
-//			ofstream Filer(make_string("./Z=",Z,"/avgN_Z=",Z,"_N=",N,"_Nshell=",Nshell,".dat"));
+//		ofstream Filer(make_string("./Z=",Z,"/avgN_Z=",Z,"_N=",N,"_Nshell=",Nshell,".dat"));
 		
 		int i0 = 0;
 		for (int j=0; j<Nlev; ++j)
 		{
+			
 			avgN[Nshell](j) = 0.;
 			for (int i=0; i<deg(j); ++i)
 			{
@@ -363,7 +407,7 @@ compute (bool LOAD, bool SAVE)
 			n[Nshell](j) *= 0.5;
 			
 			lout << "N(" << labels[j] << ")=" << avgN[Nshell](j) << "/" << 2*deg(j) << ", n=" << n[Nshell](j);
-//				Filer << eps0(j) << "\t" << avgN[Nshell](j) << "\t" << 2*deg(j) << "\t" << n[Nshell](j) << endl;
+//			Filer << eps0(j) << "\t" << avgN[Nshell](j) << "\t" << 2*deg(j) << "\t" << n[Nshell](j) << endl;
 			if (Z==50 and Nclosed==50 and REF and Nshell==14)
 			{
 				lout << ", ref(N)=";
@@ -392,6 +436,7 @@ compute (bool LOAD, bool SAVE)
 		}
 		target.create_group(make_string(Nshell));
 		target.save_scalar(g[Nshell].energy,"E0",make_string(Nshell));
+		target.save_scalar(energies_free(Nshell),"E0free",make_string(Nshell));
 		target.save_vector(avgN[Nshell],"avgN",make_string(Nshell));
 		target.save_vector(n[Nshell],"n",make_string(Nshell));
 		lout << endl;
@@ -403,19 +448,30 @@ compute (bool LOAD, bool SAVE)
 	{
 		double DeltaVal = 0.5*(2.*energies(Nshell)-energies(Nshell-1)-energies(Nshell+1));
 		
-//			lout << "Nn=" << Nshell+Nclosed << ", Delta3=" << DeltaVal << endl;
+//		lout << "Nn=" << Nshell+Nclosed << ", Delta3=" << DeltaVal << endl;
 		Delta3.conservativeResize(Delta3.rows()+1,Delta3.cols());
 		Delta3(i,0) = Nshell;
 		Delta3(i,1) = DeltaVal;
 	}
 	target.save_matrix(Delta3,"Delta3");
 	
+	MatrixXd Delta3free(0,2);
+	for (int Nshell=1, i=0; Nshell<=2*L-1; ++Nshell, ++i)
+	{
+		double DeltaVal = 0.5*(2.*energies_free(Nshell)-energies_free(Nshell-1)-energies_free(Nshell+1));
+		
+		Delta3free.conservativeResize(Delta3free.rows()+1,Delta3free.cols());
+		Delta3free(i,0) = Nshell;
+		Delta3free(i,1) = DeltaVal;
+	}
+	target.save_matrix(Delta3free,"Delta3free");
+	
 	MatrixXd Delta3b(0,2);
 	for (int Nshell=2, i=0; Nshell<=2*L; ++Nshell, ++i)
 	{
 		double DeltaVal = 0.5*(energies(Nshell)-2.*energies(Nshell-1)+energies(Nshell-2));
 		
-//			lout << "Nn=" << Nshell+Nclosed << ", Delta3b=" << DeltaVal << endl;
+//		lout << "Nn=" << Nshell+Nclosed << ", Delta3b=" << DeltaVal << endl;
 		Delta3b.conservativeResize(Delta3b.rows()+1,Delta3b.cols());
 		Delta3b(i,0) = Nshell;
 		Delta3b(i,1) = DeltaVal;
@@ -427,7 +483,7 @@ compute (bool LOAD, bool SAVE)
 	{
 		double DeltaVal = 0.25*(energies(Nshell-2)-3.*energies(Nshell-1)+3.*energies(Nshell)-energies(Nshell+1));
 		
-//			lout << "Nn=" << Nshell+Nclosed << ", Delta4=" << DeltaVal << endl;
+//		lout << "Nn=" << Nshell+Nclosed << ", Delta4=" << DeltaVal << endl;
 		Delta4.conservativeResize(Delta4.rows()+1,Delta4.cols());
 		Delta4(i,0) = Nshell;
 		Delta4(i,1) = DeltaVal;
@@ -439,7 +495,7 @@ compute (bool LOAD, bool SAVE)
 	{
 		double DeltaVal = -0.125*(6.*energies(Nshell-2)-4.*energies(Nshell+1)-4.*energies(Nshell-1)+energies(Nshell+2)+energies(Nshell-2));
 		
-//			lout << "Nn=" << Nshell+Nclosed << ", Delta5=" << DeltaVal << endl;
+//		lout << "Nn=" << Nshell+Nclosed << ", Delta5=" << DeltaVal << endl;
 		Delta5.conservativeResize(Delta5.rows()+1,Delta5.cols());
 		Delta5(i,0) = Nshell;
 		Delta5(i,1) = DeltaVal;
