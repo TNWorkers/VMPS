@@ -557,7 +557,7 @@ private:
 	
 //	void FT_xq (const MatrixXcd &Gtx, MatrixXcd &Gtq);
 	void FTcell_xq();
-//	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw);
+	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw);
 	void FTcell_tw();
 	
 	void FTcellww_xq (bool TRANSPOSE = false);
@@ -2046,104 +2046,104 @@ FTcellww_xq (bool TRANSPOSE)
 	}
 }
 
-//template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
-//void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-//FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
-//{
-//	IntervalIterator w(wmin,wmax,Nw);
-//	ArrayXd wvals = w.get_abscissa();
-//	Gwq.resize(Nw,Nq); Gwq.setZero();
-//	G0q.resize(Nq); G0q.setZero();
-//	
-//	Stopwatch<> FourierWatch;
-//	
-//	if (GREENINT_CHOICE == DIRECT)
-//	{
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
+{
+	IntervalIterator w(wmin,wmax,Nw);
+	ArrayXd wvals = w.get_abscissa();
+	Gwq.resize(Nw,Nq); Gwq.setZero();
+	G0q.resize(Nq); G0q.setZero();
+	
+	Stopwatch<> FourierWatch;
+	
+	if (GREENINT_CHOICE == DIRECT)
+	{
+		for (int iw=0; iw<wvals.rows(); ++iw)
+		{
+			double wval = wvals(iw);
+			
+			for (int it=0; it<tvals.rows(); ++it)
+			{
+				double tval = tvals(it);
+				// If Gaussian integration is employed, the damping is already included in the weights
+				Gwq.row(iw) += weights(it) * exp(+1.i*wval*tval) * Gtq.row(it); 
+			}
+		}
+	}
+	else if (GREENINT_CHOICE == INTERP)
+	{
 //		for (int iw=0; iw<wvals.rows(); ++iw)
 //		{
 //			double wval = wvals(iw);
 //			
-//			for (int it=0; it<tvals.rows(); ++it)
+//			for (int iq=0; iq<Nq; ++iq)
 //			{
-//				double tval = tvals(it);
-//				// If Gaussian integration is employed, the damping is already included in the weights
-//				Gwq.row(iw) += weights(it) * exp(+1.i*wval*tval) * Gtq.row(it); 
+//				ComplexInterpol Gtq_interp(tvals);
+//				for (int it=0; it<tvals.rows(); ++it)
+//				{
+//					double tval = tvals(it);
+//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
+//					Gtq_interp.insert(it,Gval);
+//				}
+//				Gwq(iw,iq) += Gtq_interp.integrate();
+//				Gtq_interp.kill_splines();
 //			}
 //		}
-//	}
-//	else if (GREENINT_CHOICE == INTERP)
-//	{
-////		for (int iw=0; iw<wvals.rows(); ++iw)
-////		{
-////			double wval = wvals(iw);
-////			
-////			for (int iq=0; iq<Nq; ++iq)
-////			{
-////				ComplexInterpol Gtq_interp(tvals);
-////				for (int it=0; it<tvals.rows(); ++it)
-////				{
-////					double tval = tvals(it);
-////					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
-////					Gtq_interp.insert(it,Gval);
-////				}
-////				Gwq(iw,iq) += Gtq_interp.integrate();
-////				Gtq_interp.kill_splines();
-////			}
-////		}
-//		#pragma omp parallel for
-//		for (int iq=0; iq<Nq; ++iq)
-//		{
-//			VectorXcd fvals = Gtq.col(iq);
-//			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
-//			Gwq.col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
-//		}
-//	}
-//	else if (GREENINT_CHOICE == OOURA)
-//	{
-//		#pragma omp parallel for
-//		for (int iq=0; iq<Nq; ++iq)
-//		{
-//			VectorXcd fvals = Gtq.col(iq);
-//			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
-//			Gwq.col(iq) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
-//		}
-//	}
-//	
-//	if (GREENINT_CHOICE == DIRECT)
-//	{
-//		for (int it=0; it<tvals.rows(); ++it)
-//		{
-//			double tval = tvals(it);
-//			// If Gaussian integration is employed, the damping is already included in the weights
-//			G0q += weights(it) * Gtq.row(it);
-//		}
-//	}
-//	else if (GREENINT_CHOICE == INTERP or GREENINT_CHOICE == OOURA)
-//	{
-//		for (int iq=0; iq<Nq; ++iq)
-//		{
-//			ComplexInterpol Gtq_interp(tvals);
-//			for (int it=0; it<tvals.rows(); ++it)
-//			{
-//				double tval = tvals(it);
-//				complex<double> Gval = GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
-//				Gtq_interp.insert(it,Gval);
-//			}
-//			G0q(iq) += Gtq_interp.integrate();
-//			Gtq_interp.kill_splines();
-//		}
-//	}
-//	
-//	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
-//	{
-//		lout << FourierWatch.info(label+" FT t→ω (const q)");
-//		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
-//		lout << endl;
-//	}
-//	
-//	// Calculate FT of local Green's function
-//	Glocw = FTloc_tw(Gloct,wvals);
-//}
+		#pragma omp parallel for
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			VectorXcd fvals = Gtq.col(iq);
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
+			Gwq.col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
+		}
+	}
+	else if (GREENINT_CHOICE == OOURA)
+	{
+		#pragma omp parallel for
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			VectorXcd fvals = Gtq.col(iq);
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
+			Gwq.col(iq) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
+		}
+	}
+	
+	if (GREENINT_CHOICE == DIRECT)
+	{
+		for (int it=0; it<tvals.rows(); ++it)
+		{
+			double tval = tvals(it);
+			// If Gaussian integration is employed, the damping is already included in the weights
+			G0q += weights(it) * Gtq.row(it);
+		}
+	}
+	else if (GREENINT_CHOICE == INTERP or GREENINT_CHOICE == OOURA)
+	{
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			ComplexInterpol Gtq_interp(tvals);
+			for (int it=0; it<tvals.rows(); ++it)
+			{
+				double tval = tvals(it);
+				complex<double> Gval = GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
+				Gtq_interp.insert(it,Gval);
+			}
+			G0q(iq) += Gtq_interp.integrate();
+			Gtq_interp.kill_splines();
+		}
+	}
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+	{
+		lout << FourierWatch.info(label+" FT t→ω (const q)");
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
+	}
+	
+	// Calculate FT of local Green's function
+	Glocw = FTloc_tw(Gloct,wvals);
+}
 
 //template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 //void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
@@ -2484,61 +2484,61 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 	return Glocw_out;
 }
 
-//template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
-//void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-//FT_allSites (bool TW_FIRST_XQ_SECOND)
-//{
-//	IntervalIterator q(qmin,qmax,Nq);
-//	ArrayXd qvals = q.get_abscissa();
-//	
-//	Stopwatch<> FourierWatch;
-//	
-//	if (TW_FIRST_XQ_SECOND)
-//	{
-//		Gwq.resize(Nw,Nq); Gwq.setZero();
-//		G0q.resize(Nq); G0q.setZero();
-//		
-//		FTcellxx_tw();
-//		
-//		for (int iq=0; iq<Nq; ++iq)
-//		{
-//			for (int n=0; n<Ncells; ++n)
-//			for (int i=0; i<Lcell; ++i)
-//			for (int j=0; j<Lcell; ++j)
-//			{
-//				Gwq.col(iq) += 1./Lcell * GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-//				G0q(iq) += 1./Lcell * G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-//			}
-//		}
-//		
-//		Glocw = GlocwCell[0];
-//		
-//		lout << FourierWatch.info(label+" FT all sites x→q (const ω)");
-//		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
-//		lout << endl;
-//	}
-//	else
-//	{
-//		Gtq.resize(Nt,Nq); Gtq.setZero();
-//		
-//		for (int iq=0; iq<Nq; ++iq)
-//		{
-//			for (int n=0; n<Ncells; ++n)
-//			for (int i=0; i<Lcell; ++i)
-//			for (int j=0; j<Lcell; ++j)
-//			{
-//				Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-//			}
-//		}
-//		
-//		lout << FourierWatch.info(label+" FT all sites x→q (const t)") << endl;
-//		
-//		Gloct.resize(Nt);
-//		Gloct = GloctCell[0];
-//		
-//		FT_tw(Gtq,Gwq,G0q,Glocw);
-//	}
-//}
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+FT_allSites (bool TW_FIRST_XQ_SECOND)
+{
+	IntervalIterator q(qmin,qmax,Nq);
+	ArrayXd qvals = q.get_abscissa();
+	
+	Stopwatch<> FourierWatch;
+	
+	if (TW_FIRST_XQ_SECOND)
+	{
+		Gwq.resize(Nw,Nq); Gwq.setZero();
+		G0q.resize(Nq); G0q.setZero();
+		
+		FTcellxx_tw();
+		
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			for (int n=0; n<Ncells; ++n)
+			for (int i=0; i<Lcell; ++i)
+			for (int j=0; j<Lcell; ++j)
+			{
+				Gwq.col(iq) += 1./Lcell * GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+				G0q(iq) += 1./Lcell * G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+			}
+		}
+		
+		Glocw = GlocwCell[0];
+		
+		lout << FourierWatch.info(label+" FT all sites x→q (const ω)");
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
+	}
+	else
+	{
+		Gtq.resize(Nt,Nq); Gtq.setZero();
+		
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			for (int n=0; n<Ncells; ++n)
+			for (int i=0; i<Lcell; ++i)
+			for (int j=0; j<Lcell; ++j)
+			{
+				Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+			}
+		}
+		
+		lout << FourierWatch.info(label+" FT all sites x→q (const t)") << endl;
+		
+		Gloct.resize(Nt);
+		Gloct = GloctCell[0];
+		
+		FT_tw(Gtq,Gwq,G0q,Glocw);
+	}
+}
 
 //template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 //void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::

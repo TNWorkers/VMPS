@@ -48,181 +48,359 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	}
 }
 
+ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1.)
+{
+	ArrayXXd res;
+	
+	if (vertex_conf == "3.5.3.5") // icosidodecahedron
+	{
+		int L=30;
+		res.resize(L,L); res.setZero();
+		
+		if (VARIANT==0)
+		{
+			res(0,1) = lambda1;
+			res(1,2) = lambda1;
+			res(2,3) = lambda1;
+			res(3,4) = lambda1;
+			res(0,4) = lambda1;
+			
+			res(0,5) = lambda1;
+			res(0,6) = lambda1;
+			res(1,6) = lambda1;
+			res(1,7) = lambda1;
+			res(2,7) = lambda1;
+			res(2,8) = lambda1;
+			res(3,8) = lambda1;
+			res(3,9) = lambda1;
+			res(4,5) = lambda1;
+			res(4,9) = lambda1;
+			
+			res(5,11) = lambda1;
+			res(5,12) = lambda1;
+			res(6,13) = lambda1;
+			res(6,14) = lambda1;
+			res(7,15) = lambda1;
+			res(7,16) = lambda1;
+			res(8,17) = lambda1;
+			res(8,18) = lambda1;
+			res(9,10) = lambda1;
+			res(9,19) = lambda1;
+			
+			res(12,13) = lambda1;
+			res(13,14) = lambda1;
+			res(14,15) = lambda1;
+			res(15,16) = lambda1;
+			res(16,17) = lambda1;
+			res(17,18) = lambda1;
+			res(18,19) = lambda1;
+			res(10,19) = lambda1;
+			res(10,11) = lambda1;
+			res(11,12) = lambda1;
+			
+			res(12,22) = lambda1;
+			res(13,22) = lambda1;
+			res(14,23) = lambda1;
+			res(15,23) = lambda1;
+			res(16,24) = lambda1;
+			res(17,24) = lambda1;
+			res(18,20) = lambda1;
+			res(19,20) = lambda1;
+			res(10,21) = lambda1;
+			res(11,21) = lambda1;
+			
+			res(20,28) = lambda1;
+			res(20,29) = lambda1;
+			res(21,27) = lambda1;
+			res(21,28) = lambda1;
+			res(22,26) = lambda1;
+			res(22,27) = lambda1;
+			res(23,25) = lambda1;
+			res(23,26) = lambda1;
+			res(24,25) = lambda1;
+			res(24,29) = lambda1;
+			
+			res(25,26) = lambda1;
+			res(26,27) = lambda1;
+			res(27,28) = lambda1;
+			res(28,29) = lambda1;
+			res(25,29) = lambda1;
+		}
+		else if (VARIANT==1) // According to Exler, Schnack (2003)
+		{
+			res(1-1,3-1) = lambda1;
+			res(1-1,4-1) = lambda1;
+			res(1-1,28-1) = lambda1;
+			res(1-1,29-1) = lambda1;
+			
+			res(2-1,5-1) = lambda1;
+			res(2-1,8-1) = lambda1;
+			res(2-1,26-1) = lambda1;
+			res(2-1,29-1) = lambda1;
+			
+			res(3-1,4-1) = lambda1;
+			res(3-1,6-1) = lambda1;
+			res(3-1,30-1) = lambda1;
+			
+			res(4-1,5-1) = lambda1;
+			res(4-1,7-1) = lambda1;
+			
+			res(5-1,7-1) = lambda1;
+			res(5-1,8-1) = lambda1;
+			
+			res(6-1,30-1) = lambda1;
+			res(6-1,9-1) = lambda1;
+			res(6-1,12-1) = lambda1;
+			
+			res(7-1,9-1) = lambda1;
+			res(7-1,10-1) = lambda1;
+			
+			res(8-1,11-1) = lambda1;
+			res(8-1,14-1) = lambda1;
+			
+			res(9-1,10-1) = lambda1;
+			res(9-1,12-1) = lambda1;
+			
+			res(10-1,11-1) = lambda1;
+			res(10-1,13-1) = lambda1;
+			
+			res(11-1,13-1) = lambda1;
+			res(11-1,14-1) = lambda1;
+			
+			res(12-1,15-1) = lambda1;
+			res(12-1,18-1) = lambda1;
+			
+			res(13-1,15-1) = lambda1;
+			res(13-1,16-1) = lambda1;
+			
+			res(14-1,17-1) = lambda1;
+			res(14-1,20-1) = lambda1;
+			
+			res(15-1,16-1) = lambda1;
+			res(15-1,18-1) = lambda1;
+			
+			res(16-1,17-1) = lambda1;
+			res(16-1,19-1) = lambda1;
+			
+			res(17-1,19-1) = lambda1;
+			res(17-1,20-1) = lambda1;
+			
+			res(18-1,21-1) = lambda1;
+			res(18-1,24-1) = lambda1;
+			
+			res(19-1,21-1) = lambda1;
+			res(19-1,22-1) = lambda1;
+			
+			res(20-1,23-1) = lambda1;
+			res(20-1,26-1) = lambda1;
+			
+			res(21-1,22-1) = lambda1;
+			res(21-1,24-1) = lambda1;
+			
+			res(22-1,23-1) = lambda1;
+			res(22-1,25-1) = lambda1;
+			
+			res(23-1,25-1) = lambda1;
+			res(23-1,26-1) = lambda1;
+			
+			res(24-1,27-1) = lambda1;
+			res(24-1,30-1) = lambda1;
+			
+			res(25-1,27-1) = lambda1;
+			res(25-1,28-1) = lambda1;
+			
+			res(26-1,29-1) = lambda1;
+			
+			res(27-1,28-1) = lambda1;
+			res(27-1,30-1) = lambda1;
+			
+			res(28-1,29-1) = lambda1;
+		}
+	}
+	
+	res += res.transpose().eval();
+	
+	return res;
+}
+
 // reference: PRB 93, 165406 (2016), Appendix C
-ArrayXXd hopping_fullerene (int L=60, double lambda1=1., double lambda2=1.)
+ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	
 	// lambda1: pentagon bond, lambda2: hexagon bond
 	if (L== 60)
 	{
-//		res(0,4) = lambda1;
-//		res(3,4) = lambda1;
-//		res(2,3) = lambda1;
-//		res(1,2) = lambda1;
-//		res(0,1) = lambda1;
-//		
-//		res(0,8) = lambda1;
-//		res(4,5) = lambda1;
-//		res(3,17) = lambda1;
-//		res(2,14) = lambda1;
-//		res(1,11) = lambda1;
-//		
-//		res(7,8) = lambda1;
-//		res(6,7) = lambda1;
-//		res(5,6) = lambda1;
-//		res(5,19) = lambda1;
-//		res(18,19) = lambda1;
-//		res(17,18) = lambda1;
-//		res(16,17) = lambda1;
-//		res(15,16) = lambda1;
-//		res(14,15) = lambda1;
-//		res(13,14) = lambda1;
-//		res(12,13) = lambda1;
-//		res(11,12) = lambda1;
-//		res(10,11) = lambda1;
-//		res(9,10) = lambda1;
-//		res(8,9) = lambda1;
-//		
-//		res(7,22) = lambda1;
-//		res(6,21) = lambda1;
-//		res(19,20) = lambda1;
-//		res(18,29) = lambda1;
-//		res(16,28) = lambda1;
-//		res(15,27) = lambda1;
-//		res(13,26) = lambda1;
-//		res(12,25) = lambda1;
-//		res(10,24) = lambda1;
-//		res(9,23) = lambda1;
-//		
-//		res(22,33) = lambda1;
-//		res(32,33) = lambda1;
-//		res(21,32) = lambda1;
-//		res(20,21) = lambda1;
-//		res(20,31) = lambda1;
-//		res(30,31) = lambda1;
-//		res(29,30) = lambda1;
-//		res(28,29) = lambda1;
-//		res(28,39) = lambda1;
-//		res(38,39) = lambda1;
-//		res(27,38) = lambda1;
-//		res(26,27) = lambda1;
-//		res(26,37) = lambda1;
-//		res(36,37) = lambda1;
-//		res(25,36) = lambda1;
-//		res(24,25) = lambda1;
-//		res(24,35) = lambda1;
-//		res(34,35) = lambda1;
-//		res(23,34) = lambda1;
-//		res(22,23) = lambda1;
-//		
-//		res(33,46) = lambda1;
-//		res(32,44) = lambda1;
-//		res(31,43) = lambda1;
-//		res(30,41) = lambda1;
-//		res(39,40) = lambda1;
-//		res(38,53) = lambda1;
-//		res(37,52) = lambda1;
-//		res(36,50) = lambda1;
-//		res(35,49) = lambda1;
-//		res(34,47) = lambda1;
-//		
-//		res(45,46) = lambda1;
-//		res(44,45) = lambda1;
-//		res(43,44) = lambda1;
-//		res(42,43) = lambda1;
-//		res(41,42) = lambda1;
-//		res(40,41) = lambda1;
-//		res(40,54) = lambda1;
-//		res(53,54) = lambda1;
-//		res(52,53) = lambda1;
-//		res(51,52) = lambda1;
-//		res(50,51) = lambda1;
-//		res(49,50) = lambda1;
-//		res(48,49) = lambda1;
-//		res(47,48) = lambda1;
-//		res(46,47) = lambda1;
-//		
-//		res(45,57) = lambda1;
-//		res(42,56) = lambda1;
-//		res(54,55) = lambda1;
-//		res(51,59) = lambda1;
-//		res(48,58) = lambda1;
-//		res(56,57) = lambda1;
-//		res(55,56) = lambda1;
-//		res(55,59) = lambda1;
-//		res(58,59) = lambda1;
-//		res(57,58) = lambda1;
-		
-		// maybe better numbering (inwards spiral):
-		
-		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
-		res(0,4) = lambda1;
-		
-		res(0,8) = lambda2; //1
-		res(1,11) = lambda2; //2
-		res(2,14) = lambda2; //3
-		res(3,17) = lambda2; //4
-		res(4,5) = lambda2; //5
-		
-		for (int i=5; i<=18; ++i) res(i,i+1) = lambda1;
-			res(6,7) = lambda2; //6
-			res(9,10) = lambda2; //7
-			res(12,13) = lambda2; //8
-			res(15,16) = lambda2; //9
-			res(18,19) = lambda2; //10
-		res(5,19) = lambda1;
-		
-		res(7,24) = lambda1;
-		res(9,25) = lambda1;
-		res(10,28) = lambda1;
-		res(12,29) = lambda1;
-		res(13,32) = lambda1;
-		res(15,33) = lambda1;
-		res(16,36) = lambda1;
-		res(18,37) = lambda1;
-		res(19,20) = lambda1;
-		res(6,21) = lambda1;
-		
-		for (int i=20; i<=38; ++i) res(i,i+1) = lambda1;
-			res(21,22) = lambda2; //11
-			res(23,24) = lambda2; //12
-			res(25,26) = lambda2; //13
-			res(27,28) = lambda2; //14
-			res(29,30) = lambda2; //15
-			res(31,32) = lambda2; //16
-			res(33,34) = lambda2; //17
-			res(35,36) = lambda2; //18
-			res(37,38) = lambda2; //19
-		res(20,39) = lambda2; //20
-		
-		res(26,44) = lambda1;
-		res(27,46) = lambda1;
-		res(30,47) = lambda1;
-		res(31,49) = lambda1;
-		res(34,50) = lambda1;
-		res(35,52) = lambda1;
-		res(38,53) = lambda1;
-		res(39,40) = lambda1;
-		res(22,41) = lambda1;
-		res(23,43) = lambda1;
-		
-		for (int i=40; i<=54; ++i) res(i,i+1) = lambda1;
-			res(40,41) = lambda2; //21
-			res(43,44) = lambda2; //22
-			res(46,47) = lambda2; //23
-			res(49,50) = lambda2; //24
-			res(52,53) = lambda2; //25
-		res(40,54) = lambda1;
-		
-		res(45,57) = lambda2; //26
-		res(48,58) = lambda2; //27
-		res(51,59) = lambda2; //28
-		res(54,55) = lambda2; //29
-		res(42,56) = lambda2; //30
-		
-		for (int i=55; i<=58; ++i) res(i,i+1) = lambda1;
-		res(55,59) = lambda1;
+		if (VARIANT==0) // inwards spiral
+		{
+			for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
+			res(0,4) = lambda1;
+			
+			res(0,8) = lambda2; //1
+			res(1,11) = lambda2; //2
+			res(2,14) = lambda2; //3
+			res(3,17) = lambda2; //4
+			res(4,5) = lambda2; //5
+			
+			for (int i=5; i<=18; ++i) res(i,i+1) = lambda1;
+				res(6,7) = lambda2; //6
+				res(9,10) = lambda2; //7
+				res(12,13) = lambda2; //8
+				res(15,16) = lambda2; //9
+				res(18,19) = lambda2; //10
+			res(5,19) = lambda1;
+			
+			res(7,24) = lambda1;
+			res(9,25) = lambda1;
+			res(10,28) = lambda1;
+			res(12,29) = lambda1;
+			res(13,32) = lambda1;
+			res(15,33) = lambda1;
+			res(16,36) = lambda1;
+			res(18,37) = lambda1;
+			res(19,20) = lambda1;
+			res(6,21) = lambda1;
+			
+			for (int i=20; i<=38; ++i) res(i,i+1) = lambda1;
+				res(21,22) = lambda2; //11
+				res(23,24) = lambda2; //12
+				res(25,26) = lambda2; //13
+				res(27,28) = lambda2; //14
+				res(29,30) = lambda2; //15
+				res(31,32) = lambda2; //16
+				res(33,34) = lambda2; //17
+				res(35,36) = lambda2; //18
+				res(37,38) = lambda2; //19
+			res(20,39) = lambda2; //20
+			
+			res(26,44) = lambda1;
+			res(27,46) = lambda1;
+			res(30,47) = lambda1;
+			res(31,49) = lambda1;
+			res(34,50) = lambda1;
+			res(35,52) = lambda1;
+			res(38,53) = lambda1;
+			res(39,40) = lambda1;
+			res(22,41) = lambda1;
+			res(23,43) = lambda1;
+			
+			for (int i=40; i<=54; ++i) res(i,i+1) = lambda1;
+				res(40,41) = lambda2; //21
+				res(43,44) = lambda2; //22
+				res(46,47) = lambda2; //23
+				res(49,50) = lambda2; //24
+				res(52,53) = lambda2; //25
+			res(40,54) = lambda1;
+			
+			res(45,57) = lambda2; //26
+			res(48,58) = lambda2; //27
+			res(51,59) = lambda2; //28
+			res(54,55) = lambda2; //29
+			res(42,56) = lambda2; //30
+			
+			for (int i=55; i<=58; ++i) res(i,i+1) = lambda1;
+			res(55,59) = lambda1;
+		}
+		else if (VARIANT==0)
+		{
+			res(0,4) = lambda1;
+			res(3,4) = lambda1;
+			res(2,3) = lambda1;
+			res(1,2) = lambda1;
+			res(0,1) = lambda1;
+			
+			res(0,8) = lambda1;
+			res(4,5) = lambda1;
+			res(3,17) = lambda1;
+			res(2,14) = lambda1;
+			res(1,11) = lambda1;
+			
+			res(7,8) = lambda1;
+			res(6,7) = lambda1;
+			res(5,6) = lambda1;
+			res(5,19) = lambda1;
+			res(18,19) = lambda1;
+			res(17,18) = lambda1;
+			res(16,17) = lambda1;
+			res(15,16) = lambda1;
+			res(14,15) = lambda1;
+			res(13,14) = lambda1;
+			res(12,13) = lambda1;
+			res(11,12) = lambda1;
+			res(10,11) = lambda1;
+			res(9,10) = lambda1;
+			res(8,9) = lambda1;
+			
+			res(7,22) = lambda1;
+			res(6,21) = lambda1;
+			res(19,20) = lambda1;
+			res(18,29) = lambda1;
+			res(16,28) = lambda1;
+			res(15,27) = lambda1;
+			res(13,26) = lambda1;
+			res(12,25) = lambda1;
+			res(10,24) = lambda1;
+			res(9,23) = lambda1;
+			
+			res(22,33) = lambda1;
+			res(32,33) = lambda1;
+			res(21,32) = lambda1;
+			res(20,21) = lambda1;
+			res(20,31) = lambda1;
+			res(30,31) = lambda1;
+			res(29,30) = lambda1;
+			res(28,29) = lambda1;
+			res(28,39) = lambda1;
+			res(38,39) = lambda1;
+			res(27,38) = lambda1;
+			res(26,27) = lambda1;
+			res(26,37) = lambda1;
+			res(36,37) = lambda1;
+			res(25,36) = lambda1;
+			res(24,25) = lambda1;
+			res(24,35) = lambda1;
+			res(34,35) = lambda1;
+			res(23,34) = lambda1;
+			res(22,23) = lambda1;
+			
+			res(33,46) = lambda1;
+			res(32,44) = lambda1;
+			res(31,43) = lambda1;
+			res(30,41) = lambda1;
+			res(39,40) = lambda1;
+			res(38,53) = lambda1;
+			res(37,52) = lambda1;
+			res(36,50) = lambda1;
+			res(35,49) = lambda1;
+			res(34,47) = lambda1;
+			
+			res(45,46) = lambda1;
+			res(44,45) = lambda1;
+			res(43,44) = lambda1;
+			res(42,43) = lambda1;
+			res(41,42) = lambda1;
+			res(40,41) = lambda1;
+			res(40,54) = lambda1;
+			res(53,54) = lambda1;
+			res(52,53) = lambda1;
+			res(51,52) = lambda1;
+			res(50,51) = lambda1;
+			res(49,50) = lambda1;
+			res(48,49) = lambda1;
+			res(47,48) = lambda1;
+			res(46,47) = lambda1;
+			
+			res(45,57) = lambda1;
+			res(42,56) = lambda1;
+			res(54,55) = lambda1;
+			res(51,59) = lambda1;
+			res(48,58) = lambda1;
+			res(56,57) = lambda1;
+			res(55,56) = lambda1;
+			res(55,59) = lambda1;
+			res(58,59) = lambda1;
+			res(57,58) = lambda1;
+		}
 	}
 	// reference: https://www.qmul.ac.uk/sbcs/iupac/fullerene2/311.html
 	// also in: Phys. Rev. B 72, 064453 (2005)

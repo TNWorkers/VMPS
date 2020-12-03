@@ -516,7 +516,7 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
-	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
+	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Mmax());
 	
 	if (VERBOSE)
 	{
@@ -532,14 +532,14 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 {
 	Stopwatch<> Chronos;
 	MpsCompressor<Symmetry,Scalar,OtherScalar> Compadre(VERBOSITY);
-	size_t Dstart = Vout.calc_Dmax();
+	size_t Mstart = Vout.calc_Mmax();
 	vector<Mps<Symmetry,Scalar> > V(2);
 	vector<double> c(2);
 	V[0] = Vout;
 	V[1] = Vin;
 	c[0] = 1.;
 	c[1] = alpha;
-	Compadre.lincomboCompress(V, c, Vout, Vout.calc_Dmax());
+	Compadre.lincomboCompress(V, c, Vout, Vout.calc_Mmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
@@ -701,11 +701,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Dmax(),10ul), tol_compr, 200);
-		Vtmp.max_Nsv = Vtmp.calc_Dmax();
+		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),100ul), tol_compr, 200);
+		Vtmp.max_Nsv = Vtmp.calc_Mmax();
 		
-//		lout << "Vtmp.calc_Dmax()=" << Vtmp.calc_Dmax() << endl;
-		if (Vtmp.calc_Dmax() == 0)
+//		lout << "Vtmp.calc_Mmax()=" << Vtmp.calc_Mmax() << endl;
+		if (Vtmp.calc_Mmax() == 0)
 		{
 			lout << termcolor::red << "Warning: OxV compression failed, returning exact result!" << termcolor::reset << endl;
 			Vout.sweep(0,DMRG::BROOM::QR);

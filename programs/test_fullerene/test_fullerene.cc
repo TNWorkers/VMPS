@@ -61,16 +61,16 @@ typedef VMPS::HeisenbergSU2 MODEL;
 //#include "models/DoubleHeisenbergSU2.h"
 //typedef VMPS::DoubleHeisenbergSU2 MODELC;
 
-//ArrayXXd permute_random (const ArrayXXd &A)
-//{
-//	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
-//	P.setIdentity();
-//	srand(time(0));
-//	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
-//	MatrixXd A_p = P.transpose() * A.matrix() * P;
-////	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
-//	return A_p.array();
-//}
+ArrayXXd permute_random (const ArrayXXd &A)
+{
+	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
+	P.setIdentity();
+	srand(time(0));
+	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
+	MatrixXd A_p = P.transpose() * A.matrix() * P;
+//	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
+	return A_p.array();
+}
 
 // returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
@@ -258,6 +258,9 @@ int main (int argc, char* argv[])
 		}
 	}
 	
+	bool ICOSIDODECA = args.get<int>("ICOSIDODECA",false);
+	int VARIANT = args.get<int>("VARIANT",0);
+	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
 	{
@@ -266,6 +269,10 @@ int main (int argc, char* argv[])
 	else
 	{
 		base = make_string("L=",L,"_D=",D,"_S=",S);
+	}
+	if (ICOSIDODECA)
+	{
+		base += make_string("_molecule=3.5.3.5");
 	}
 	if (CALC_DOS)
 	{
@@ -330,12 +337,26 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=24 and L!=26 and L!=30 and L!=40 and L!=60)
 	{
-		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
+		hopping = J*create_1D_PBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
-		hopping = J*hopping_fullerene(L);
+		if (ICOSIDODECA)
+		{
+			hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
+		}
+		else
+		{
+			hopping = J*hopping_fullerene(L,VARIANT);
+		}
 	}
+	
+	bool PERMUTE = args.get<int>("PERMUTE",false);
+	if (PERMUTE)
+	{
+		hopping = permute_random(hopping);
+	}
+	
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)
 	{

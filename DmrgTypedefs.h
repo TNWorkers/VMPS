@@ -305,7 +305,7 @@ struct DMRG
 			//DYN DEFAULTS
 			static double max_alpha_rsvd             (size_t i) {return (i<11)? 1e2:0;}
 			static double min_alpha_rsvd             (size_t i) {return (i<11)? 1e-11:0;}
-			static double eps_svd                    (size_t i) {return 1e-7;}
+			static double eps_svd                    (size_t i) {return 1e-8;}
 			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least Dincr_abs
 			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
 			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps

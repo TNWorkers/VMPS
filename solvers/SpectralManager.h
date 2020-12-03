@@ -241,7 +241,7 @@ make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, 
 		for (int j=0; j<L; ++j)
 		{
 			GinA1P[i][j].resize(Green[iPES].get_GtxCell()[0][0].rows(),
-				                Green[iPES].get_GtxCell()[0][0].cols());
+			                    Green[iPES].get_GtxCell()[0][0].cols());
 			GinA1P[i][j].setZero();
 		}
 		
@@ -463,7 +463,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 		else
@@ -475,7 +475,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 	}
@@ -491,7 +491,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 		else
@@ -503,7 +503,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 	}
@@ -519,7 +519,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 		else
@@ -531,7 +531,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 	}
@@ -547,7 +547,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 		else
@@ -559,7 +559,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			else
 			{
 				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = MODEL::Zero(H.qPhys);
+				Res = Hamiltonian::Zero(H.qPhys);
 			}
 		}
 	}

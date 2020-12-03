@@ -4473,7 +4473,7 @@ ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
 		for (size_t s=0; s<V.locBasis(l).size(); ++s)
 		{
 			os << "l=" << l << "\ts=" << Sym::format<Symmetry>(V.locBasis(l)[s]) << endl;
-			os << V.A_at(l)[s].print(false); //V.A_at(l)[s].formatted();
+			os << V.A_at(l)[s].print(true); //V.A_at(l)[s].formatted();
 			os << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
