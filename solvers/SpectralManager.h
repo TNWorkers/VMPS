@@ -4,6 +4,7 @@
 #include "GreenPropagator.h"
 #include "DmrgLinearAlgebra.h"
 #include "RootFinder.h" // from ALGS
+#include "VUMPS/VumpsSolver.h"
 
 template<typename Hamiltonian>
 class SpectralManager
@@ -20,9 +21,25 @@ public:
 	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
 	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
 	
+	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H)
+	:specs(specs_input), Hwork(H)
+	{};
+	
+	template<typename HamiltonianThermal>
+	void beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int dLphys, 
+	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q,
+	                       string gs_label, bool LOAD_GS, bool SAVE_GS,
+	                       DMRG::VERBOSITY::OPTION VERB);
+	
+	void apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK=true);
+	
 	void compute (string wd, string label, int Ns, double tmax, double dt=0.2, 
 	              double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	              size_t Mlim=500ul, double tol_DeltaS=1e-2, double tol_compr=1e-4);
+	
+	void compute_thermal (string wd, string label, int dLphys,
+	                      double tmax, double dt=0.1, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
+	                      size_t Mlim=500ul, double tol_DeltaS=1e-2, double tol_compr=1e-4);
 	
 	void reload (string wd, const vector<string> &specs_input, string label, int L, int Ncells, int Ns, double tmax, 
 	             double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA);
@@ -34,7 +51,7 @@ public:
 	               double tmax, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	               bool SAVE_N_MU=true);
 	
-	Mpo<Symmetry,Scalar> get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor=1., size_t locy=0);
+	Mpo<Symmetry,Scalar> get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor=1., size_t locy=0, int dLphys=1);
 	
 	static bool TIME_DIR (std::string spec)
 	{
@@ -89,15 +106,22 @@ private:
 	size_t Nspec;
 	vector<string> specs;
 	
-	Hamiltonian H_hetero;
+	Hamiltonian Hwork;
 	Mps<Symmetry,Scalar> Phi;
 	double Eg;
 	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiCell;
 	
 	Eigenstate<Umps<Symmetry,Scalar>> g;
 	vector<GreenPropagator<Hamiltonian,typename Hamiltonian::Symmetry,Scalar,complex<double>>> Green;
+	
+	double betamax, dbeta, tol_compr_beta;
+	Mps<Symmetry,Scalar> PhiT;
+	Mps<Symmetry,complex<double>> PhiTt;
+	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiTt;
+	vector<vector<Mpo<typename Hamiltonian::Symmetry,complex<double>>>> Odag;
 };
 
+// non-thermal IBC
 template<typename Hamiltonian>
 SpectralManager<Hamiltonian>::
 SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, VUMPS::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
@@ -135,10 +159,10 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 	
 	lout << setprecision(16) << "g.energy=" << g.energy << endl;
 	
-	H_hetero = Hamiltonian(Lhetero,params_hetero,BC::INFINITE);
-	lout << "H_hetero: " << H_hetero.info() << endl;
-	H_hetero.transform_base(Q,false,L); // PRINT=false
-	H_hetero.precalc_TwoSiteData(true); // FORCE=true
+	Hwork = Hamiltonian(Lhetero,params_hetero,BC::INFINITE);
+	lout << "H_hetero: " << Hwork.info() << endl;
+	Hwork.transform_base(Q,false,L); // PRINT=false
+	Hwork.precalc_TwoSiteData(true); // FORCE=true
 	
 	// Phi
 	Phi = uDMRG.create_Mps(Ncells, g, H, Lhetero/2); // ground state as heterogenic MPS
@@ -170,7 +194,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		O[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
-			O[z][l] = get_Op(H_hetero, Lhetero/2+l, specs[z]);
+			O[z][l] = get_Op(Hwork, Lhetero/2+l, specs[z]);
 			O[z][l].scale(1.,-Oshift[z][l]);
 			O[z][l].transform_base(Q,false,L); // PRINT=false
 			cout << O[z][l].info() << endl;
@@ -189,8 +213,268 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		}
 	}
 	
-	Eg = isReal(avg_hetero(Phi, H_hetero, Phi, true)); // USE_BOUNDARY=true
+	Eg = isReal(avg_hetero(Phi, Hwork, Phi, true)); // USE_BOUNDARY=true
 	lout << setprecision(16) << "Eg=" << Eg << ", eg=" << g.energy << endl;
+}
+
+template<typename Hamiltonian>
+template<typename HamiltonianThermal>
+void SpectralManager<Hamiltonian>::
+beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int dLphys, 
+                  double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
+                  string th_label, bool LOAD_GS, bool SAVE_GS,
+                  DMRG::VERBOSITY::OPTION VERB)
+{
+	for (const auto &spec:specs)
+	{
+		assert(CHECK_SPEC(spec) and "Wrong spectral abbreviation!");
+	}
+	L = Hprop.length()/dLphys;
+	Nspec = specs.size();
+	
+	typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::SILENT);
+	Eigenstate<Mps<Symmetry,double>> th;
+	
+//	if (LOAD_GS)
+//	{
+//		g.state.load(th_label, g.energy);
+//		lout << "loaded: " << g.state.info() << endl;
+//	}
+//	else
+	{
+		DMRG::CONTROL::GLOB GlobParam;
+		GlobParam.Minit = 100ul;
+		GlobParam.Qinit = 100ul;
+		fDMRG.userSetGlobParam();
+		fDMRG.GlobParam = GlobParam;
+		fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
+		
+		lout << th.state.entropy().transpose() << endl;
+		
+		vector<bool> ENTROPY_CHECK1;
+		for (int l=0; l<2*L; l+=2) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+		
+		vector<bool> ENTROPY_CHECK2;
+		for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
+		
+		bool ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
+		           all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+		
+		while (ALL == false)
+		{
+			lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
+			fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
+			lout << th.state.entropy().transpose() << endl;
+			
+			ENTROPY_CHECK1.clear();
+			ENTROPY_CHECK2.clear();
+			for (int l=0; l<2*L; l+=2)   ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+			for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
+			
+			for (int l=1; l<2*L-1; l+=2)
+			{
+				bool TEST = abs(th.state.entropy()(l))<1e-10;
+			}
+			ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
+			      all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+		}
+		
+//		if (SAVE_GS)
+//		{
+//			lout << "saving groundstate..." << endl;
+//			g.state.save(th_label, "groundstate", g.energy);
+//		}
+	}
+	
+	PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
+	PhiT.eps_svd = tol_compr_beta;
+	PhiT.min_Nsv = 0ul;
+	PhiT.max_Nsv = Mlim;
+	TDVPPropagator<Hamiltonian,
+	               typename Hamiltonian::Symmetry,
+	               typename Hamiltonian::Mpo::Scalar_,
+	               typename Hamiltonian::Mpo::Scalar_,
+	               Mps<Symmetry,typename Hamiltonian::Mpo::Scalar_>
+	               > TDVPT(Hprop,PhiT);
+	
+	int Nbeta = static_cast<int>(betamax/dbeta);
+	
+	vector<double> betavals;
+	vector<double> betasteps;
+	betavals.push_back(0.01);
+	betasteps.push_back(0.01);
+	
+	for (int i=1; i<20; ++i)
+	{
+		double beta_last = betavals[betavals.size()-1];
+		if (beta_last > betamax) break;
+		betasteps.push_back(0.01);
+		betavals.push_back(beta_last+0.01);
+	}
+	
+	while (betavals[betavals.size()-1] < betamax)
+	{
+		betasteps.push_back(dbeta);
+		double beta_last = betavals[betavals.size()-1];
+		betavals.push_back(beta_last+dbeta);
+		
+	}
+	if (betavals[betavals.size()-1] > betamax+0.005) // needs offset, otherwise random floating point behaviour
+	{
+//		lout << "popping last value " << betavals[betavals.size()-1] << "\t" << betamax << endl;
+		betavals.pop_back();
+		betasteps.pop_back();
+	}
+	for (int i=0; i<betavals.size(); ++i)
+	{
+		lout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
+	}
+	lout << endl;
+	
+	ofstream BetaFiler(make_string("thermodyn_",th_label,".dat"));
+	BetaFiler << "T\tβ\tc\te\nnphys";
+	if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tN";
+	BetaFiler << endl;
+	
+	for (int i=0; i<betasteps.size(); ++i)
+	{
+		Stopwatch<> betaStepper;
+		double beta = betavals[i];
+		if (beta>10.)
+		{
+			TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
+		}
+		else
+		{
+			TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
+		}
+		PhiT /= sqrt(dot(PhiT,PhiT));
+		lout << TDVPT.info() << endl;
+		lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
+		double e = isReal(avg(PhiT,Hprop,PhiT))/L;
+		double c = isReal(beta*beta*(avg(PhiT,Hprop,PhiT,2)-pow(avg(PhiT,Hprop,PhiT),2)))/L;
+		
+		auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
+		lout << "S=" << PhiTtmp.entropy().transpose() << endl;
+		
+		double nphys = 0.;
+		double nancl = 0.;
+		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
+		{
+			for (int j=0; j<dLphys*L; j+=dLphys)
+			{
+				nphys += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
+			}
+			for (int j=dLphys-1; j<dLphys*L; j+=dLphys)
+			{
+				nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
+			}
+		}
+		
+		nphys /= L;
+		nancl /= L;
+		
+		lout << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e;
+		BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e;
+		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
+		{
+			lout << ", nphys=" << nphys << ", nancl=" << nancl;
+			BetaFiler << "\t" << nphys;
+		}
+		lout << endl;
+		BetaFiler << endl;
+		lout << betaStepper.info("βstep") << endl;
+		lout << endl;
+	}
+	BetaFiler.close();
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK)
+{
+	PhiTt = PhiT.template cast<complex<double>>();
+//	PhiTt.eps_svd = tol_compr;
+//	PhiTt.min_Nsv = 0ul;
+//	PhiTt.max_Nsv = Mlim;
+	
+	// OxV for time propagation
+	vector<vector<Mpo<typename Hamiltonian::Symmetry,complex<double>>>> O(Nspec);
+	Odag.resize(Nspec);
+	for (int z=0; z<Nspec; ++z) O[z].resize(L);
+	for (int z=0; z<Nspec; ++z) Odag[z].resize(L);
+	
+	for (int z=0; z<Nspec; ++z)
+	for (int l=0; l<L; ++l)
+	{
+		O[z][l] = get_Op(Hwork, dLphys*l, specs[z], 1., 0, dLphys);
+		double dagfactor;
+		if (specs[z] == "SSF")
+		{
+			dagfactor = sqrt(3);
+		}
+		else if (specs[z] == "PES")
+		{
+			dagfactor = -sqrt(2);
+		}
+		else if (specs[z] == "IPE")
+		{
+			dagfactor = +sqrt(2);
+		}
+		else
+		{
+			dagfactor = 1.;
+		}
+		Odag[z][l] = get_Op(Hwork, dLphys*l, DAG(specs[z]), dagfactor, 0, dLphys);
+	}
+	
+	// shift values O→O-<O>
+	vector<vector<Scalar>> Oshift(Nspec);
+	vector<vector<Scalar>> Odagshift(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		Oshift[z].resize(L);
+		Odagshift[z].resize(L);
+		for (int l=0; l<L; ++l)
+		{
+			Oshift[z][l] = avg(PhiTt, O[z][l], PhiTt);
+			Odagshift[z][l] = avg(PhiTt, Odag[z][l], PhiTt);
+//			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
+		}
+	}
+	
+	for (int z=0; z<Nspec; ++z)
+	for (int l=0; l<L; ++l)
+	{
+		O[z][l].scale   (1.,-Oshift[z][l]);
+		Odag[z][l].scale(1.,-Odagshift[z][l]);
+	}
+	
+	//---------check---------
+	if (CHECK)
+	{
+		lout << endl;
+		for (int z=0; z<Nspec; ++z)
+		{
+			lout << "check z=" << z 
+				 << ", spec=" << specs[z] << ", dag=" << DAG(specs[z]) 
+				 << ", <O†[z][l]*O[z][l]>=" << avg(PhiTt, Odag[z][L/2], O[z][L/2], PhiTt) 
+				 << ", <O†[z][l]>=" << avg(PhiTt, Odag[z][L/2], PhiTt) 
+				 << ", <O[z][l]>=" << avg(PhiTt, O[z][L/2], PhiTt) 
+//				 << ", g.state: " << avg(g.state, Odag[z][L/2], O[z][L/2], g.state) 
+				 << endl;
+		}
+	}
+	
+	OxPhiTt.resize(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		OxPhiTt[z].resize(Lcell);
+		for (int i=0; i<Lcell; ++i)
+		{
+			OxV_exact(O[z][L/2+i], PhiTt, OxPhiTt[z][i], 2., DMRG::VERBOSITY::ON_EXIT);
+		}
+	}
 }
 
 template<typename Hamiltonian>
@@ -218,7 +502,40 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 		Green[z].set_tol_DeltaS(tol_DeltaS);
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
-		Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		
+		Green[z].compute_cell(Hwork, OxPhiTt[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		Green[z].save(false); // IGNORE_TX=false
+	}
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+compute_thermal (string wd, string label, int dLphys, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
+{
+	int Nt = static_cast<int>(tmax/dt);
+	cout << "tmax=" << tmax << ", Nt=" << Nt << endl;
+	
+	// GreenPropagator
+	Green.resize(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		string spec = specs[z];
+		Green[z] = GreenPropagator<Hamiltonian,Symmetry,complex<double>,complex<double> >
+			       (wd+spec+"_"+label,tmax,Nt,1,wmin,wmax,wpoints,QR,qpoints,INT);
+		Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
+	}
+	Green[0].set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
+	
+	#pragma omp parallel for
+	for (int z=0; z<Nspec; ++z)
+	{
+		string spec = specs[z];
+		Green[z].set_tol_DeltaS(tol_DeltaS);
+		Green[z].set_lim_Nsv(Mlim);
+		Green[z].set_tol_compr(tol_compr);
+		
+		Green[z].compute_thermal_cell(Hwork, Odag[z], PhiTt, OxPhiTt[z], TIME_DIR(spec));
+//		Green[z].FT_allSites();
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -295,7 +612,7 @@ reload (string wd, const vector<string> &specs_input, string label, int L_input,
 
 template<typename Hamiltonian>
 Mpo<typename Hamiltonian::Symmetry,typename Hamiltonian::Mpo::Scalar_> SpectralManager<Hamiltonian>::
-get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_t locy)
+get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_t locy, int dLphys)
 {
 	Mpo<Symmetry,Scalar> Res;
 	
@@ -456,9 +773,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc(loc,loc+1,0,0);
+				Res = H.cdagc(loc,loc+dLphys,0,0);
 			}
 			else
 			{
@@ -468,9 +785,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 		else
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc<UP,UP>(loc,loc+1,0,0);
+				Res = H.cdagc<UP,UP>(loc,loc+dLphys,0,0);
 			}
 			else
 			{
@@ -484,9 +801,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc(loc+1,loc,0,0);
+				Res = H.cdagc(loc+dLphys,loc,0,0);
 			}
 			else
 			{
@@ -496,9 +813,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 		else
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc<UP,UP>(loc+1,loc,0,0);
+				Res = H.cdagc<UP,UP>(loc+dLphys,loc,0,0);
 			}
 			else
 			{
@@ -512,9 +829,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc3(loc,loc+1,0,0);
+				Res = H.cdagc3(loc,loc+dLphys,0,0);
 			}
 			else
 			{
@@ -524,9 +841,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 		else
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc<UP,DN>(loc,loc+1,0,0);
+				Res = H.cdagc<UP,DN>(loc,loc+dLphys,0,0);
 			}
 			else
 			{
@@ -540,9 +857,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc3(loc+1,loc,0,0);
+				Res = H.cdagc3(loc+dLphys,loc,0,0);
 			}
 			else
 			{
@@ -552,9 +869,9 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		}
 		else
 		{
-			if (loc<H.length()-1)
+			if (loc<H.length()-dLphys)
 			{
-				Res = H.cdagc<DN,UP>(loc+1,loc,0,0);
+				Res = H.cdagc<DN,UP>(loc+dLphys,loc,0,0);
 			}
 			else
 			{

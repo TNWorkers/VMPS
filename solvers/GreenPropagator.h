@@ -456,7 +456,7 @@ public:
 	Fourier transform G(ω,x)→G(ω,q) when system is supposed to be translationally invariant despite a unit cell.
 	\param TW_FIRST_XQ_SECOND: if true, transform first t->ω, then x->q (usually faster because Nx<<Nq)
 	*/
-	void FT_allSites (bool TW_FIRST_XQ_SECOND = true);
+//	void FT_allSites (bool TW_FIRST_XQ_SECOND = true);
 	
 	ArrayXcd FTloc_tw (const VectorXcd &Gloct, const ArrayXd &wvals);
 	
@@ -2484,61 +2484,61 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 	return Glocw_out;
 }
 
-template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
-void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-FT_allSites (bool TW_FIRST_XQ_SECOND)
-{
-	IntervalIterator q(qmin,qmax,Nq);
-	ArrayXd qvals = q.get_abscissa();
-	
-	Stopwatch<> FourierWatch;
-	
-	if (TW_FIRST_XQ_SECOND)
-	{
-		Gwq.resize(Nw,Nq); Gwq.setZero();
-		G0q.resize(Nq); G0q.setZero();
-		
-		FTcellxx_tw();
-		
-		for (int iq=0; iq<Nq; ++iq)
-		{
-			for (int n=0; n<Ncells; ++n)
-			for (int i=0; i<Lcell; ++i)
-			for (int j=0; j<Lcell; ++j)
-			{
-				Gwq.col(iq) += 1./Lcell * GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-				G0q(iq) += 1./Lcell * G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-			}
-		}
-		
-		Glocw = GlocwCell[0];
-		
-		lout << FourierWatch.info(label+" FT all sites x→q (const ω)");
-		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
-		lout << endl;
-	}
-	else
-	{
-		Gtq.resize(Nt,Nq); Gtq.setZero();
-		
-		for (int iq=0; iq<Nq; ++iq)
-		{
-			for (int n=0; n<Ncells; ++n)
-			for (int i=0; i<Lcell; ++i)
-			for (int j=0; j<Lcell; ++j)
-			{
-				Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
-			}
-		}
-		
-		lout << FourierWatch.info(label+" FT all sites x→q (const t)") << endl;
-		
-		Gloct.resize(Nt);
-		Gloct = GloctCell[0];
-		
-		FT_tw(Gtq,Gwq,G0q,Glocw);
-	}
-}
+//template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+//void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+//FT_allSites (bool TW_FIRST_XQ_SECOND)
+//{
+//	IntervalIterator q(qmin,qmax,Nq);
+//	ArrayXd qvals = q.get_abscissa();
+//	
+//	Stopwatch<> FourierWatch;
+//	
+//	if (TW_FIRST_XQ_SECOND)
+//	{
+//		Gwq.resize(Nw,Nq); Gwq.setZero();
+//		G0q.resize(Nq); G0q.setZero();
+//		
+//		FTcellxx_tw();
+//		
+//		for (int iq=0; iq<Nq; ++iq)
+//		{
+//			for (int n=0; n<Ncells; ++n)
+//			for (int i=0; i<Lcell; ++i)
+//			for (int j=0; j<Lcell; ++j)
+//			{
+//				Gwq.col(iq) += 1./Lcell * GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+//				G0q(iq) += 1./Lcell * G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+//			}
+//		}
+//		
+//		Glocw = GlocwCell[0];
+//		
+//		lout << FourierWatch.info(label+" FT all sites x→q (const ω)");
+//		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+//		lout << endl;
+//	}
+//	else
+//	{
+//		Gtq.resize(Nt,Nq); Gtq.setZero();
+//		
+//		for (int iq=0; iq<Nq; ++iq)
+//		{
+//			for (int n=0; n<Ncells; ++n)
+//			for (int i=0; i<Lcell; ++i)
+//			for (int j=0; j<Lcell; ++j)
+//			{
+//				Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
+//			}
+//		}
+//		
+//		lout << FourierWatch.info(label+" FT all sites x→q (const t)") << endl;
+//		
+//		Gloct.resize(Nt);
+//		Gloct = GloctCell[0];
+//		
+//		FT_tw(Gtq,Gwq,G0q,Glocw);
+//	}
+//}
 
 //template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 //void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::

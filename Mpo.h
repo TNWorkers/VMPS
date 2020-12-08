@@ -253,9 +253,7 @@ info() const
 {
 	std::stringstream ss;
 	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
-	if(this->N_phys > this->size()){
-        ss << ",V=" << this->N_phys;
-    }
+	if (this->N_phys > this->size()) ss << ",V=" << this->N_phys;
 	ss << ", " << Symmetry::name() << ", ";
 	
 	ss << "UNITARY=" << boolalpha << UNITARY << ", ";
@@ -293,11 +291,11 @@ info() const
 	for (int power=1; power<=this->maxPower(); ++power) print_qaux(power);
 	
 	ss << "mem=" << round(this->memory(GB),3) << "GB";
-	ss << ", sparsity=" << this->sparsity();
+	if (this->GOT_W and this->GOT_QAUX) ss << ", sparsity=" << this->sparsity();
 	// if(this->check_SQUARE())
-    // {
-    //     ss << ", sparsity(sq)=" << sparsity(true);
-    // }
+	// {
+	//     ss << ", sparsity(sq)=" << sparsity(true);
+	// }
 	return ss.str();
 }
 

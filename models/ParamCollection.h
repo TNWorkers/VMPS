@@ -911,7 +911,7 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar
 }
 
 template<typename Scalar>
-Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty, bool ANCILLA=false, double bugfix=1e-7)
+Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
 {
 	Array<Scalar,Dynamic,Dynamic> res_tmp = hopping_PAM(L/2,tfc,tcc,tff,tx,ty);
 	Array<Scalar,Dynamic,Dynamic> res(2*L,2*L); res = 0;
@@ -920,7 +920,7 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 	for (int j=0; j<L; ++j)
 	{
 		res(2*i,2*j) = res_tmp(i,j);
-		if (ANCILLA)
+		if (ANCILLA_HOPPING)
 		{
 			res(2*i+1,2*j+1) = res_tmp(i,j);
 		}
@@ -932,9 +932,9 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 		res(i+1,i) += bugfix;
 	}
 	
-	cout << res.real() << endl;
-	cout << endl;
-	cout << res.imag() << endl;
+//	cout << res.real() << endl;
+//	cout << endl;
+//	cout << res.imag() << endl;
 	return res;
 }
 

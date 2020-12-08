@@ -33,7 +33,7 @@ template<typename Symmetry, typename Scalar> class MpoTerms
     typedef typename Symmetry::qType qType;
     typedef Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
     
-private:
+protected:
     
     /**
      *  Operators that have been pushed into this instance of MpoTerms.
