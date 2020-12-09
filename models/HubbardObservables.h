@@ -12,6 +12,7 @@
 template<typename Symmetry, typename Scalar=double>
 class HubbardObservables
 {
+//	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic>> OperatorType;
 	typedef SiteOperatorQ<Symmetry,Eigen::MatrixXd> OperatorType;
 	
 public:
@@ -125,6 +126,10 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Stot (size_t locy, double factor, int dLphys) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdagtot (size_t locy, double factor, int dLphys) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
@@ -164,21 +169,20 @@ public:
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type c_ky    (vector<complex<double> > phases, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
+	
 protected:
 	
-	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy,
-	                          const OperatorType &Op,
-	                          double factor =1.,
-	                          bool FERMIONIC=false, bool HERMITIAN=false) const;
+	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy, const OperatorType &Op, double factor =1., bool FERMIONIC=false, bool HERMITIAN=false) const;
+	Mpo<Symmetry,Scalar> make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const;
 	Mpo<Symmetry,Scalar> make_corr  (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
-	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
-	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
+	                                 const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	                                 double factor, bool FERMIONIC, bool HERMITIAN) const;
 	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
 	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const;
-		
+	
 	vector<FermionBase<Symmetry> > F;
 };
 
@@ -229,6 +233,32 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	{
 		Mout.setLocal(locx, (factor * Op).template plain<double>().template cast<Scalar>());
 	}
+	
+	return Mout;
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
+make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const
+{
+	assert(Op.size()==F.size() and factor.size()==F.size());
+	stringstream ss;
+	ss << Op[0].label() << "localSum";
+	
+	Mpo<Symmetry,Scalar> Mout(F.size(), Op[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	vector<SiteOperator<Symmetry,Scalar>> Op_plain;
+	for (int i=0; i<Op.size(); ++i)
+	{
+		Op_plain.push_back(Op[i].template plain<double>().template cast<Scalar>());
+	}
+	vector<Scalar> factor_cast(factor.size());
+	for (int l=0; l<factor.size(); ++l)
+	{
+		factor_cast[l] = static_cast<Scalar>(factor[l]);
+	}
+	Mout.setLocalSum(Op_plain, factor_cast);
 	
 	return Mout;
 }
@@ -880,6 +910,44 @@ typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Hubba
 Sdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, F[locx].Sdag(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+Stot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(F.size());
+	vector<double> factors(F.size());
+	for (int l=0; l<F.size(); ++l)
+	{
+		Ops[l] = F[l].S(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<F.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+Sdagtot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(F.size());
+	vector<double> factors(F.size());
+	for (int l=0; l<F.size(); ++l)
+	{
+		Ops[l] = F[l].Sdag(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<F.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

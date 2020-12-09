@@ -60,7 +60,8 @@ int main (int argc, char* argv[])
 	qarray<MODELC::Symmetry::Nq> Q = MODELC::singlet(2*N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
-	double Uc = 0.; // args.get<double>("Uc",0.); // U auf den c-Plaetzen
+	double Uc = args.get<double>("Uc",0.); // U auf den c-Plaetzen
+	double mu = args.get<double>("mu",0.5*U); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nc*nf
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
@@ -75,6 +76,7 @@ int main (int argc, char* argv[])
 	bool SAVE_GS = args.get<bool>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	bool RELOAD = args.get<bool>("RELOAD",false);
+	bool CALC_SPEC = args.get<bool>("CALC_SPEC",true);
 	
 	vector<string> specs = args.get_list<string>("specs",{"PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission
 	string specstring = "";
@@ -104,7 +106,9 @@ int main (int argc, char* argv[])
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
-	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U,"_V=",V,"_β=",beta); // Dateiname
+	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U);
+	if (Uc!=0.) param_base += make_string("_Uc=",Uc);
+	param_base += make_string("_V=",V,"_beta=",beta); // Dateiname
 	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
@@ -126,6 +130,10 @@ int main (int argc, char* argv[])
 	params_Tfin.push_back({"Uph",0.,1});
 	params_Tfin.push_back({"Uph",U,2});
 	params_Tfin.push_back({"Uph",0.,3});
+//	params_Tfin.push_back({"mu",mu,0});
+//	params_Tfin.push_back({"mu",0.,1});
+//	params_Tfin.push_back({"mu",mu,2});
+//	params_Tfin.push_back({"mu",0.,3});
 	
 	// Hopping
 	ArrayXXcd tFull = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,false); // ANCILLA_HOPPING=false
@@ -138,6 +146,10 @@ int main (int argc, char* argv[])
 	pparams.push_back({"Uph",-Uc,1});
 	pparams.push_back({"Uph",+U,2});
 	pparams.push_back({"Uph",-U,3});
+//	pparams.push_back({"mu",+mu,0});
+//	pparams.push_back({"mu",-mu,1});
+//	pparams.push_back({"mu",+mu,2});
+//	pparams.push_back({"mu",-mu,3});
 	ArrayXXcd tFull_ancilla = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.); // ANCILLA_HOPPING=true
 	pparams.push_back({"tFull",tFull_ancilla});
 	pparams.push_back({"maxPower",2ul});
@@ -156,6 +168,9 @@ int main (int argc, char* argv[])
 	
 	SpectralManager<MODELC> SpecMan(specs,Hp);
 	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, param_base, LOAD_GS, SAVE_GS, VERB);
-	SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
-	SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
+	if (CALC_SPEC)
+	{
+		SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
+		SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
+	}
 }

@@ -319,21 +319,21 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		betavals.push_back(beta_last+dbeta);
 		
 	}
-	if (betavals[betavals.size()-1] > betamax+0.005) // needs offset, otherwise random floating point behaviour
+	if (betavals[betavals.size()-1] > betamax+0.005) // needs offset, otherwise random behaviour results from comparing floating point numbers
 	{
 //		lout << "popping last value " << betavals[betavals.size()-1] << "\t" << betamax << endl;
 		betavals.pop_back();
 		betasteps.pop_back();
 	}
-	for (int i=0; i<betavals.size(); ++i)
-	{
-		lout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
-	}
+//	for (int i=0; i<betavals.size(); ++i)
+//	{
+//		lout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
+//	}
 	lout << endl;
 	
 	ofstream BetaFiler(make_string("thermodyn_",th_label,".dat"));
-	BetaFiler << "T\tβ\tc\te\nnphys";
-	if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tN";
+	BetaFiler << "#T\tβ\tc\te\tchi";
+	if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
 	BetaFiler << endl;
 	
 	for (int i=0; i<betasteps.size(); ++i)
@@ -353,6 +353,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
 		double e = isReal(avg(PhiT,Hprop,PhiT))/L;
 		double c = isReal(beta*beta*(avg(PhiT,Hprop,PhiT,2)-pow(avg(PhiT,Hprop,PhiT),2)))/L;
+		double chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
 		
 		auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
 		lout << "S=" << PhiTtmp.entropy().transpose() << endl;
@@ -374,14 +375,14 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		nphys /= L;
 		nancl /= L;
 		
-		lout << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e;
-		BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e;
+		lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi;
+		BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi;
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 		{
 			lout << ", nphys=" << nphys << ", nancl=" << nancl;
 			BetaFiler << "\t" << nphys;
 		}
-		lout << endl;
+		lout << termcolor::reset << endl;
 		BetaFiler << endl;
 		lout << betaStepper.info("βstep") << endl;
 		lout << endl;
