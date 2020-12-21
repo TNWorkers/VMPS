@@ -759,7 +759,6 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 				for (const auto &qmerge13:qmerges13)
 				for (const auto &qmerge24:qmerges24)
 				{
-					
 					// auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
 					// auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
 					// size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftAmount(qmerge13,{qloc12[s1],qloc34[s3]}) + loc12.inner_num(s1) + loc34.inner_num(s3)*loc12.inner_dim(qloc12[s1]);
@@ -768,6 +767,9 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					// auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 					// size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
 					size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftOffset(qmerge24,{qloc12[s2],qloc34[s4]},{loc12.inner_num(s2),loc34.inner_num(s4)});
+//					cout << "tensor_basis.outer_num=" << tensor_basis.outer_num(qmerge24) << endl;
+//					cout << "tensor_basis.leftOffset=" << tensor_basis.leftOffset(qmerge24,{qloc12[s2],qloc34[s4]},{loc12.inner_num(s2),loc34.inner_num(s4)}) << endl;
+//					if (tensor_basis.outer_num(qmerge24) == 15) assert(1==-1);
 					
 					// tensor product of the MPO operators in the physical space
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
@@ -779,6 +781,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					
 					for (size_t qL=0; qL<L.dim; ++qL)
 					{
+//						cout << "qL=" << qL << ", k12=" << k12 << ", k34=" << k34 << ", s1s3=" << s1s3 << ", s2s4=" << s2s4 << endl;
 						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t, size_t, size_t> > ixs;
 						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL),
                                                   qOp12[k12], qOp34[k34],

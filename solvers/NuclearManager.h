@@ -18,6 +18,9 @@ public:
 	
 	NuclearManager(){};
 	
+	/**
+	sigma: Gaussian width
+	*/
 	NuclearManager (int Nclosed_input, int Nsingle_input, int Z_input, const ArrayXi &deg_input, const vector<string> &labels_input, 
 	                const ArrayXd &eps0_input, const ArrayXXd &V0_input, double G0_input=1., double sigma_input=-1.,
 	                bool REF_input=false, string PARAM_input="Seminole")
@@ -60,9 +63,9 @@ public:
 	
 	void construct();
 	
-	void make_Hamiltonian (bool LOAD = false, bool SAVE = false);
+	void make_Hamiltonian (bool LOAD=false, bool SAVE=false, string wd="./");
 	Eigenstate<MODEL::StateXd> calc_gs (int Nshell, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND) const;
-	void compute (bool LOAD = false, bool SAVE = false);
+	void compute (bool LOAD=false, bool SAVE=false, string wd="./");
 	
 	ArrayXd get_occ() const;
 	inline ArrayXd get_eps0() const {return eps0;}
@@ -304,9 +307,9 @@ Sn_Sref14() const
 }
 
 void NuclearManager::
-make_Hamiltonian (bool LOAD, bool SAVE)
+make_Hamiltonian (bool LOAD, bool SAVE, string wd)
 {
-	string filename = make_string("H_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0);
+	string filename = make_string(wd,"H_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0);
 	if (sigma>0.) filename += make_string("_sigma=",sigma);
 	filename += make_string("_j=",levelstring);
 	if (PARAM!="Seminole") filename += make_string("_PARAM=",PARAM);
@@ -332,7 +335,7 @@ make_Hamiltonian (bool LOAD, bool SAVE)
 		
 		H = MODEL(L,params);
 		lout << H.info() << endl;
-		H.save(filename);
+		if (SAVE) H.save(filename);
 	}
 }
 
@@ -411,53 +414,53 @@ calc_gs (int Nshell, LANCZOS::EDGE::OPTION EDGE) const
 			DMRG4.edgeState(H, g4, Q, EDGE);
 		}
 	}
-//	#pragma omp parallel sections
-//	{
-//		#pragma omp section
-//		{
-//			DMRG5.userSetGlobParam();
-//			DMRG5.userSetDynParam();
-//			DMRG5.GlobParam = GlobParam;
-//			DMRG5.DynParam = DynParam;
-//			DMRG5.push_back(g1.state);
-//			DMRG5.push_back(g2.state);
-//			DMRG5.push_back(g3.state);
-//			DMRG5.push_back(g4.state);
-//			if (EDGE == LANCZOS::EDGE::ROOF) DMRG5.Epenalty = -1e4;
-//			DMRG5.edgeState(H, g5, Q, EDGE);
-//		}
-//		#pragma omp section
-//		{
-//			DMRG6.userSetGlobParam();
-//			DMRG6.userSetDynParam();
-//			DMRG6.GlobParam = GlobParam;
-//			DMRG6.GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
-//			DMRG6.DynParam = DynParam;
-//			DMRG6.push_back(g1.state);
-//			DMRG6.push_back(g2.state);
-//			DMRG6.push_back(g3.state);
-//			DMRG6.push_back(g4.state);
-//			if (EDGE == LANCZOS::EDGE::ROOF) DMRG6.Epenalty = -1e4;
-//			DMRG6.edgeState(H, g6, Q, EDGE);
-//		}
-//	}
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			DMRG5.userSetGlobParam();
+			DMRG5.userSetDynParam();
+			DMRG5.GlobParam = GlobParam;
+			DMRG5.DynParam = DynParam;
+			DMRG5.push_back(g1.state);
+			DMRG5.push_back(g2.state);
+			DMRG5.push_back(g3.state);
+			DMRG5.push_back(g4.state);
+			if (EDGE == LANCZOS::EDGE::ROOF) DMRG5.Epenalty = -1e4;
+			DMRG5.edgeState(H, g5, Q, EDGE);
+		}
+		#pragma omp section
+		{
+			DMRG6.userSetGlobParam();
+			DMRG6.userSetDynParam();
+			DMRG6.GlobParam = GlobParam;
+			DMRG6.GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
+			DMRG6.DynParam = DynParam;
+			DMRG6.push_back(g1.state);
+			DMRG6.push_back(g2.state);
+			DMRG6.push_back(g3.state);
+			DMRG6.push_back(g4.state);
+			if (EDGE == LANCZOS::EDGE::ROOF) DMRG6.Epenalty = -1e4;
+			DMRG6.edgeState(H, g6, Q, EDGE);
+		}
+	}
 	lout << g1.energy << "\t" << g2.energy << endl;
 	lout << g3.energy << "\t" << g4.energy << endl;
-//	lout << g5.energy << "\t" << g6.energy << endl;
+	lout << g5.energy << "\t" << g6.energy << endl;
 	bool PROJECTION_WAS_USEFUL = false;
 	if (EDGE == LANCZOS::EDGE::GROUND)
 	{
 		if (g3.energy < g1.energy) PROJECTION_WAS_USEFUL = true;
 		if (g4.energy < g2.energy) PROJECTION_WAS_USEFUL = true;
-//		if (g5.energy < min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
-//		if (g6.energy < min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
+		if (g5.energy < min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
+		if (g6.energy < min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
 	}
 	else
 	{
 		if (g3.energy > g1.energy) PROJECTION_WAS_USEFUL = true;
 		if (g4.energy > g2.energy) PROJECTION_WAS_USEFUL = true;
-//		if (g5.energy > min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
-//		if (g6.energy > min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
+		if (g5.energy > min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
+		if (g6.energy > min(g1.energy,g2.energy)) PROJECTION_WAS_USEFUL = true;
 	}
 	if (PROJECTION_WAS_USEFUL) lout << termcolor::red << "PROJECTION_WAS_USEFUL=" << boolalpha << PROJECTION_WAS_USEFUL << termcolor::reset << endl;
 	
@@ -468,16 +471,16 @@ calc_gs (int Nshell, LANCZOS::EDGE::OPTION EDGE) const
 		res = (g1.energy<=g2.energy)? g1:g2;
 		if (g3.energy < res.energy) res = g3;
 		if (g4.energy < res.energy) res = g4;
-//		if (g5.energy < res.energy) res = g5;
-//		if (g6.energy < res.energy) res = g6;
+		if (g5.energy < res.energy) res = g5;
+		if (g6.energy < res.energy) res = g6;
 	}
 	else
 	{
 		res = (g1.energy>=g2.energy)? g1:g2;
 		if (g3.energy > res.energy) res = g3;
 		if (g4.energy > res.energy) res = g4;
-//		if (g5.energy > res.energy) res = g5;
-//		if (g6.energy > res.energy) res = g6;
+		if (g5.energy > res.energy) res = g5;
+		if (g6.energy > res.energy) res = g6;
 	}
 	lout << Timer.info("edge state") << endl;
 	
@@ -485,19 +488,20 @@ calc_gs (int Nshell, LANCZOS::EDGE::OPTION EDGE) const
 }
 
 void NuclearManager::
-compute (bool LOAD, bool SAVE)
+compute (bool LOAD, bool SAVE, string wd)
 {
-	make_Hamiltonian(LOAD,SAVE);
+	make_Hamiltonian(LOAD,SAVE,wd);
 	
 	g.resize(2*L+1);
 	avgN.resize(2*L+1);
 	n.resize(2*L+1);
 	
-	string filename = make_string("./PairingResult_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0);
+	string filename = make_string(wd+"PairingResult_Z=",Z,"_Nclosed=",Nclosed,"_Nsingle=",Nsingle,"_G0=",G0);
 	if (sigma>0.) filename += make_string("_sigma=",sigma);
 	filename += make_string("_j=",levelstring);
 	if (PARAM!="Seminole") filename += make_string("_PARAM=",PARAM);
 	filename += ".h5";
+	cout << "filename=" << filename << endl;
 	
 	HDF5Interface target(filename, WRITE);
 	target.save_vector(eps0,"eps0","");
@@ -542,7 +546,6 @@ compute (bool LOAD, bool SAVE)
 		int i0 = 0;
 		for (int j=0; j<Nlev; ++j)
 		{
-			
 			avgN[Nshell](j) = 0.;
 			for (int i=0; i<deg(j); ++i)
 			{

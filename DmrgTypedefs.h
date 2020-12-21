@@ -138,43 +138,43 @@ typedef SparseMatrix<std::complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TY
 
 template<typename Operator, typename Scalar>
 struct PushType
-{	
+{
 	std::vector<std::tuple<std::size_t, std::vector<Operator>, Scalar>> data;
 	
 	template<typename OtherOperator>
 	void push_back(const std::tuple<std::size_t, std::vector<OtherOperator>, Scalar> & elem)
+	{
+		if( std::abs(std::get<2>(elem) ) != 0 )
 		{
-			if( std::abs(std::get<2>(elem) ) != 0 )
-			{
-				std::vector<Operator> plainOps;
-				for (auto & op: std::get<1>(elem)) {plainOps.push_back(op.template plain<typename OtherOperator::Scalar>());}
-				std::tuple<std::size_t, std::vector<Operator>, Scalar> plainElem;
-				std::get<0>(plainElem) = std::get<0>(elem);
-				std::get<1>(plainElem) = plainOps;
-				std::get<2>(plainElem) = std::get<2>(elem);
-				data.push_back(plainElem);
-			}
+			std::vector<Operator> plainOps;
+			for (auto & op: std::get<1>(elem)) {plainOps.push_back(op.template plain<typename OtherOperator::Scalar>());}
+			std::tuple<std::size_t, std::vector<Operator>, Scalar> plainElem;
+			std::get<0>(plainElem) = std::get<0>(elem);
+			std::get<1>(plainElem) = plainOps;
+			std::get<2>(plainElem) = std::get<2>(elem);
+			data.push_back(plainElem);
 		}
-
+	}
+	
 	void push_back(const std::tuple<std::size_t, std::vector<Operator>, Scalar> & elem) {if( std::abs(std::get<2>(elem) ) != 0 ) {data.push_back(elem);}}
 	
 	std::tuple<std::size_t, std::vector<Operator>, Scalar> operator[] ( std::size_t i ) const {return data[i];}
 	std::tuple<std::size_t, std::vector<Operator>, Scalar>& operator[] ( std::size_t i ) {return data[i];}
-
+	
 	std::size_t size() const {return data.size();}
-
+	
 	template<typename OtherOperator, typename OtherScalar> PushType<OtherOperator,OtherScalar> cast()
+	{
+		PushType<OtherOperator,OtherScalar> out;
+		for (size_t i=0; i<size(); i++)
 		{
-			PushType<OtherOperator,OtherScalar> out;
-			for (size_t i=0; i<size(); i++)
-			{
-				std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
-				for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<typename OtherOperator::Scalar>();}
-				// OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
-				out.push_back(make_tuple(std::get<0>(data[i]), otherOps, std::get<2>(data[i])));
-			}
-			return out;
+			std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
+			for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<typename OtherOperator::Scalar>();}
+			// OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
+			out.push_back(make_tuple(std::get<0>(data[i]), otherOps, std::get<2>(data[i])));
 		}
+		return out;
+	}
 };
 
 namespace VMPS

@@ -158,7 +158,7 @@ public:
 	
 	void pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in);
 
-	void pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED=false);
+	void pullData (const std::vector<qarray<Symmetry::Nq> > &qs);
 	
 	/**
 	 * Returns the tensor product basis, already properly sorted with respect to the resulting irreps.
@@ -559,16 +559,16 @@ pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t &leg,
 		{
 			qType q_number = qvec[nu][leg];
 			push_back(q_number,inner_dim);
-			unique_controller.insert(q_number);			
+			unique_controller.insert(q_number);
 		}
 	}
 }
 
 template<typename Symmetry>
 void Qbasis<Symmetry>::
-pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED)
+pullData (const std::vector<qarray<Symmetry::Nq> > &qs)
 {
-	if (ORDERED)
+//	if (ORDERED)
 	{
 		for (const auto & q : qs)
 		{
@@ -576,20 +576,20 @@ pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED)
 		}
 		return;
 	}
-	std::unordered_map<qType,size_t> qmap;
-	for (std::size_t s=0; s<qs.size(); s++)
-	{
-		auto it = qmap.find(qs[s]);
-		if( it==qmap.end() )
-		{
-			qmap[qs[s]] = 1;
-		}
-		else
-		{
-			qmap[qs[s]]++;
-		}
-	}
-	for (const auto &[q,dim]:qmap) {push_back(q,dim);}
+//	std::unordered_map<qType,size_t> qmap;
+//	for (std::size_t s=0; s<qs.size(); s++)
+//	{
+//		auto it = qmap.find(qs[s]);
+//		if( it==qmap.end() )
+//		{
+//			qmap[qs[s]] = 1;
+//		}
+//		else
+//		{
+//			qmap[qs[s]]++;
+//		}
+//	}
+//	for (const auto &[q,dim]:qmap) {push_back(q,dim);}
 }
 
 template<typename Symmetry>

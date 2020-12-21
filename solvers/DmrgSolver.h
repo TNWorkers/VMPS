@@ -263,8 +263,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	N_sites = H.length();
 	N_phys  = H.volume();
 	
-	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
-	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
+//	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
+//	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
 	
 	// set edges
 	Heff.clear();
@@ -944,7 +944,7 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff0,g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.edgeState(Heff0, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -1022,7 +1022,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (Psi0.size() > 0)
 	{
