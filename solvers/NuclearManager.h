@@ -513,7 +513,7 @@ compute (bool LOAD, bool SAVE, string wd)
 	for (int Nshell=0; Nshell<=2*L; ++Nshell)
 	{
 		int A = Z+Nclosed+Nshell;
-		lout << "A=" << A << ", Z=" << Z << ", N=" << Nclosed+Nshell << ", Nshell=" << Nshell << endl;
+		lout << "A=" << A << ", Z=" << Z << ", N=" << Nclosed+Nshell << ", Nshell=" << Nshell << "/" << 2*L << ", progress=" << round(Nshell*1./2*L*100,1) << "%" << endl;
 		
 		g[Nshell] = calc_gs(Nshell);
 		

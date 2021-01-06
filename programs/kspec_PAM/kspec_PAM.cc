@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+#include <iterator>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -92,11 +93,11 @@ int main (int argc, char* argv[])
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nc*nf
-	double tfc = args.get<double>("tfc",0.5); // Hybridisierung fc
+	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",0.5); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
@@ -246,6 +247,13 @@ int main (int argc, char* argv[])
 		
 		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
 		
+		auto itSSF = find(specs.begin(), specs.end(), "SSF");
+		if (itSSF != specs.end())
+		{
+			int iz = distance(specs.begin(), itSSF);
+			SpecMan.resize_Green(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+			SpecMan.set_measurement(iz, "SSF",1.,1, Q, L, 1,"S","wavepacket",true); // TRANSFORM=true
+		}
 		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 	else

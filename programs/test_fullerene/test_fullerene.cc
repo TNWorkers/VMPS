@@ -289,8 +289,8 @@ int main (int argc, char* argv[])
 	
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
 	GlobParam.Minit = args.get<size_t>("Minit",2ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
@@ -308,7 +308,7 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 	
-	size_t Mincr_abs = args.get<size_t>("Dincr_abs",50ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",50ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);

@@ -67,7 +67,7 @@ int main (int argc, char* argv[])
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",1.); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
@@ -116,6 +116,11 @@ int main (int argc, char* argv[])
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
 	
+	//cout << hopping_PAM_T(4,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.) << endl;
+	//cout << endl;
+	//cout << hopping_PAM_T(6,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.) << endl;
+	//assert(1==-1);
+	
 	// Parameter fuer den Grundzustand:
 	DMRG::CONTROL::GLOB GlobParams;
 	GlobParams.min_halfsweeps = args.get<size_t>("min_halfsweeps",4);
@@ -126,14 +131,14 @@ int main (int argc, char* argv[])
 	// Parameter des Modells
 	vector<Param> params_Tfin;
 	// l%4=2 Plaetze sollen f-Plaetze mit U sein:
-	params_Tfin.push_back({"Uph",Uc,0});
-	params_Tfin.push_back({"Uph",0.,1});
-	params_Tfin.push_back({"Uph",U,2});
-	params_Tfin.push_back({"Uph",0.,3});
-//	params_Tfin.push_back({"mu",mu,0});
-//	params_Tfin.push_back({"mu",0.,1});
-//	params_Tfin.push_back({"mu",mu,2});
-//	params_Tfin.push_back({"mu",0.,3});
+	params_Tfin.push_back({"Uph",Uc,0}); // c
+	params_Tfin.push_back({"Uph",0.,1}); // bath(c)
+	params_Tfin.push_back({"Uph",U,2}); // f
+	params_Tfin.push_back({"Uph",0.,3}); // bath(f)
+//	params_Tfin.push_back({"mu",+mu,0}); // c
+//	params_Tfin.push_back({"mu",0.,1}); // bath(c)
+//	params_Tfin.push_back({"mu",+mu,2}); // f
+//	params_Tfin.push_back({"mu",0.,3}); // bath(f)
 	
 	// Hopping
 	ArrayXXcd tFull = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,false); // ANCILLA_HOPPING=false
@@ -142,10 +147,10 @@ int main (int argc, char* argv[])
 	
 	// Parameter fuer die t-Propagation mit beta: Rueckpropagation der Badplaetze
 	vector<Param> pparams;
-	pparams.push_back({"Uph",+Uc,0});
-	pparams.push_back({"Uph",-Uc,1});
-	pparams.push_back({"Uph",+U,2});
-	pparams.push_back({"Uph",-U,3});
+	pparams.push_back({"Uph",+Uc,0}); // c
+	pparams.push_back({"Uph",-Uc,1}); // bath(c)
+	pparams.push_back({"Uph",+U,2}); // f
+	pparams.push_back({"Uph",-U,3}); // bath(f)
 //	pparams.push_back({"mu",+mu,0});
 //	pparams.push_back({"mu",-mu,1});
 //	pparams.push_back({"mu",+mu,2});
@@ -167,10 +172,17 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan(specs,Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, param_base, LOAD_GS, SAVE_GS, VERB);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, base, LOAD_GS, SAVE_GS, VERB);
 	if (CALC_SPEC)
 	{
 		SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
+		auto itSSF = find(specs.begin(), specs.end(), "SSF");
+		if (itSSF != specs.end())
+		{
+			int iz = distance(specs.begin(), itSSF);
+			SpecMan.resize_Green(wd, param_base, 1, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+			SpecMan.set_measurement(iz, "SSF",1.,dLphys, Q, Lcell, 1,"S","wavepacket",false);
+		}
 		SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 }

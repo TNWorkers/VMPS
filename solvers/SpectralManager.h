@@ -26,7 +26,7 @@ public:
 	{};
 	
 	template<typename HamiltonianThermal>
-	void beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int dLphys, 
+	void beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
 	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q,
 	                       string gs_label, bool LOAD_GS, bool SAVE_GS,
 	                       DMRG::VERBOSITY::OPTION VERB);
@@ -52,6 +52,10 @@ public:
 	               bool SAVE_N_MU=true);
 	
 	Mpo<Symmetry,Scalar> get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor=1., size_t locy=0, int dLphys=1);
+	
+	void set_measurement (int iz, string spec, double factor, int dLphys, qarray<Symmetry::Nq> Q, int Lcell, int measure_interval_input=10, string measure_name_input="M", string measure_subfolder_input=".", bool TRANSFORM=false);
+	
+	void resize_Green (string wd, string label, int Ns, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT);
 	
 	static bool TIME_DIR (std::string spec)
 	{
@@ -220,7 +224,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 template<typename Hamiltonian>
 template<typename HamiltonianThermal>
 void SpectralManager<Hamiltonian>::
-beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int dLphys, 
+beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
                   double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
                   string th_label, bool LOAD_GS, bool SAVE_GS,
                   DMRG::VERBOSITY::OPTION VERB)
@@ -358,13 +362,13 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
 		lout << "S=" << PhiTtmp.entropy().transpose() << endl;
 		
-		double nphys = 0.;
+		VectorXd nphys(Lcell); for (int j=0; j<Lcell; ++j) nphys(j) = 0.;
 		double nancl = 0.;
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 		{
-			for (int j=0; j<dLphys*L; j+=dLphys)
+			for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
 			{
-				nphys += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
+				nphys(icell%Lcell) += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
 			}
 			for (int j=dLphys-1; j<dLphys*L; j+=dLphys)
 			{
@@ -373,14 +377,15 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		}
 		
 		nphys /= L;
+		double nphystot = nphys.sum();
 		nancl /= L;
 		
 		lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi;
 		BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi;
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 		{
-			lout << ", nphys=" << nphys << ", nancl=" << nancl;
-			BetaFiler << "\t" << nphys;
+			lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
+			BetaFiler << "\t" << nphystot;
 		}
 		lout << termcolor::reset << endl;
 		BetaFiler << endl;
@@ -480,7 +485,22 @@ apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK)
 
 template<typename Hamiltonian>
 void SpectralManager<Hamiltonian>::
-compute (string wd, string label, int Ns, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
+set_measurement (int iz, string spec, double factor, int dLphys, qarray<Symmetry::Nq> Q, int Lcell, int measure_interval, string measure_name, string measure_subfolder, bool TRANSFORM)
+{
+	assert(Green.size()>0);
+	
+	vector<Mpo<Symmetry,Scalar>> Measure(Hwork.length()/dLphys);
+	for (int l=0, iphys=0; l<Hwork.length(); l+=dLphys, iphys+=1)
+	{
+		Measure[iphys] = get_Op(Hwork, l, spec, factor, 0, dLphys);
+		if (TRANSFORM) Measure[l].transform_base(Q,false,L); // PRINT=false
+	}
+	Green[iz].set_measurement(Measure, Lcell, measure_interval, measure_name, measure_subfolder);
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+resize_Green (string wd, string label, int Ns, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT)
 {
 	int Nt = static_cast<int>(tmax/dt);
 	
@@ -490,10 +510,20 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 	{
 		string spec = specs[z];
 		Green[z] = GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double>>
-		           (wd+spec+"_"+label,tmax,Nt,Ns,wmin,wmax,wpoints,QR,qpoints,INT);
+			       (wd+spec+"_"+label,tmax,Nt,Ns,wmin,wmax,wpoints,QR,qpoints,INT);
 		Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 	}
 	Green[0].set_verbosity(DMRG::VERBOSITY::STEPWISE);
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+compute (string wd, string label, int Ns, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
+{
+	if (Green.size()==0)
+	{
+		resize_Green(wd,label,Ns,tmax,dt,wmin,wmax,wpoints,QR,qpoints,INT);
+	}
 	
 	// Propagation
 	#pragma omp parallel for
@@ -504,7 +534,7 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
 		
-		Green[z].compute_cell(Hwork, OxPhiTt[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		Green[z].compute_cell(Hwork, OxPhiCell[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -513,19 +543,10 @@ template<typename Hamiltonian>
 void SpectralManager<Hamiltonian>::
 compute_thermal (string wd, string label, int dLphys, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
 {
-	int Nt = static_cast<int>(tmax/dt);
-	cout << "tmax=" << tmax << ", Nt=" << Nt << endl;
-	
-	// GreenPropagator
-	Green.resize(Nspec);
-	for (int z=0; z<Nspec; ++z)
+	if (Green.size()==0)
 	{
-		string spec = specs[z];
-		Green[z] = GreenPropagator<Hamiltonian,Symmetry,complex<double>,complex<double> >
-			       (wd+spec+"_"+label,tmax,Nt,1,wmin,wmax,wpoints,QR,qpoints,INT);
-		Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
+		resize_Green(wd,label,1,tmax,dt,wmin,wmax,wpoints,QR,qpoints,INT);
 	}
-	Green[0].set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
 	
 	#pragma omp parallel for
 	for (int z=0; z<Nspec; ++z)
