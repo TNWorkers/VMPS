@@ -528,8 +528,9 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, const qarra
 	for (size_t q=0; q<base.Nq(); ++q)
 	{
 		qarray3<Symmetry::Nq> quple = {base[q], base[q], Q};
-		qarray3<Symmetry::Nq> checkquple = {base[q], Q, base[q]};
-		// if (!Symmetry::triangle(checkquple)) {continue;}
+//		cout << "quple=" << quple[0] << ", " << quple[1] << ", " << quple[2] << endl;
+//		qarray3<Symmetry::Nq> checkquple = {base[q], Q, base[q]};
+//		if (!Symmetry::triangle(checkquple)) {continue;}
 		
 		boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[amax][bmax]);
 		for (size_t a=0; a<amax; ++a)
@@ -585,11 +586,11 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 std::string Multipede<Nlegs,Symmetry,MatrixType>::
 print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 {
-#ifndef HELPERS_IO_TABLE
+	#ifndef HELPERS_IO_TABLE
 	std::stringstream out;
 	out << "Texttable library is missing. -> no output" << std::endl;
 	return out.str();
-#else //Use TextTable library for nicer output.
+	#else //Use TextTable library for nicer output.
 	std::stringstream out;
 	
 	TextTable t( '-', '|', '+' );
@@ -605,7 +606,7 @@ print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 		for (std::size_t q=0; q<index[nu].size(); q++)
 		{
 			tt << Sym::format<Symmetry>(index[nu][q]);
-			if(q==index[nu].size()-1) {tt << ")";} else {tt << ",";}
+			if (q==index[nu].size()-1) {tt << ")";} else {tt << ",";}
 		}
 		uu << block[nu].shape()[0] << ":[";
 		// uu << block[nu][0][0].cols() << "x" << block[nu][0][0].rows() << "x" << block[nu].shape()[0];

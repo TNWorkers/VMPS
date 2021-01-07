@@ -1711,7 +1711,7 @@ measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, int i
 			}
 			else
 			{
-				res(l) = isReal(avg_hetero(Psi, Measure[l], Psi)) / norm;
+				res(l) = isReal(avg_hetero(Psi, Measure[l], Psi, false, 1ul, Measure[l].Qtarget())) / norm;
 			}
 		}
 		

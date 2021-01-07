@@ -272,7 +272,8 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
                    const Mpo<Symmetry,MpoScalar> &O, 
                    const Mps<Symmetry,Scalar> &Vket, 
                    bool USE_BOUNDARY = false, 
-                   size_t usePower=1ul)
+                   size_t usePower=1ul,
+                   const qarray<Symmetry::Nq> &Qmid = Symmetry::qvacuum())
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -324,8 +325,13 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	else
 	{
 		//BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
-		BR.setIdentity(O.auxBasis(O.length()).M(), 1, Vket.outBasis((O.length()-1)));
+		BR.setIdentity(O.auxBasis(O.length()).M(), 1, Vket.outBasis((O.length()-1)), Qmid);
 	}
+	
+//	cout << "B=" << endl;
+//	cout << B.print() << endl;
+//	cout << "BR=" << endl;
+//	cout << BR.print() << endl;
 	
 	return contract_LR(B,BR);
 }

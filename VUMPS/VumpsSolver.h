@@ -1117,8 +1117,16 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		size_t current_M = Vout.state.calc_Mmax();
 		size_t deltaM = min(max(static_cast<size_t>((DynParam.Mincr_rel(N_iterations)-1) * current_M), DynParam.Mincr_abs(N_iterations)),
 		                    DynParam.max_deltaM(N_iterations));
-		cout << "Nsv=" << current_M << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) << ", abs=" << DynParam.Mincr_abs(N_iterations) << ", lim=" << DynParam.max_deltaM(N_iterations) << ", deltaM=" << deltaM << endl;
-
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+		{
+			cout << "Nsv=" << current_M 
+			     << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) 
+			     << ", abs=" << DynParam.Mincr_abs(N_iterations) 
+			     << ", lim=" << DynParam.max_deltaM(N_iterations) 
+			     << ", deltaM=" << deltaM 
+			     << endl;
+		}
+		
 		//make sure to perform at least one measurement before expanding the basis
 		FORCE_DO_SOMETHING = true;
 		DynParam.doSomething(N_iterations);
@@ -1126,7 +1134,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		if (Vout.state.calc_Mmax()+deltaM >= GlobParam.Mlimit) {deltaM = GlobParam.Mlimit-Vout.state.calc_Mmax();}
 		else if (Vout.state.calc_Mmax() == GlobParam.Mlimit) {deltaM=0ul;}
 		else if (Vout.state.calc_Mmax() > GlobParam.Mlimit) {assert(false and "Exceeded Mlimit.");}
-
+		
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1150,9 +1158,9 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 	Stopwatch<> OptimizationTimer;
 	// See Algorithm 4
-    #ifndef VUMPS_SOLVER_DONT_USE_OPENMP
-    #pragma omp parallel for
-    #endif
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
@@ -1259,7 +1267,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 	}
 	Vout.energy = min(eL,eR);
-	lout << "e=" << Vout.energy << endl;
+//	lout << "e=" << Vout.energy << endl;
 		
 //		double eR2 = calc_LReigen(VMPS::DIRECTION::RIGHT, 
 //		                          Vout.state.A[GAUGE::L], 
@@ -1366,18 +1374,26 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		size_t current_M = Vout.state.calc_Mmax();
 		size_t deltaM = min(max(static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M), DynParam.Mincr_abs(N_iterations)),
 		                    DynParam.max_deltaM(N_iterations));
-		cout << "Nsv=" << current_M << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) << ", abs=" << DynParam.Mincr_abs(N_iterations) << ", lim=" << DynParam.max_deltaM(N_iterations) << ", deltaM=" << deltaM << endl;
-
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+		{
+			lout << "Nsv=" << current_M 
+			     << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) 
+			     << ", abs=" << DynParam.Mincr_abs(N_iterations) 
+			     << ", lim=" << DynParam.max_deltaM(N_iterations) 
+			     << ", deltaM=" << deltaM 
+			     << endl;
+		}
+		
 		if (Vout.state.calc_Mmax()+deltaM >= GlobParam.Mlimit) {deltaM = GlobParam.Mlimit-Vout.state.calc_Mmax();}
 		else if (Vout.state.calc_Mmax() == GlobParam.Mlimit) {deltaM=0ul;}
 		else if (Vout.state.calc_Mmax() > GlobParam.Mlimit) {assert(false and "Exceeded Mlimit.");}
-
+		
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "performing expansion with " << expand_option << endl;
 		}
-		expand_basis2(deltaM, H, Vout, expand_option);		
+		expand_basis2(deltaM, H, Vout, expand_option);
 		t_exp = ExpansionTimer.time();
 		N_iterations_without_expansion = 0;
 	}
@@ -2360,13 +2376,13 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		#pragma omp section
 		#endif
 		{
-			build_L(ALxO, V.state.C[N_sites-1], H.W, H.qloc, H.qOp, L_with_O);
+			build_L(ALxO, V.state.C[N_sites-1], H.W, H.locBasis(), H.qOp, L_with_O);
 		}
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
 		#endif
 		{
-			build_R(ARxO, Cshift,               H.W, H.qloc, H.qOp, R_with_O);
+			build_R(ARxO, Cshift,               H.W, H.locBasis(), H.qOp, R_with_O);
 		}
 	}
 	

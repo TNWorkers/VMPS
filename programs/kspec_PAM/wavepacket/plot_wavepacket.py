@@ -37,7 +37,7 @@ parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='cell')
 parser.add_argument('-spec', action='store', default='SSF')
-parser.add_argument('-Ncells', action='store', type=int, default=8)
+parser.add_argument('-Ncells', action='store', type=int, default=16)
 parser.add_argument('-Lcell', action='store', type=int, default=2)
 parser.add_argument('-tfc', action='store', type=int, default=1)
 parser.add_argument('-tcc', action='store', type=int, default=1)
@@ -50,7 +50,6 @@ parser.add_argument('-Ef', action='store', type=int, default=-2)
 parser.add_argument('-Ec', action='store', type=int, default=0)
 parser.add_argument('-U', action='store', type=int, default=4)
 parser.add_argument('-V', action='store', type=int, default=0)
-parser.add_argument('-beta', action='store', type=int, default=5)
 parser.add_argument('-Ly', action='store', type=int, default=1)
 parser.add_argument('-tolDeltaS', action='store', type=float, default=0.01)
 parser.add_argument('-dt', action='store', type=float, default=0.025)
@@ -65,7 +64,6 @@ index = args.index
 
 U = args.U
 V = args.V
-beta = args.beta
 tfc = args.tfc
 tcc = args.tcc
 tff = args.tff
@@ -83,7 +81,7 @@ tmax = args.tmax
 Lcell = args.Lcell
 Ncells = args.Ncells
 
-def filename(set,spec,Lcell,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,beta,tmax):
+def filename(set,spec,Lcell,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax):
 	res = set+'/'
 	res += spec
 	res += '_tfc='+str(tfc)
@@ -94,9 +92,7 @@ def filename(set,spec,Lcell,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,bet
 	res += '_Efc='+str(Ef)+","+str(Ec)
 	res += '_U='+str(U)
 	res += '_V='+str(V)
-	res += '_beta='+str(beta)
 	res += '_L='+str(Lcell)+'x'+str(Ncells)
-	res += '_dLphys='+str(2)
 	res += '_tmax='+str(tmax)
 	res += '_Op=S'
 	res += '.h5'
@@ -107,7 +103,7 @@ def open_Gwq (spec,index):
 	
 	Gstr = 'i='+str(index)
 	
-	G = h5py.File(filename(set,spec,Lcell,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,beta,tmax),'r')
+	G = h5py.File(filename(set,spec,Lcell,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax),'r')
 	res  = np.asarray(G[Gstr])
 	
 	return res
@@ -134,11 +130,11 @@ if args.plot == 'cell':
 	
 	axis_shenanigans(ax)
 	
-	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)+'_beta='+str(beta)
+	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)+'_index='+str(index)
 
 if args.save:
 	
-	figname = plotname
+	figname = 'wavepacket_'+plotname
 	savefig(figname+'.pdf', bbox_inches='tight')
 	savefig(figname+'.png', bbox_inches='tight')
 	os.system('pdfcrop '+figname+'.pdf'+' '+figname+'.pdf')
