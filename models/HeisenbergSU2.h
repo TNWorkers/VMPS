@@ -226,7 +226,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			{
 				auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa), B[lp1].Q(beta));
 				auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].S(beta));
-                pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
+                                pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
 			}
 		}

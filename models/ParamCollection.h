@@ -48,6 +48,154 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	}
 }
 
+ArrayXXd hopping_snub (int L=60, double lambda1=1., double lambda2=0.)
+{
+        ArrayXXd res(L,L); res.setZero();
+        double l1 = lambda1;
+        if (L==60)
+        {
+                for (int i=0; i<=58; ++i) res(i,i+1) = l1;
+                res( 0, 4) = l1;
+                res( 0, 6) = l1;
+                res( 0, 7) = l1;
+                res( 0, 8) = l1;
+                
+                res( 1, 8) = l1;
+                res( 1, 9) = l1;
+                res( 1,10) = l1;
+                
+                res( 2,10) = l1;
+                res( 2,11) = l1;
+                res( 2,12) = l1;
+                
+                res( 3,12) = l1;
+                res( 3,13) = l1;
+                res( 3,14) = l1;
+                
+                res( 4, 6) = l1;
+                res( 4,14) = l1;
+                
+                res( 5,14) = l1;
+                res( 5,15) = l1;
+                res( 5,16) = l1;
+                
+                res( 6,18) = l1;
+                
+                res( 7,18) = l1;
+                res( 7,19) = l1;
+                
+                res( 8,21) = l1;
+                
+                res( 9,21) = l1;
+                res( 9,22) = l1;
+                
+                res(10,24) = l1;
+                
+                res(11,24) = l1;
+                res(11,25) = l1;
+                
+                res(12,27) = l1;
+
+                res(13,27) = l1;
+                res(13,28) = l1;
+
+                res(15,29) = l1;
+                res(15,30) = l1;
+                
+                res(16,30) = l1;
+                res(16,31) = l1;
+
+                res(17,31) = l1;
+                res(17,32) = l1;
+                res(17,33) = l1;
+
+                res(18,33) = l1;
+
+                res(19,33) = l1;
+                res(19,34) = l1;
+
+                res(20,34) = l1;
+                res(20,35) = l1;
+                res(20,36) = l1;
+
+                res(21,36) = l1;
+
+                res(22,36) = l1;
+                res(22,37) = l1;
+
+                res(23,37) = l1;
+                res(23,38) = l1;
+                res(23,39) = l1;
+
+                res(24,39) = l1;
+
+                res(25,39) = l1;
+                res(25,40) = l1;
+
+                res(26,40) = l1;
+                res(26,41) = l1;
+                res(26,42) = l1;
+
+                res(27,42) = l1;
+
+                res(28,42) = l1;
+                res(28,43) = l1;
+
+                res(29,43) = l1;
+                res(29,44) = l1;
+
+                res(30,44) = l1;
+
+                res(31,46) = l1;
+
+                res(32,46) = l1;
+                res(32,47) = l1;
+
+                res(34,48) = l1;
+
+                res(35,48) = l1;
+                res(35,49) = l1;
+
+                res(37,50) = l1;
+
+                res(38,50) = l1;
+                res(38,51) = l1;
+
+                res(40,52) = l1;
+
+                res(41,52) = l1;
+                res(41,53) = l1;
+
+                res(43,54) = l1;
+
+                res(44,54) = l1;
+
+                res(45,54) = l1;
+                res(45,55) = l1;
+                res(45,56) = l1;
+
+                res(46,56) = l1;
+
+                res(47,56) = l1;
+                res(47,57) = l1;
+
+                res(48,57) = l1;
+
+                res(49,57) = l1;
+                res(49,58) = l1;
+
+                res(50,58) = l1;
+
+                res(51,58) = l1;
+                res(51,59) = l1;
+
+                res(52,59) = l1;
+
+                res(53,59) = l1;
+        }
+        res += res.transpose().eval();
+        return res;
+}
 // reference: PRB 93, 165406 (2016), Appendix C
 ArrayXXd hopping_fullerene (int L=60, double lambda1=1., double lambda2=1.)
 {
