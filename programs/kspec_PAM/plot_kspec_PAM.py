@@ -229,6 +229,18 @@ def open_Gwq (spec,index):
 	
 	return res
 
+def open_QDOS (spec,index):
+	
+	Gstr = 'G'+str(index)
+	
+	G = h5py.File(filename_wq(set,'PES',L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
+	res  = np.asarray(G[Gstr]['QDOS'])
+	
+	G = h5py.File(filename_wq(set,'IPE',L,Ncells,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
+	res += np.asarray(G[Gstr]['QDOS'])
+	
+	return res
+
 def open_Gtx (spec,index):
 	
 	Gstr = 'G'+str(index)+str(index)
@@ -275,6 +287,15 @@ if args.plot == 'freq':
 		kvals, Evals = analytical_2p()
 #		ax.scatter(kvals, np.asarray(Evals), c='r', s=0.1)
 
+elif args.plot == 'QDOS':
+	
+	data = open_QDOS('A1P',0) + open_QDOS('A1P',1)
+	
+	waxis = linspace(wmin,wmax,len(data),endpoint=True)
+	fig, ax = plt.subplots()
+	plt.plot(waxis, data, marker='.')
+	plt.grid()
+
 elif args.plot == 'time':
 	
 	if index>1:
@@ -304,9 +325,12 @@ elif args.plot == 'tslice':
 
 if args.save:
 	
-	figname = plotname+'.pdf'
-	savefig(figname, bbox_inches='tight')
-	os.system('pdfcrop '+figname+' '+figname)
+	figname = plotname
+	if (index==0 or index==1):
+		figname += '_b='+str(index)
+	savefig(figname+'.png', bbox_inches='tight')
+	savefig(figname+'.pdf', bbox_inches='tight')
+	os.system('pdfcrop '+figname+'.pdf'+' '+figname+'.pdf')
 
 plt.show()
 

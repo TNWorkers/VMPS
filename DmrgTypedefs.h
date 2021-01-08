@@ -138,43 +138,43 @@ typedef SparseMatrix<std::complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TY
 
 template<typename Operator, typename Scalar>
 struct PushType
-{	
+{
 	std::vector<std::tuple<std::size_t, std::vector<Operator>, Scalar>> data;
 	
 	template<typename OtherOperator>
 	void push_back(const std::tuple<std::size_t, std::vector<OtherOperator>, Scalar> & elem)
+	{
+		if( std::abs(std::get<2>(elem) ) != 0 )
 		{
-			if( std::abs(std::get<2>(elem) ) != 0 )
-			{
-				std::vector<Operator> plainOps;
-				for (auto & op: std::get<1>(elem)) {plainOps.push_back(op.template plain<typename OtherOperator::Scalar>());}
-				std::tuple<std::size_t, std::vector<Operator>, Scalar> plainElem;
-				std::get<0>(plainElem) = std::get<0>(elem);
-				std::get<1>(plainElem) = plainOps;
-				std::get<2>(plainElem) = std::get<2>(elem);
-				data.push_back(plainElem);
-			}
+			std::vector<Operator> plainOps;
+			for (auto & op: std::get<1>(elem)) {plainOps.push_back(op.template plain<typename OtherOperator::Scalar>());}
+			std::tuple<std::size_t, std::vector<Operator>, Scalar> plainElem;
+			std::get<0>(plainElem) = std::get<0>(elem);
+			std::get<1>(plainElem) = plainOps;
+			std::get<2>(plainElem) = std::get<2>(elem);
+			data.push_back(plainElem);
 		}
-
+	}
+	
 	void push_back(const std::tuple<std::size_t, std::vector<Operator>, Scalar> & elem) {if( std::abs(std::get<2>(elem) ) != 0 ) {data.push_back(elem);}}
 	
 	std::tuple<std::size_t, std::vector<Operator>, Scalar> operator[] ( std::size_t i ) const {return data[i];}
 	std::tuple<std::size_t, std::vector<Operator>, Scalar>& operator[] ( std::size_t i ) {return data[i];}
-
+	
 	std::size_t size() const {return data.size();}
-
+	
 	template<typename OtherOperator, typename OtherScalar> PushType<OtherOperator,OtherScalar> cast()
+	{
+		PushType<OtherOperator,OtherScalar> out;
+		for (size_t i=0; i<size(); i++)
 		{
-			PushType<OtherOperator,OtherScalar> out;
-			for (size_t i=0; i<size(); i++)
-			{
-				std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
-				for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<typename OtherOperator::Scalar>();}
-				// OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
-				out.push_back(make_tuple(std::get<0>(data[i]), otherOps, std::get<2>(data[i])));
-			}
-			return out;
+			std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
+			for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<typename OtherOperator::Scalar>();}
+			// OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
+			out.push_back(make_tuple(std::get<0>(data[i]), otherOps, std::get<2>(data[i])));
 		}
+		return out;
+	}
 };
 
 namespace VMPS
@@ -296,6 +296,7 @@ struct DMRG
 			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
+			constexpr static DMRG::DIRECTION::OPTION INITDIR = DMRG::DIRECTION::RIGHT;
 			
 			#ifndef DMRG_CONTROL_DEFAULT_MIN_NSV
 			#define DMRG_CONTROL_DEFAULT_MIN_NSV 0
@@ -304,7 +305,7 @@ struct DMRG
 			//DYN DEFAULTS
 			static double max_alpha_rsvd             (size_t i) {return (i<11)? 1e2:0;}
 			static double min_alpha_rsvd             (size_t i) {return (i<11)? 1e-11:0;}
-			static double eps_svd                    (size_t i) {return 1e-7;}
+			static double eps_svd                    (size_t i) {return 1e-8;}
 			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least Dincr_abs
 			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
 			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps
@@ -333,6 +334,7 @@ struct DMRG
 			std::string saveName            = std::string(CONTROL::DEFAULT::saveName);
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
+			DMRG::DIRECTION::OPTION INITDIR = CONTROL::DEFAULT::INITDIR;
 		};
 		
 		struct DYN

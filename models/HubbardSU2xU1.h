@@ -78,6 +78,7 @@ public:
 	
 	static qarray<2> singlet (int N=0) {return qarray<2>{1,N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr int spinfac = 1;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
@@ -116,10 +117,10 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary,
 {
 	ParamHandler P(params,defaults);
 	size_t Lcell = P.size();
-		
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);		
+		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
@@ -264,6 +265,61 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {PsiRran,PsiLran,PsidagRran,PsidagLran};
 			push_full("Xfull", "Xᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.), -std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);
 		}
+		if (P.HAS("Bfull"))
+		{
+			ArrayXXd Bfull = P.get<Eigen::ArrayXXd>("Bfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Bfull);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				cout << "range=" << range << ", value=" << value << endl;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+2);
+					ops[0] = F[loc].cdag(0) * F[loc].sign();
+//					if (range>=2)
+					{
+						ops[1] = F[loc+1].cdag(0);
+						for (size_t i=2; i<=range-1; ++i)
+						{
+							ops[i] = F[(loc+i)%N_sites].Id();
+						}
+						ops[range] = F[(loc+range)%N_sites].c(0) * F[(loc+range)%N_sites].sign();
+						ops[range+1] = F[(loc+range+1)%N_sites].c(0);
+						pushlist.push_back(std::make_tuple(loc, ops, -value));
+					}
+				}
+			}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+2);
+					ops[0] = F[loc].c(0) * F[loc].sign();
+//					if (range>=2)
+					{
+						ops[1] = F[loc+1].c(0);
+						for (size_t i=2; i<=range-1; ++i)
+						{
+							ops[i] = F[(loc+i)%N_sites].Id();
+						}
+						ops[range] = F[(loc+range)%N_sites].cdag(0) * F[(loc+range)%N_sites].sign();
+						ops[range+1] = F[(loc+range+1)%N_sites].cdag(0);
+						pushlist.push_back(std::make_tuple(loc, ops, -value));
+					}
+				}
+			}
+		}
 		
 		// Local terms: U, t0, μ, t⟂, V⟂, J⟂
 		
@@ -327,7 +383,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 					
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> tz_local = F[loc].Tz(alfa);
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> tz_tight = F[lp1].Tz(beta);
-
+					
 					auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
 					auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> tp_local = F[loc].Tp(alfa,Gloc);

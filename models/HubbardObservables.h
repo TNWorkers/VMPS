@@ -12,6 +12,7 @@
 template<typename Symmetry, typename Scalar=double>
 class HubbardObservables
 {
+//	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic>> OperatorType;
 	typedef SiteOperatorQ<Symmetry,Eigen::MatrixXd> OperatorType;
 	
 public:
@@ -39,27 +40,32 @@ public:
 	///@{
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type cc (size_t locx, size_t locy=0) const;
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type cdagcdag (size_t locx, size_t locy=0) const;
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
-	template<SPIN_INDEX sigma, typename Dummy = Symmetry>
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	// Mpo<Symmetry,Scalar> triplet (size_t locx, size_t locy=0) const;
 	///@}
-
+	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cdagcdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
+	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
 	cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
 	cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -68,7 +74,7 @@ public:
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type d (size_t locx, size_t locy=0) const;
 	template<class Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type dtot () const;
+	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type dtot() const;
 	Mpo<Symmetry,Scalar> ns (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> nssq (size_t locx, size_t locy=0) const;
@@ -120,6 +126,10 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Stot (size_t locy, double factor, int dLphys) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdagtot (size_t locy, double factor, int dLphys) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
@@ -137,7 +147,13 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type CanonicalEntangler (int dLphys, double factor=1.) const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_U1(), Mpo<Symmetry,Scalar> >::type CanonicalEntangler (int dLphys, double factor=1.) const;
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry, complex<double> > >::type Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	///@}
@@ -159,21 +175,20 @@ public:
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type c_ky    (vector<complex<double> > phases, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
+	
 protected:
 	
-	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy,
-	                          const OperatorType &Op,
-	                          double factor =1.,
-	                          bool FERMIONIC=false, bool HERMITIAN=false) const;
+	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy, const OperatorType &Op, double factor =1., bool FERMIONIC=false, bool HERMITIAN=false) const;
+	Mpo<Symmetry,Scalar> make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const;
 	Mpo<Symmetry,Scalar> make_corr  (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
-	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
-	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
+	                                 const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	                                 double factor, bool FERMIONIC, bool HERMITIAN) const;
 	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
 	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const;
-		
+	
 	vector<FermionBase<Symmetry> > F;
 };
 
@@ -224,6 +239,32 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	{
 		Mout.setLocal(locx, (factor * Op).template plain<double>().template cast<Scalar>());
 	}
+	
+	return Mout;
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
+make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const
+{
+	assert(Op.size()==F.size() and factor.size()==F.size());
+	stringstream ss;
+	ss << Op[0].label() << "localSum";
+	
+	Mpo<Symmetry,Scalar> Mout(F.size(), Op[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	vector<SiteOperator<Symmetry,Scalar>> Op_plain;
+	for (int i=0; i<Op.size(); ++i)
+	{
+		Op_plain.push_back(Op[i].template plain<double>().template cast<Scalar>());
+	}
+	vector<Scalar> factor_cast(factor.size());
+	for (int l=0; l<factor.size(); ++l)
+	{
+		factor_cast[l] = static_cast<Scalar>(factor[l]);
+	}
+	Mout.setLocalSum(Op_plain, factor_cast);
 	
 	return Mout;
 }
@@ -315,6 +356,182 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	return Mout;
 }
 
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+CanonicalEntangler (int dLphys, double factor) const
+{
+	assert(dLphys==2 and "Only dLphys=2 is implemented!");
+	Mpo<Symmetry,Scalar> Mout(F.size(), Symmetry::qvacuum(), "CanonicalEntangler", PROP::HERMITIAN, false, BC::OPEN, DMRG::VERBOSITY::HALFSWEEPWISE);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	std::vector<typename Symmetry::qType> qList(F.size()+1);
+	std::vector<SiteOperator<Symmetry,Scalar>> opList(F.size());
+	
+	for (int i=0; i<qList.size(); ++i) {qList[i] = Symmetry::qvacuum();}
+	for (int i=0; i<opList.size(); ++i) {opList[i] = F[i].Id().template plain<double>();}
+	
+	for (int i=0; i<F.size(); i+=dLphys)
+	for (int j=0; j<F.size(); j+=dLphys)
+	{
+		if (i<j)
+		{
+			auto qListWork = qList;
+			auto opListWork = opList;
+			
+			qListWork[1+i]   = qarray<Symmetry::Nq>{2,1}; // cdag
+			qListWork[1+i+1] = qarray<Symmetry::Nq>{1,2}; // cdag
+			for (int k=i+3; k<j+1; ++k) qListWork[k] = qarray<Symmetry::Nq>{1,2};
+			qListWork[1+j]   = qarray<Symmetry::Nq>{2,1}; // c
+			qListWork[1+j+1] = qarray<Symmetry::Nq>{1,0}; // c
+			
+//			qListWork[1+i]   = qarray<Symmetry::Nq>{2,1}; // cdag
+//			qListWork[1+i+1] = qarray<Symmetry::Nq>{1,0}; // c
+//			for (int k=i+3; k<j+1; ++k) qListWork[k] = qarray<Symmetry::Nq>{1,0};
+//			qListWork[1+j]   = qarray<Symmetry::Nq>{2,1}; // cdag
+//			qListWork[1+j+1] = qarray<Symmetry::Nq>{1,0}; // c
+			
+			opListWork[i]   = (F[i].cdag(0) * F[i].sign()).template plain<double>();
+			opListWork[i+1] = F[i+1].cdag(0).template plain<double>();
+			opListWork[j]   = (F[j].c(0) * F[j].sign()).template plain<double>();
+			opListWork[j+1] = F[j+1].c(0).template plain<double>();
+			
+			std::vector<SiteOperator<Symmetry,Scalar>> opRes = std::vector<SiteOperator<Symmetry,Scalar>>(opListWork.begin()+i, opListWork.begin()+j+2);
+			std::vector<typename Symmetry::qType> qRes = std::vector<typename Symmetry::qType>(qListWork.begin()+i, qListWork.begin()+j+3);
+			
+			// sign: global minus; another global minus of unclear origin
+			Mout.push_qpath(i, opRes, qRes, +1.*factor);
+//			Mout.push_qpath(i, opRes, qRes, +2.*factor);
+			
+			qListWork = qList;
+			opListWork = opList;
+			
+			qListWork[1+i]   = qarray<Symmetry::Nq>{2,-1}; // c
+			qListWork[1+i+1] = qarray<Symmetry::Nq>{1,-2}; // c
+			for (int k=i+3; k<j+1; ++k) qListWork[k] = qarray<Symmetry::Nq>{1,-2};
+			qListWork[1+j]   = qarray<Symmetry::Nq>{2,-1}; // cdag
+			qListWork[1+j+1] = qarray<Symmetry::Nq>{1,0}; // cdag
+			
+//			qListWork[1+i]   = qarray<Symmetry::Nq>{2,-1}; // c
+//			qListWork[1+i+1] = qarray<Symmetry::Nq>{1,0}; // cdag
+//			for (int k=i+3; k<j+1; ++k) qListWork[k] = qarray<Symmetry::Nq>{1,0};
+//			qListWork[1+j]   = qarray<Symmetry::Nq>{2,-1}; // c
+//			qListWork[1+j+1] = qarray<Symmetry::Nq>{1,0}; // cdag
+			
+			opListWork[i]   = (F[i].c(0) * F[i].sign()).template plain<double>();
+			opListWork[i+1] = F[i+1].c(0).template plain<double>();
+			opListWork[j]   = (F[j].cdag(0) * F[j].sign()).template plain<double>();
+			opListWork[j+1] = F[j+1].cdag(0).template plain<double>();
+			
+			opRes = std::vector<SiteOperator<Symmetry,Scalar>>(opListWork.begin()+i, opListWork.begin()+j+2);
+			qRes = std::vector<typename Symmetry::qType>(qListWork.begin()+i, qListWork.begin()+j+3);
+			
+			Mout.push_qpath(i, opRes, qRes, 1.*factor);
+//			Mout.push_qpath(i, opRes, qRes, 2.*factor);
+		}
+	}
+	
+	Mout.N_phys = F.size()/dLphys;
+	Mout.finalize(PROP::COMPRESS, 1); // power=1
+	Mout.precalc_TwoSiteData(true);
+	
+	return Mout;
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_U1(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+CanonicalEntangler (int dLphys, double factor) const
+{
+	assert(dLphys==2 and "Only dLphys=2 is implemented!");
+	Mpo<Symmetry,Scalar> Mout(F.size(), Symmetry::qvacuum(), "CanonicalEntangler", PROP::HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	std::vector<typename Symmetry::qType> qList(F.size()+1);
+	std::vector<SiteOperator<Symmetry,Scalar>> opList(F.size());
+	
+	for (int i=0; i<qList.size(); ++i) {qList[i] = Symmetry::qvacuum();}
+	for (int i=0; i<opList.size(); ++i) {opList[i] = F[i].Id().template plain<double>();}
+	
+	auto add_term = [&qList, &opList, &Mout, this] (int i, int j, const OperatorType &Sysi, const OperatorType &Bathi, const OperatorType &Sysj, const OperatorType &Bathj, double sign)
+	{
+		auto qListWork = qList;
+		auto opListWork = opList;
+		
+		opListWork[i]   = (Sysi * F[i].sign()).template plain<double>();
+		opListWork[i+1] = Bathi.template plain<double>();
+		opListWork[j]   = (Sysj * F[j].sign()).template plain<double>();
+		opListWork[j+1] = Bathj.template plain<double>();
+		
+		qListWork[1+i]   = Sysi.Q();
+		qListWork[1+i+1] = Sysi.Q()+Bathi.Q();
+		for (int k=i+3; k<j+1; ++k) qListWork[k] = Sysi.Q()+Bathi.Q();
+		qListWork[1+j]   = Sysi.Q()+Bathi.Q()+Sysj.Q();
+		qListWork[1+j+1] = Sysi.Q()+Bathi.Q()+Sysj.Q()+Bathj.Q();
+		
+		assert(Sysi.Q()+Bathi.Q()+Sysj.Q()+Bathj.Q() == Symmetry::qvacuum());
+		
+		std::vector<SiteOperator<Symmetry,Scalar>> opRes = std::vector<SiteOperator<Symmetry,Scalar>>(opListWork.begin()+i, opListWork.begin()+j+2);
+		std::vector<typename Symmetry::qType> qRes = std::vector<typename Symmetry::qType>(qListWork.begin()+i, qListWork.begin()+j+3);
+		
+		Mout.push_qpath(i, opRes, qRes, sign);
+	};
+	
+	for (int i=0; i<F.size(); i+=2)
+	for (int j=0; j<F.size(); j+=2)
+	{
+		if (i<j)
+		{
+			// variant 1: singlet-singlet coupling: strange behaviour, maybe only good for tJ model
+			// sign: global minus; one transposition
+//			add_term(i, j, F[i].cdag(UP), F[i+1].cdag(DN), F[j].c(UP),    F[j+1].c(DN),    +0.5); // ↑↓*↑↓
+//			add_term(i, j, F[i].c(UP),    F[i+1].c(DN),    F[j].cdag(UP), F[j+1].cdag(DN), +0.5);
+//			
+//			add_term(i, j, F[i].cdag(DN), F[i+1].cdag(UP), F[j].c(UP),    F[j+1].c(DN),    -0.5); // ↓↑*↑↓
+//			add_term(i, j, F[i].c(DN),    F[i+1].c(UP),    F[j].cdag(UP), F[j+1].cdag(DN), -0.5);
+//			
+//			add_term(i, j, F[i].cdag(UP), F[i+1].cdag(DN), F[j].c(DN),    F[j+1].c(UP),    -0.5); // ↑↓*↓↑
+//			add_term(i, j, F[i].c(UP),    F[i+1].c(DN),    F[j].cdag(DN), F[j+1].cdag(UP), -0.5);
+//			
+//			add_term(i, j, F[i].cdag(DN), F[i+1].cdag(UP), F[j].c(DN),    F[j+1].c(UP),    +0.5); // ↓↑*↓↑
+//			add_term(i, j, F[i].c(DN),    F[i+1].c(UP),    F[j].cdag(DN), F[j+1].cdag(UP), +0.5);
+//			
+//			// variant 2: conserves N and Sz
+//			add_term(i, j, F[i].cdag(UP), F[i+1].cdag(UP), F[j].c(UP),    F[j+1].c(UP),    +1.*factor); // ↑↑*↑↑
+//			add_term(i, j, F[i].c(UP),    F[i+1].c(UP),    F[j].cdag(UP), F[j+1].cdag(UP), +1.*factor);
+//			
+//			add_term(i, j, F[i].cdag(DN), F[i+1].cdag(DN), F[j].c(DN),    F[j+1].c(DN),    +1.*factor); // ↓↓*↓↓
+//			add_term(i, j, F[i].c(DN),    F[i+1].c(DN),    F[j].cdag(DN), F[j+1].cdag(DN), +1.*factor);
+//			
+			// variant 3: conserves N and Sz
+			add_term(i, j, F[i].cdag(UP), F[i+1].cdag(DN), F[j].c(UP),    F[j+1].c(DN),    +1.*factor); // ↑↓*↑↓
+			add_term(i, j, F[i].c(UP),    F[i+1].c(DN),    F[j].cdag(UP), F[j+1].cdag(DN), +1.*factor);
+			
+			add_term(i, j, F[i].cdag(DN), F[i+1].cdag(UP), F[j].c(DN),    F[j+1].c(UP),    +1.*factor); // ↓↑*↓↑
+			add_term(i, j, F[i].c(DN),    F[i+1].c(UP),    F[j].cdag(DN), F[j+1].cdag(UP), +1.*factor);
+//			
+//			// variant 4: bad
+//			add_term(i, j, F[i].cdag(UP), F[i+1].cdag(DN), F[j].c(DN),    F[j+1].c(UP),    +1.*factor); // ↑↓*↓↑
+//			add_term(i, j, F[i].c(UP),    F[i+1].c(DN),    F[j].cdag(DN), F[j+1].cdag(UP), +1.*factor);
+//			
+//			add_term(i, j, F[i].cdag(DN), F[i+1].cdag(UP), F[j].c(UP),    F[j+1].c(DN),    +1.*factor); // ↓↑*↑↓
+//			add_term(i, j, F[i].c(DN),    F[i+1].c(UP),    F[j].cdag(UP), F[j+1].cdag(DN), +1.*factor);
+//			
+//			// test variant
+//			add_term(i, j, F[i].Sp(), F[i+1].Sm(), F[j].Sm(),    F[j+1].Sp(),    -1.*factor);
+//			add_term(i, j, F[i].Sm(), F[i+1].Sp(), F[j].Sp(),    F[j+1].Sm(),    -1.*factor);
+//			add_term(i, j, F[i].Tp(), F[i+1].Tm(), F[j].Tm(),    F[j+1].Tp(),    -1.*factor);
+//			add_term(i, j, F[i].Tm(), F[i+1].Tp(), F[j].Tp(),    F[j+1].Tm(),    -1.*factor);
+		}
+	}
+	
+	Mout.N_phys = F.size()/dLphys;
+	Mout.finalize(PROP::COMPRESS, 1); // power=1
+	Mout.precalc_TwoSiteData(true);
+	
+	return Mout;
+}
+
 //-------------
 
 template<typename Symmetry, typename Scalar>
@@ -323,10 +540,10 @@ typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type Hubbar
 c (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
-				{
-					auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-					return make_local(locx,locy, F[locx].c(Gxy,locy), factor, PROP::FERMIONIC);
-				}
+	{
+		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		return make_local(locx,locy, F[locx].c(Gxy,locy), factor, PROP::FERMIONIC);
+	}
 	else
 	{
 		return make_local(locx,locy, F[locx].c(locy), factor, PROP::FERMIONIC);
@@ -339,10 +556,10 @@ typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type Hubba
 c (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
-				{
-					auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-					return make_local(locx,locy, F[locx].c(sigma,Gxy,locy), factor, PROP::FERMIONIC);
-				}
+	{
+		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		return make_local(locx,locy, F[locx].c(sigma,Gxy,locy), factor, PROP::FERMIONIC);
+	}
 	else
 	{
 		return make_local(locx,locy, F[locx].c(sigma,locy), factor, PROP::FERMIONIC);
@@ -371,10 +588,10 @@ typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type Hubbar
 cdag (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
-				{
-					auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-					return make_local(locx,locy, F[locx].cdag(Gxy,locy), factor, PROP::FERMIONIC);
-				}
+	{
+		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		return make_local(locx,locy, F[locx].cdag(Gxy,locy), factor, PROP::FERMIONIC);
+	}
 	else
 	{
 		return make_local(locx,locy, F[locx].cdag(locy), factor, PROP::FERMIONIC);
@@ -387,10 +604,10 @@ typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type Hubba
 cdag (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
-				{
-					auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-					return make_local(locx,locy, F[locx].cdag(sigma,Gxy,locy), factor, PROP::FERMIONIC);
-				}
+	{
+		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		return make_local(locx,locy, F[locx].cdag(sigma,Gxy,locy), factor, PROP::FERMIONIC);
+	}
 	else
 	{
 		return make_local(locx,locy, F[locx].cdag(sigma,locy), factor, PROP::FERMIONIC);
@@ -419,15 +636,15 @@ typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2())
-				 {
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-				 }
+	{
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
 	else if constexpr (Dummy::IS_SPIN_SU2() and Dummy::IS_CHARGE_SU2())
-				 {
-					 auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-					 auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(Gx1y1,locy1), F[locx2].c(Gx2y2,locy2), Symmetry::qvacuum(), sqrt(2.)*sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-				 }
+	{
+		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(Gx1y1,locy1), F[locx2].c(Gx2y2,locy2), Symmetry::qvacuum(), sqrt(2.)*sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
 	else
 	{
 		vector<Mpo<Symmetry,Scalar> > out(2);
@@ -438,20 +655,45 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 template<typename Symmetry, typename Scalar>
-template<SPIN_INDEX sigma, typename Dummy>
+template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Dummy::ABELIAN)
-				 {
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma,locy1), F[locx2].c(sigma,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
-				 }
+	{
+		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
 	else
 	{
 		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
 		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma,Gx1y1,locy1), F[locx2].c(sigma,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HubbardObservables<Symmetry,Scalar>::
+cdagc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	if constexpr (Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2())
+	{
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,0}, 1./sqrt(3.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+//	else if constexpr (Dummy::IS_SPIN_SU2() and Dummy::IS_CHARGE_SU2())
+//	{
+//		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+//		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+//		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(Gx1y1,locy1), F[locx2].c(Gx2y2,locy2), Symmetry::qvacuum(), sqrt(2.)*sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+//	}
+//	else
+//	{
+//		vector<Mpo<Symmetry,Scalar> > out(2);
+//		out[0] = cdagc<UP>(locx1,locx2,locy1,locy2);
+//		out[1] = cdagc<DN>(locx1,locx2,locy1,locy2);
+//		return out;
+//	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -476,13 +718,13 @@ typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<
 cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Dummy::IS_SPIN_SU2())
-				 {
-					 //Determine Qtot to the spin triplet quantumnumber. 
-					 auto Qtots = Symmetry::reduceSilent(F[locx1].c(locy1).Q(), F[locx2].c(locy2).Q());
-					 typename Symmetry::qType Qtot;
-					 for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-				 }
+	{
+		//Determine Qtot to the spin triplet quantumnumber. 
+		auto Qtots = Symmetry::reduceSilent(F[locx1].c(locy1).Q(), F[locx2].c(locy2).Q());
+		typename Symmetry::qType Qtot;
+		for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
 	else
 	{
 		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge SU2 symmetry. Use U1 charge symmetry instead.");
@@ -499,16 +741,16 @@ typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<
 cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Dummy::IS_SPIN_SU2())
-				 {
-					 //Determine Qtot to the spin triplet quantumnumber. 
-					 auto Qtots = Symmetry::reduceSilent(F[locx1].cdag(locy1).Q(), F[locx2].cdag(locy2).Q());
-					 typename Symmetry::qType Qtot;
-					 for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-				 }
+	{
+		// Set Qtot to the spin triplet quantum number. 
+		auto Qtots = Symmetry::reduceSilent(F[locx1].cdag(locy1).Q(), F[locx2].cdag(locy2).Q());
+		typename Symmetry::qType Qtot;
+		for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	 }
 	else
 	{
-		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge SU2 symmetry. Use U1 charge symmetry instead.");
+		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge-SU(2) symmetry. Use U(1) charge symmetry instead.");
 		vector<Mpo<Symmetry,Scalar> > out(2);
 		out[0] = cdagcdag<UP,DN>(locx1,locx2,locy1,locy2);
 		out[1] = cdagcdag<DN,UP>(locx1,locx2,locy1,locy2);
@@ -850,6 +1092,44 @@ typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Hubba
 Sdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, F[locx].Sdag(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+Stot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(F.size());
+	vector<double> factors(F.size());
+	for (int l=0; l<F.size(); ++l)
+	{
+		Ops[l] = F[l].S(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<F.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+Sdagtot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(F.size());
+	vector<double> factors(F.size());
+	for (int l=0; l<F.size(); ++l)
+	{
+		Ops[l] = F[l].Sdag(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<F.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

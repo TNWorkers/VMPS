@@ -25,6 +25,7 @@ public:
 	
 	static qarray<1> singlet (int N) {return qarray<1>{N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr int spinfac = 2;
 	
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;

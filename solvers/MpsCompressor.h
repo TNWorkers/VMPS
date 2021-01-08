@@ -14,7 +14,7 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_INCREMENT
-#define DMRG_POLYCOMPRESS_INCREMENT 10
+#define DMRG_POLYCOMPRESS_INCREMENT 50
 #endif 
 
 /// \cond
@@ -481,7 +481,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.max_Nsv += 1;
+			Vout.max_Nsv += 20;
 			Mcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
@@ -648,7 +648,10 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 	for (int j=0; j<=i; ++j)
 	{
 		overlapsVin(i,j) = conjIfcomplex(factors[i]) * factors[j] * dot(Vin[i],Vin[j]);
-		cout << "i=" << i << ", j=" << j << ", overlapsVin=" << overlapsVin(i,j) << endl;
+//		#pragma omp critical
+//		{
+//			lout << "i=" << i << ", j=" << j << ", overlapsVin=" << overlapsVin(i,j) << endl;
+//		}
 	}
 	overlapsVin.template triangularView<Upper>() = overlapsVin.adjoint();
 	double overlapsVinSum = isReal(overlapsVin.sum());
@@ -792,11 +795,12 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.max_Nsv += 1;
+			auto max_Nsv_old = Vout.max_Nsv;
+			Vout.max_Nsv += 20;
 			Mcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
+				lout << "resize: " << max_Nsv_old << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
@@ -1068,7 +1072,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			size_t Delta_Nsv = (sqdist>10.*tol)? 2:1;
+			size_t Delta_Nsv = (sqdist>10.*tol)? 40:20;
 			Vout.max_Nsv += Delta_Nsv;
 			Mcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)

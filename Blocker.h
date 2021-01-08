@@ -131,6 +131,13 @@ block_left()
 		{
 			// do the glue
 			size_t Ncols = A[svec[0]].block[qvec[0]].cols();
+			for (size_t i=1; i<svec.size(); ++i)
+			{
+				if (A[svec[i]].block[qvec[i]].cols() != Ncols)
+				{
+					cout << "A[svec[i]].block[qvec[i]].cols()=" << A[svec[i]].block[qvec[i]].cols() << ", Ncols=" << Ncols << endl;
+				}
+			}
 			for (size_t i=1; i<svec.size(); ++i) {assert(A[svec[i]].block[qvec[i]].cols() == Ncols);}
 			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
 			

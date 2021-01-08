@@ -33,7 +33,7 @@ template<typename Symmetry, typename Scalar> class MpoTerms
     typedef typename Symmetry::qType qType;
     typedef Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
     
-private:
+protected:
     
     /**
      *  Operators that have been pushed into this instance of MpoTerms.
@@ -438,7 +438,7 @@ public:
      *  @param  qList   List of quantum numbers. qList[i] is left from lattice site loc+i, qList[i+1] is right from it
      *  @param  lambda  Scalar factor for the interaction
      */
-    void push(const std::size_t loc, const std::vector<OperatorType> &opList, const std::vector<qType> &qList, const Scalar lambda = 1.0);
+    virtual void push(const std::size_t loc, const std::vector<OperatorType> &opList, const std::vector<qType> &qList, const Scalar lambda = 1.0);
     
     /**
      *  Push method without explicit quantum number list.

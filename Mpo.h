@@ -54,18 +54,23 @@ public:
 	
 	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	typedef Scalar Scalar_;
-    
+	
 	Mpo() : MpoTerms<Symmetry, Scalar>(){};
 	
 	Mpo(size_t L_input);
 	
 	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
-
+	
 	template<typename CouplScalar>
-    void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
-    
-    template<typename CouplScalar>
-    void calc_reversedData_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, double tolerance=::mynumeric_limits<double>::epsilon());
+	void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
+	
+	template<typename CouplScalar>
+	void calc_reversedData_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, double tolerance=::mynumeric_limits<double>::epsilon());
+	
+	void push_qpath (const std::size_t loc, const std::vector<OperatorType> &opList, const std::vector<qType> &qList, const Scalar lambda = 1.0)
+	{
+		MpoTerms<Symmetry,Scalar>::push(loc,opList,qList,lambda);
+	}
 	
 	void setLocal(std::size_t loc, const OperatorType& op);
 	
@@ -73,7 +78,7 @@ public:
 	
 	void setLocal(std::size_t loc, const OperatorType& op, const std::vector<OperatorType>& signOp);
 	
-    void setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& ops);
+	void setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& ops);
 	
 	void setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& ops, const OperatorType& signOp);
 	
@@ -88,34 +93,34 @@ public:
 	void setProductSum(const OperatorType& op1, const OperatorType& op2);
 	
 	// void scale(double factor=1., double offset=0.);
-		
+	
 	void precalc_TwoSiteData(bool FORCE=false);
-
+	
 	std::string info() const;
 	
 	//double memory(MEMUNIT memunit=GB) const;
 	
 	//double sparsity(bool USE_SQUARE=false, bool PER_MATRIX=true) const;
-
+	
 	inline std::size_t length() const {return this->size();}
 	
 	inline std::size_t volume() const {return this->N_phys;}
-
+	
 	template<typename T, typename ... Operator>
 	static std::vector<T> get_N_site_interaction(T const & Op0, Operator const & ... Ops) {std::vector<T> out { {Op0, Ops ...} }; return out;};
 	//inline std::size_t auxrows(std::size_t loc) const {return this->get_qAux()[loc].fullM();}
 	//inline std::size_t auxcols(std::size_t loc) const {return this->get_qAux()[loc+1].fullM();}
-    //inline void setOpBasis   (const vector<vector<qType> > &q) {qOp=q;}
-    //inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
-    //inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > &Vsq_at (size_t loc) const {return Vsq[loc];};
+	//inline void setOpBasis   (const vector<vector<qType> > &q) {qOp=q;}
+	//inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
+	//inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > &Vsq_at (size_t loc) const {return Vsq[loc];};
 	
 	inline int locality() const {return LocalSite;}
 	inline void set_locality(std::size_t LocalSite_input) {LocalSite = LocalSite_input;}
 	inline OperatorType localOperator() const {return LocalOp;}
 	inline void set_localOperator (OperatorType LocalOp_input) {LocalOp = LocalOp_input;}
 	
-    static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys, const qType& Q=Symmetry::qvacuum());
-    static Mpo<Symmetry,Scalar> Zero(const std::vector<std::vector<qType>>& qPhys);
+	static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys, const qType& Q=Symmetry::qvacuum());
+	static Mpo<Symmetry,Scalar> Zero(const std::vector<std::vector<qType>>& qPhys);
 	
 	inline bool IS_UNITARY() const {return UNITARY;};
 	
@@ -126,8 +131,8 @@ public:
 	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
 	
 	
-    boost::multi_array<Scalar,4> H2site(std::size_t loc, bool HALF_THE_LOCAL_TERM=false) const {assert(false and "Method H2site is deprecated.");}
-
+	boost::multi_array<Scalar,4> H2site(std::size_t loc, bool HALF_THE_LOCAL_TERM=false) const {assert(false and "Method H2site is deprecated.");}
+	
 	typedef Mps<Symmetry,double> StateXd;
 	typedef Umps<Symmetry,double> StateUd;
 	typedef Mps<Symmetry,std::complex<double>> StateXcd;
@@ -253,9 +258,7 @@ info() const
 {
 	std::stringstream ss;
 	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
-	if(this->N_phys > this->size()){
-        ss << ",V=" << this->N_phys;
-    }
+	if (this->N_phys > this->size()) ss << ",V=" << this->N_phys;
 	ss << ", " << Symmetry::name() << ", ";
 	
 	ss << "UNITARY=" << boolalpha << UNITARY << ", ";
@@ -293,11 +296,11 @@ info() const
 	for (int power=1; power<=this->maxPower(); ++power) print_qaux(power);
 	
 	ss << "mem=" << round(this->memory(GB),3) << "GB";
-	ss << ", sparsity=" << this->sparsity();
+	if (this->GOT_W and this->GOT_QAUX) ss << ", sparsity=" << this->sparsity();
 	// if(this->check_SQUARE())
-    // {
-    //     ss << ", sparsity(sq)=" << sparsity(true);
-    // }
+	// {
+	//     ss << ", sparsity(sq)=" << sparsity(true);
+	// }
 	return ss.str();
 }
 
@@ -495,21 +498,21 @@ template<typename CouplScalar>
 void Mpo<Symmetry,Scalar>::
 construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell)
 {
-    for(std::size_t i=0; i<pushlist.size(); ++i)
-    {
-        const auto& [loc, ops, coupling] = pushlist[i];
+	for(std::size_t i=0; i<pushlist.size(); ++i)
+	{
+		const auto& [loc, ops, coupling] = pushlist[i];
 		if ( std::abs(coupling) != 0. )
 		{
 			this->push(loc, ops, coupling);
 		}
-    }
-    for(std::size_t loc=0; loc<this->size(); ++loc)
-    {
-        for(std::size_t i=0; i<labellist[loc].size(); ++i)
-        {
-            this->save_label(loc, labellist[loc][i]);
-        }
-    }
+	}
+	for(std::size_t loc=0; loc<this->size(); ++loc)
+	{
+		for(std::size_t i=0; i<labellist[loc].size(); ++i)
+		{
+			this->save_label(loc, labellist[loc][i]);
+		}
+	}
 	generate_label(Lcell);
 }
 
@@ -578,7 +581,7 @@ setLocal(std::size_t loc, const OperatorType& op)
 	std::vector<std::vector<std::string>> labellist(this->N_sites);
 	this->construct_from_pushlist(pushlist, labellist, 1);
 	this->finalize(PROP::COMPRESS, 1);
-	this->calc_reversedData_from_pushlist(pushlist);	
+	this->calc_reversedData_from_pushlist(pushlist);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -676,25 +679,25 @@ setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 setLocalSum(const OperatorType& op, Scalar (*f)(int))
 {
-    assert(this->check_qPhys() and "Physical bases have to be set before");
-    for (std::size_t loc=0; loc<this->size(); ++loc)
-    {
-        this->push(loc, {f(loc)*op});
-    }
-    this->finalize(PROP::COMPRESS, 1);
+	assert(this->check_qPhys() and "Physical bases have to be set before");
+	for (std::size_t loc=0; loc<this->size(); ++loc)
+	{
+		this->push(loc, {f(loc)*op});
+	}
+	this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 setLocalSum(const std::vector<OperatorType>& ops, std::vector<Scalar> coeffs)
 {
-    assert(this->check_qPhys() and "Physical bases have to be set before");
+	assert(this->check_qPhys() and "Physical bases have to be set before");
 	PushType<SiteOperator<Symmetry,Scalar>,Scalar> pushlist;
-    for (std::size_t loc=0; loc<this->size(); ++loc)
-    {
+	for (std::size_t loc=0; loc<this->size(); ++loc)
+	{
 		auto Ops = Mpo<Symmetry,Scalar>::get_N_site_interaction(coeffs[loc]*ops[loc]);
 		pushlist.push_back(std::make_tuple(loc, Ops, 1.));
-        // this->push(loc, {coeffs[loc]*ops[loc]});
-    }
+		// this->push(loc, {coeffs[loc]*ops[loc]});
+	}
 	std::vector<std::vector<std::string>> labellist(this->N_sites);
 	this->construct_from_pushlist(pushlist, labellist, 1);
 	this->finalize(PROP::COMPRESS, 1);
@@ -741,7 +744,7 @@ setProductSum(const OperatorType& op1, const OperatorType& op2)
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-precalc_TwoSiteData(bool FORCE)
+precalc_TwoSiteData (bool FORCE)
 {
 	if(!GOT_TWO_SITE_DATA or FORCE)
     {

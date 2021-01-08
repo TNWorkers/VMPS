@@ -21,6 +21,14 @@
 //include "tensors/DmrgContractions.h"
 //include "Mpo.h"
 
+struct SweepStatus
+{
+	int pivot = -1;
+	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
+	size_t N_sweepsteps = 0;
+	size_t N_halfsweeps = 0;
+};
+
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
 {
@@ -109,8 +117,13 @@ public:
 	#endif
 	
 	/**Energy penalty for projected-out states.*/
-	double Epenalty = 10.;
-        
+	double Epenalty = 1e4;
+	
+	inline void set_SweepStatus (const SweepStatus &SweepStat_input)
+	{
+		SweepStat = SweepStat_input;
+	}
+	
 private:
 	
 	size_t N_sites, N_phys;
@@ -125,24 +138,16 @@ private:
 	
 	double DeltaEopt;
 	double max_alpha_rsvd, min_alpha_rsvd;
-
+	
 	bool USER_SET_GLOBPARAM    = false;
 	bool USER_SET_DYNPARAM     = false;
 	bool USER_SET_LANCZOSPARAM = false;
-
-	struct SweepStatus
-	{
-		int pivot=-1;
-		DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
-		size_t N_sweepsteps;
-		size_t N_halfsweeps;
-	};
 	
 	SweepStatus SweepStat;
-
+	
 	inline size_t loc1() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;};
 	inline size_t loc2() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;};
-
+	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
 	
@@ -184,7 +189,7 @@ eigeninfo() const
 	stringstream ss;
 	ss << termcolor::colorize << termcolor::underline << "half-sweeps=" << SweepStat.N_halfsweeps;
 	ss << termcolor::reset;
-	ss << ", algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
+	ss << ", next algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
 	ss << ", ";
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
@@ -258,8 +263,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	N_sites = H.length();
 	N_phys  = H.volume();
 	
-	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
-	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
+//	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
+//	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
 	
 	// set edges
 	Heff.clear();
@@ -368,17 +373,31 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (SweepStat.pivot == -1)
 	{
-		if (Vout.state.get_pivot() != -1 and Vout.state.get_pivot() != N_sites-1) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
-		for (size_t l=N_sites-1; l>0; --l)
+		if (GlobParam.INITDIR == DMRG::DIRECTION::RIGHT)
 		{
-			if (!USE_STATE) {Vout.state.setRandom(l);} //avoid overflow for large chains. dont set random for loaded states
-			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
-			build_R(H,Vout,l-1);
+			for (int l=N_sites-1; l>0; --l)
+			{
+				if (!USE_STATE) {Vout.state.setRandom(l);} // Avoids overflow for large chains. Don't set random for loaded states.
+				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+				build_R(H,Vout,l-1);
+			}
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR, NULL, true); // removes large numbers from first matrix
+			SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
+			SweepStat.pivot = 0;
 		}
-		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
-		SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
-		SweepStat.pivot = 0;
+		else
+		{
+			for (size_t l=0; l<N_sites-1; ++l)
+			{
+				if (!USE_STATE) {Vout.state.setRandom(l);} // Avoids overflow for large chains. Don't set random for loaded states.
+				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+				build_L(H,Vout,l+1);
+			}
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, N_sites-1, DMRG::BROOM::QR, NULL, true); // removes large numbers from first matrix
+			SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
+			SweepStat.pivot = N_sites-1;
+		}
 	}
 	else
 	{
@@ -390,6 +409,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 				build_R(H,Vout,l-1);
 			}
 			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
+			
 			for (size_t l=0; l<SweepStat.pivot; ++l)
 			{
 				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
@@ -403,7 +423,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
 				build_L(H,Vout,l+1);
 			}
-			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, N_sites-1, DMRG::BROOM::QR); // removes large numbers from first matrix
+			
 			for (size_t l=N_sites-1; l>SweepStat.pivot; --l)
 			{
 				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
@@ -411,17 +432,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			}
 		}
 	}
-	
-//	// initial sweep, left-to-right:
-//	for (size_t l=0; l<N_sites-1; ++l)
-//	{
-//		cout << "l=" << l << endl;
-//		Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
-//		build_L(H,Vout,l+1);
-//	}
-//	Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
-//	SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
-//	SweepStat.pivot = N_sites-1;
 	
 	// resize environments for projected-out states
 	if (Psi0.size() > 0)
@@ -462,7 +472,23 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Rtmp.block[0][0][0].cols() == 1 and
 			"Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
 			Eold = isReal(Rtmp.block[0][0][0](0,0));
-			//Eold = 0;
+		}
+	}
+	else if (SweepStat.pivot == N_sites-1)
+	{
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Ltmp;
+		contract_L(Heff[N_sites-1].L, Vout.state.A[N_sites-1], H.W[N_sites-1], Vout.state.A[N_sites-1], H.locBasis(N_sites-1), H.opBasis(N_sites-1), Ltmp);
+		if (Ltmp.dim == 0)
+		{
+			Eold = 0;
+		}
+		else
+		{
+			assert(Ltmp.dim == 1 and
+			Ltmp.block[0][0][0].rows() == 1 and
+			Ltmp.block[0][0][0].cols() == 1 and
+			"Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
+			Eold = isReal(Ltmp.block[0][0][0](0,0));
 		}
 	}
 	else
@@ -567,6 +593,10 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		lout << "• initial algorithm: ";
 		cout << termcolor::underline;
 		lout << DynParam.iteration(0);
+		cout << termcolor::reset;
+		lout << ", initial direction: ";
+		cout << termcolor::underline;
+		lout << GlobParam.INITDIR;
 		cout << termcolor::reset;
 		lout << endl;
 		
@@ -914,7 +944,7 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff0,g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.edgeState(Heff0, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -992,7 +1022,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (Psi0.size() > 0)
 	{
@@ -1288,6 +1318,16 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		halfsweep(H,Vout,EDGE); //SweepStat.N_halfsweeps gets incremented by 1!
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
+		// overwrite if alpha_rsvd was switched on
+		if (DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps-1) == 0. and DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps) != 0.)
+		{
+			Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << endl << "α_rsvd switched on to: " << Vout.state.alpha_rsvd << " for halfsweep " << SweepStat.N_halfsweeps << endl << endl;
+			}
+		}
+		
 		size_t j = SweepStat.N_halfsweeps;
 		
 		DynParam.doSomething(j);
@@ -1313,7 +1353,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 			}
 			lout << endl;
 		}
-				
+		
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
@@ -1419,9 +1459,9 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	// double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
 	//                        DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
 	// Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
-        double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
+	double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
 	Vout.state.alpha_rsvd = max(alpha_min, min(max_alpha_rsvd, Vout.state.alpha_rsvd));
-        
+	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)

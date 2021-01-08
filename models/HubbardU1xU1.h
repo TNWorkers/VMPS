@@ -62,6 +62,7 @@ public:
 	
 	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr int spinfac = 2;
 	
 	/**
 	 * \describe_set_operators

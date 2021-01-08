@@ -122,7 +122,7 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary, co
 }
 
 void Heisenberg::
-add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = B.size();

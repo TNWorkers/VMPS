@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+#include <iterator>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -48,8 +49,6 @@ typedef VMPS::PeierlsHubbardSU2xU1 MODEL; // complex
 #include "solvers/SpectralManager.h"
 #include "models/ParamCollection.h"
 
-vector<GreenPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>>> Green;
-
 MatrixXcd onsite (int L, double Eevn, double Eodd)
 {
 	MatrixXcd res(L,L); res.setZero();
@@ -59,6 +58,13 @@ MatrixXcd onsite (int L, double Eevn, double Eodd)
 		res(i+1,i+1) = Eodd;
 	}
 	return res;
+}
+
+double n = 1.;
+GreenPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>> Gfull;
+static double integrand (double mu, void*)
+{
+	return MODEL::spinfac * Gfull.integrate_Glocw_cell(mu) - n;
 }
 
 int main (int argc, char* argv[])
@@ -78,6 +84,7 @@ int main (int argc, char* argv[])
 	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
 	int Ns = args.get<int>("Ns",L/2);
 	int N = args.get<int>("N",L); // Teilchenzahl
+	n = double(N)/L;
 	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
 	lout << "L=" << L << ", N=" << N << ", Ly=" << Ly << ", Ncells=" << Ncells << ", Lhetero=" << Lhetero << ", Ns=" << Ns << endl;
@@ -86,11 +93,11 @@ int main (int argc, char* argv[])
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nc*nf
-	double tfc = args.get<double>("tfc",0.5); // Hybridisierung fc
+	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",0.5); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
@@ -103,7 +110,6 @@ int main (int argc, char* argv[])
 	vector<string> specs = args.get_list<string>("specs",{"HSF","CSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
 	string specstring = "";
 	int Nspec = specs.size();
-	Green.resize(Nspec);
 	size_t Mlim = args.get<size_t>("Mlim",800ul); // Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.2);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
@@ -214,8 +220,9 @@ int main (int argc, char* argv[])
 	int Lfinite = args.get<int>("Lfinite",1000);
 	auto Hfree = hopping_PAM(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix()+onsite(Lfinite,Ec,Ef));
-	VectorXd occ = Eugen.eigenvalues().head(Lfinite/2);
-	VectorXd unocc = Eugen.eigenvalues().tail(Lfinite/2);
+	cout << "N*Lfinite/(L*2)=" << N*Lfinite/(L*2) << endl;
+	VectorXd occ = Eugen.eigenvalues().head(N*Lfinite/(L*2));
+	VectorXd unocc = Eugen.eigenvalues().tail(N*Lfinite/(L*2));
 	double e0free = 2.*occ.sum()/Lfinite;
 	lout << setprecision(16) << "e0free/L=("<<Lfinite<<",half-filling)=" << e0free << endl;
 	
@@ -224,7 +231,7 @@ int main (int argc, char* argv[])
 	{
 		SpecMan = SpectralManager<MODEL>(specs, H, params, GlobSweepParams, Q, Ncells, params_hetero, "gs_"+base, LOAD_GS, SAVE_GS);
 		
-		if (U==0. and V==0. and N==L)
+		if (U==0. and V==0.)
 		{
 			lout << "hopping matrix diagonalization: " << e0free << ", VUMPS (should be slightly lower): " << SpecMan.energy() << endl;
 		}
@@ -238,10 +245,31 @@ int main (int argc, char* argv[])
 		lout << "SdagS(cc)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,2), SpecMan.ground())) << endl;
 		lout << "SdagS(ff)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(1,3), SpecMan.ground())) << endl;
 		
+		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
+		
+		auto itSSF = find(specs.begin(), specs.end(), "SSF");
+		if (itSSF != specs.end())
+		{
+			int iz = distance(specs.begin(), itSSF);
+			SpecMan.resize_Green(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+			SpecMan.set_measurement(iz, "SSF",1.,1, Q, L, 1,"S","wavepacket",true); // TRANSFORM=true
+		}
 		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 	else
 	{
 		SpecMan.reload(wd, specs, param_base, L, Ncells, Ns, tmax, wmin, wmax, wpoints, QR, qpoints, INT);
+	}
+	
+	// μ berechnen
+	auto itPES = find(specs.begin(), specs.end(), "PES");
+	auto itIPE = find(specs.begin(), specs.end(), "IPE");
+	if (itPES != specs.end() and itIPE != specs.end())
+	{
+		SpecMan.make_A1P(Gfull, wd, param_base, Ns, tmax, -20., +20., 1001, QR, qpoints, INT, true);
+		RootFinder R(integrand,wmin,wmax);
+		lout << "μ=" << R.root() << endl;
+		Gfull.mu = R.root();
+		Gfull.save(true); // IGNORE_TX=true
 	}
 }

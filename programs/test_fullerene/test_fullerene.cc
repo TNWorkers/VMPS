@@ -61,16 +61,16 @@ typedef VMPS::HeisenbergSU2 MODEL;
 //#include "models/DoubleHeisenbergSU2.h"
 //typedef VMPS::DoubleHeisenbergSU2 MODELC;
 
-//ArrayXXd permute_random (const ArrayXXd &A)
-//{
-//	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
-//	P.setIdentity();
-//	srand(time(0));
-//	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
-//	MatrixXd A_p = P.transpose() * A.matrix() * P;
-////	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
-//	return A_p.array();
-//}
+ArrayXXd permute_random (const ArrayXXd &A)
+{
+	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
+	P.setIdentity();
+	srand(time(0));
+	std::random_shuffle(P.indices().data(), P.indices().data()+P.indices().size());
+	MatrixXd A_p = P.transpose() * A.matrix() * P;
+//	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
+	return A_p.array();
+}
 
 // returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
@@ -91,6 +91,87 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+
+void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
+{
+	lout << "correlations for following state:" << endl;
+	lout << Psi.info() << endl;
+	
+	if (S>0)
+	{
+		ofstream SFiler(make_string(wd,"S_",base,".dat"));
+//		#pragma omp parallel for
+		for (int l=0; l<L; ++l)
+		{
+			double res = avg(Psi, H.S(l), Psi) / sqrt(S*(S+1.));
+//			#pragma omp critical
+			{
+				SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
+				lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
+			}
+		}
+		SFiler.close();
+	}
+	
+	ofstream CorrFilerAll(make_string(wd,"SdagS_",base,"_d=all",".dat"));
+	CorrFilerAll << "#i\tj\tSdagS" << endl;
+	
+	Stopwatch<> Timer;
+	for (int d=dmin; d<=min(distanceMatrix.maxCoeff(),dmax); ++d)
+	{
+		lout << "correlations at distance d=" << d << endl;
+		ofstream CorrFiler(make_string(wd,"SdagS_",base,"_d=",d,".dat"));
+		CorrFiler << "#i\tj\td\tSdagS" << endl;
+		
+		vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
+		
+//		#pragma omp parallel for
+		for (int k=0; k<indices.size(); ++k)
+		{
+			int i = indices[k].first;
+			int j = indices[k].second;
+			double val = avg(Psi, H.SdagS(i,j), Psi);
+			
+//			#pragma omp critical
+			{
+				lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
+				CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
+				CorrFiler.flush();
+				CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
+				CorrFilerAll.flush();
+			}
+		}
+		
+		CorrFiler.close();
+		lout << Timer.info(make_string("d=",d)) << endl;
+	}
+	CorrFilerAll.close();
+}
+
+void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L)
+{
+	Stopwatch<> Timer;
+	lout << endl;
+	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
+	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
+	lout << Timer.info("E") << endl;
+	
+	if (maxPower == 1)
+	{
+		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L << setprecision(6) << endl;
+	}
+	else
+	{
+		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L << setprecision(6) << endl;
+	}
+	lout << Timer.info("varE") << endl;
+	
+//	auto HmE = H;
+//	double factor = args.get<double>("factor",1.);
+//	double offset = args.get<double>("offset",0.);
+//	HmE.scale(factor,offset);
+//	lout << "scale test: " << avg(Psi.state,HmE,Psi.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
+}
 
 /////////////////////////////////
 int main (int argc, char* argv[])
@@ -117,8 +198,8 @@ int main (int argc, char* argv[])
 	double betainit = 0.;
 	double betaswitch = args.get<double>("betaswitch",10.);
 	double s_betainit = args.get<double>("s_betainit",log(2));
-	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
-	size_t Dlim = args.get<size_t>("Dlim",100ul);
+	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-7);
+	size_t Mlim = args.get<size_t>("Mlim",1000ul);
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
@@ -126,10 +207,12 @@ int main (int argc, char* argv[])
 	string LOAD = args.get<string>("LOAD","");
 	string LOAD2 = args.get<string>("LOAD2","");
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
+	bool CALC_CORR2 = args.get<bool>("CALC_CORR2",false);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
 	double Epenalty = args.get<double>("Epenalty",1e4);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
+	bool CALC_VAR2 = args.get<int>("CALC_VAR2",false);
 	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);
 	
@@ -163,9 +246,9 @@ int main (int argc, char* argv[])
 				{
 					dbeta = boost::lexical_cast<double>(parsed_vals[j+1]);
 				}
-				else if (parsed_vals[j] == "Dlim")
+				else if (parsed_vals[j] == "Mlim")
 				{
-					Dlim = boost::lexical_cast<int>(parsed_vals[j+1]);
+					Mlim = boost::lexical_cast<int>(parsed_vals[j+1]);
 				}
 				else if (parsed_vals[j] == "tol")
 				{
@@ -174,6 +257,9 @@ int main (int argc, char* argv[])
 			}
 		}
 	}
+	
+	bool ICOSIDODECA = args.get<int>("ICOSIDODECA",false);
+	int VARIANT = args.get<int>("VARIANT",0);
 	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
@@ -184,13 +270,17 @@ int main (int argc, char* argv[])
 	{
 		base = make_string("L=",L,"_D=",D,"_S=",S);
 	}
+	if (ICOSIDODECA)
+	{
+		base += make_string("_molecule=3.5.3.5");
+	}
 	if (CALC_DOS)
 	{
 		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
 	}
 	if (BETAPROP)
 	{
-		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
+		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Mlim=",Mlim);
 	}
 	string base_excited = base;
 	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
@@ -199,13 +289,13 @@ int main (int argc, char* argv[])
 	
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
 	GlobParam.Minit = args.get<size_t>("Minit",2ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Mlimit = args.get<size_t>("Dlimit",10000ul); // for groundstate
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
 	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
 	
 	lout.set(base+".log",wd+"log");
@@ -218,15 +308,20 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 	
-	size_t Mincr_abs = args.get<size_t>("Dincr_abs",50ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",50ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
-	size_t lim2site = args.get<size_t>("lim2site",30ul);
-	DynParam.iteration = [lim2site] (size_t i) {return (i<lim2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	size_t start_2site = args.get<size_t>("start_2site",0ul);
+	size_t end_2site = args.get<size_t>("end_2site",30ul);
+	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
-	size_t lim_alpha = args.get<size_t>("lim_alpha",0.8*GlobParam.max_halfsweeps);
+	size_t start_alpha = args.get<size_t>("start_alpha",0);
+	size_t end_alpha = args.get<size_t>("end_alpha",0.8*GlobParam.max_halfsweeps);
 	double alpha = args.get<double>("alpha",100.);
-	DynParam.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
+	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	
+	double eps_svd = args.get<double>("eps_svd",1e-10);
+	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
 	
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
@@ -242,12 +337,26 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=24 and L!=26 and L!=30 and L!=40 and L!=60)
 	{
-		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
+		hopping = J*create_1D_PBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
-		hopping = J*hopping_fullerene(L);
+		if (ICOSIDODECA)
+		{
+			hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
+		}
+		else
+		{
+			hopping = J*hopping_fullerene(L,VARIANT);
+		}
 	}
+	
+	bool PERMUTE = args.get<int>("PERMUTE",false);
+	if (PERMUTE)
+	{
+		hopping = permute_random(hopping);
+	}
+	
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)
 	{
@@ -296,46 +405,50 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		
 		Eigenstate<MODEL::StateXd> g;
+		Eigenstate<MODEL::StateXd> excited1;
 		MODEL::Solver DMRG(VERB);
 		DMRG.userSetGlobParam();
 		DMRG.userSetDynParam();
 		DMRG.GlobParam = GlobParam;
 		DMRG.DynParam = DynParam;
+		
 		if (LOAD!="")
 		{
 			g.state.load(LOAD,g.energy);
 			lout << "loaded: " << g.state.info() << endl;
 			
-			if (LOAD2!="")
-			{
-				Eigenstate<MODEL::StateXd> g2;
-				g2.state.load(LOAD2,g2.energy);
-				lout << "overlap=" << g.state.dot(g2.state) << endl;
-				
-				MatrixXd Hlow(2,2);
-				Hlow(0,0) = avg(g.state, H, g.state);
-				Hlow(1,1) = avg(g2.state, H, g2.state);
-				Hlow(0,1) = avg(g.state, H, g2.state);
-				Hlow(1,0) = avg(g2.state, H, g.state);
-				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
-				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
-			}
+//			if (LOAD2!="")
+//			{
+//				Eigenstate<MODEL::StateXd> g2;
+//				g2.state.load(LOAD2,g2.energy);
+//				lout << "overlap=" << g.state.dot(g2.state) << endl;
+//				
+//				MatrixXd Hlow(2,2);
+//				Hlow(0,0) = avg(g.state, H, g.state);
+//				Hlow(1,1) = avg(g2.state, H, g2.state);
+//				Hlow(0,1) = avg(g.state, H, g2.state);
+//				Hlow(1,0) = avg(g2.state, H, g.state);
+//				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
+//				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
+//			}
 			
-			if (CALC_GS)
-			{
-				DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
-			}
+			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
 		}
 		else
 		{
-			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		}
+		
+		if (LOAD2!="")
+		{
+			excited1.state.load(LOAD2,excited1.energy);
+			lout << "loaded2: " << excited1.state.info() << endl;
 		}
 		
 		if (CALC_NEUTRAL_GAP)
 		{
 			lout << "CALC_NEUTRAL_GAP" << endl;
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base_excited);
-			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
 			DMRG2.Epenalty = Epenalty;
 			lout << "Epenalty=" << DMRG2.Epenalty << endl;
@@ -364,14 +477,18 @@ int main (int argc, char* argv[])
 //				excited1 = init;
 //			}
 			
-			excited1.state = g.state;
-			excited1.state.setRandom();
-			excited1.state.sweep(0,DMRG::BROOM::QR);
-			excited1.state /= sqrt(dot(excited1.state,excited1.state));
-			excited1.state.eps_svd = 1e-8;
+			if (LOAD2=="")
+			{
+				excited1.state = g.state;
+				excited1.state.setRandom();
+				excited1.state.sweep(0,DMRG::BROOM::QR);
+				excited1.state /= sqrt(dot(excited1.state,excited1.state));
+			}
+			excited1.state.eps_svd = eps_svd;
 			double overlap = dot(g.state,excited1.state);
 			lout << "initial overlap=" << overlap << endl;
 			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
+			lout << endl;
 			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
 			overlap = dot(g.state,excited1.state);
 			lout << "overlap=" << overlap << endl;
@@ -380,80 +497,23 @@ int main (int argc, char* argv[])
 		{
 			if (CALC_CORR)
 			{
-				if (S>0)
-				{
-					ofstream SFiler(make_string(wd,"S_",base,".dat"));
-//					#pragma omp parallel for
-					for (int l=0; l<L; ++l)
-					{
-						double res = avg(g.state, H.S(l), g.state) / sqrt(S*(S+1.));
-//						#pragma omp critical
-						{
-							SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
-							lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
-						}
-					}
-					SFiler.close();
-				}
-				
-				ofstream CorrFilerAll(make_string(wd,"SdagS_",base,"_d=all",".dat"));
-				CorrFilerAll << "#i\tj\tSdagS" << endl;
-				
-				Stopwatch<> Timer;
-				for (int d=dmin; d<=min(distanceMatrix.maxCoeff(),dmax); ++d)
-				{
-					lout << "correlations at distance d=" << d << endl;
-					ofstream CorrFiler(make_string(wd,"SdagS_",base,"_d=",d,".dat"));
-					CorrFiler << "#i\tj\td\tSdagS" << endl;
-					
-					vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
-					
-//					#pragma omp parallel for
-					for (int k=0; k<indices.size(); ++k)
-					{
-						int i = indices[k].first;
-						int j = indices[k].second;
-						double val = avg(g.state, H.SdagS(i,j), g.state);
-						
-//						#pragma omp critical
-						{
-							lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
-							CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
-							CorrFiler.flush();
-							CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
-							CorrFilerAll.flush();
-						}
-					}
-					
-					CorrFiler.close();
-					lout << Timer.info(make_string("d=",d)) << endl;
-				}
-				CorrFilerAll.close();
+				calc_corr(H, g.state, S, base, wd, L, dmin, dmax, distanceMatrix);
+			}
+			
+			if (CALC_CORR2 and (CALC_NEUTRAL_GAP or LOAD2!=""))
+			{
+				calc_corr(H, excited1.state, S, base_excited+"_excited", wd, L, dmin, dmax, distanceMatrix);
 			}
 			
 			if (CALC_VAR)
 			{
-				Stopwatch<> Timer;
-				lout << endl;
-				double E = (LOAD!="")? avg(g.state,H,g.state):g.energy;
-				lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
-				lout << Timer.info("E") << endl;
-				
-				if (maxPower == 1)
-				{
-					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
-				}
-				else
-				{
-					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,g.state,2)-pow(E,2))/L << setprecision(6) << endl;
-				}
-				lout << Timer.info("varE") << endl;
-				
-//				auto HmE = H;
-//				double factor = args.get<double>("factor",1.);
-//				double offset = args.get<double>("offset",0.);
-//				HmE.scale(factor,offset);
-//				lout << "scale test: " << avg(g.state,HmE,g.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
+				calc_var(H, g, LOAD, maxPower, L);
+			}
+			
+			if (CALC_VAR2 and (CALC_NEUTRAL_GAP or LOAD2!=""))
+			{
+				lout << endl << "excited state variance:" << endl;
+				calc_var(H, excited1, LOAD2, maxPower, L);
 			}
 			
 			//----density of states----
@@ -645,7 +705,7 @@ int main (int argc, char* argv[])
 //		lout << endl;
 //		
 //		auto PsiT = g.state;
-//		PsiT.max_Nsv = Dlim;
+//		PsiT.max_Nsv = Mlim;
 //		TDVPPropagator<MODELC,MODELC::Symmetry,double,double,MODELC::StateXd> TDVPT(H,PsiT);
 //		
 //		ofstream Filer(make_string(wd,"thermodynC_",base,".dat"));
@@ -761,7 +821,7 @@ int main (int argc, char* argv[])
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
-			     << "Dlim=" << Dlim << ", "
+			     << "Mlim=" << Mlim << ", "
 			     << "tol=" << tol_beta_compr << ", "
 			     << boolalpha << "BETA1STEP=" << BETA1STEP
 			     << termcolor::reset << endl;
@@ -788,6 +848,10 @@ int main (int argc, char* argv[])
 			
 			Eigenstate<MODEL::StateXd> g;
 			MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
+			DMRG::CONTROL::GLOB GlobParam;
+			GlobParam.CALC_S_ON_EXIT = false;
+			DMRG.userSetGlobParam();
+			DMRG.GlobParam = GlobParam;
 			DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
 			
 			// Zero hopping may cause problems. Restart until the correct product state is reached.
@@ -845,13 +909,14 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		lout << endl;
 		
-		PsiT.max_Nsv = Dlim;
+		PsiT.max_Nsv = Mlim;
 		if (LOAD!="") lout << "preparing TDVP..." << endl;
 		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
 		lout << PsiT.info() << endl;
 		
 		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
-		Filer << "#T\tc\te\tchi\ts" << endl;
+		Filer << "#beta\tT\tc\te\tchi\ts" << endl;
+		Filer.close();
 		vector<double> cvec;
 		vector<double> evec;
 		vector<double> chivec;
@@ -862,18 +927,18 @@ int main (int argc, char* argv[])
 		vector<double> betasteps;
 		vector<double> betavals;
 		
-		if (betainit == 0.)
+		if (betainit < 1e-15)
 		{
 			betavals.push_back(0.01);
 			betasteps.push_back(0.01);
-//			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
 			{
 				betasteps.push_back(0.01);
 				double beta_last = betavals[betavals.size()-1];
 				betavals.push_back(beta_last+0.01);
-//				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			}
 		}
 		else
@@ -918,7 +983,6 @@ int main (int argc, char* argv[])
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
 			Stopwatch<> FullStepTimer;
-			lout << "i=" << i << endl;
 			
 			if (i!=betasteps.size())
 			{
@@ -1032,14 +1096,16 @@ int main (int argc, char* argv[])
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;
+				Filer.open(make_string(wd,"thermodynGC_",base,".dat"), std::ios_base::app);
 				Filer << setprecision(16) 
+				      << beta << "\t"
 				      << 1./beta << "\t" 
 				      << cvec[i-1] << "\t" 
 				      << evec[i-1] << "\t" 
 				      << chivec[i-1] << "\t" 
 				      << svec[i-1] 
 				      << setprecision(6) << endl;
-				Filer.flush();
+				Filer.close();
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;
@@ -1047,6 +1113,6 @@ int main (int argc, char* argv[])
 			lout << endl;
 		}
 		
-		Filer.close();
+//		Filer.close();
 	}
 }

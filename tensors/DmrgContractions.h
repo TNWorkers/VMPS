@@ -1834,7 +1834,7 @@ vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > extend_A (const vector<
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aout(A.size());
 	Qbasis<Symmetry> in; in.pullData(A,0);
 	Qbasis<Symmetry> out; out.pullData(A,1);
-	Qbasis<Symmetry> loc; loc.pullData(qloc,true);
+	Qbasis<Symmetry> loc; loc.pullData(qloc);
 	for (size_t s=0; s<qloc.size(); s++)
 	for (const auto & [qin,num,plain] : in)
 	{
@@ -1873,8 +1873,8 @@ void contract_AA2 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > 
 				   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair, 
 				   bool DRY = false)
 {
-	Qbasis<Symmetry> locBasis1; locBasis1.pullData(qloc1,true);
-	Qbasis<Symmetry> locBasis2; locBasis2.pullData(qloc2,true);
+	Qbasis<Symmetry> locBasis1; locBasis1.pullData(qloc1);
+	Qbasis<Symmetry> locBasis2; locBasis2.pullData(qloc2);
 	auto locBasis = locBasis1.combine(locBasis2);
 	
 	Apair.resize(locBasis.size());
@@ -2470,13 +2470,13 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 	Qbasis<Symmetry> leftBasis; leftBasis.pullData(Al,0);
 	Qbasis<Symmetry> rightBasis; rightBasis.pullData(Ar,1);
 	// cout << "left x right:" << endl << locBasis << endl;
-	Qbasis<Symmetry> locBasis_l; locBasis_l.pullData(qloc_l, true); //true: the local basis is already ordered by quantum numbers
+	Qbasis<Symmetry> locBasis_l; locBasis_l.pullData(qloc_l);
 	// cout << "left:" << endl << locBasis_l << endl;
-	Qbasis<Symmetry> locBasis_r; locBasis_r.pullData(qloc_r, true); //true: the local basis is already ordered by quantum numbers
+	Qbasis<Symmetry> locBasis_r; locBasis_r.pullData(qloc_r);
 	// cout << "right" << endl << locBasis_r << endl;
 	Qbasis<Symmetry> leftTot = leftBasis.combine(locBasis_l);
 	// cout << "combined Basis left:" << endl << leftTot << endl;
-	Qbasis<Symmetry> rightTot = rightBasis.combine(locBasis_r,true); //true means flip locBasis_r before the combination
+	Qbasis<Symmetry> rightTot = rightBasis.combine(locBasis_r, true); //true means flip locBasis_r before the combination
 	// cout << "combined Basis right:" << endl << rightTot << endl;
 	
 	for (size_t s=0; s<qloc_l.size(); ++s)

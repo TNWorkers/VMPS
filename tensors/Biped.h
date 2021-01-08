@@ -171,13 +171,13 @@ public:
 
 	template<typename EpsScalar>
 	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
-	truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
+	truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
 
 	template<typename EpsScalar>
 	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const
 		{
 			double S_dumb;
-			map<qarray<Symmetry::Nq>,ArrayXd> SVspec_dumb;
+			map<qarray<Symmetry::Nq>,Eigen::ArrayXd> SVspec_dumb;
 			return truncateSVD(maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
 		}
 
@@ -693,7 +693,7 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 template<typename Symmetry, typename MatrixType_>
 template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
-truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
+truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
 {
 	entropy=0.;
 	truncWeight=0;

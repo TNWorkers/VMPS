@@ -32,8 +32,8 @@ typedef VMPS::HubbardSU2xU1 MODEL;
 typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
 
 #include "solvers/GreenPropagator.h"
-#include "models/SpectralFunctionHelpers.h"
 #include "DmrgLinearAlgebra.h"
+#include "solvers/SpectralManager.h"
 
 vector<GreenPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>>> Green;
 
@@ -52,31 +52,39 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",1); // Ly=1: entpackt, Ly=2: Supersites
 	int dLphys = (Ly==2)? 1:2;
 	assert(Ly==1 and "Only Ly=1 implemented");
-	size_t L = args.get<size_t>("L",16); // Groesse der Kette
+	size_t L = args.get<size_t>("L",16ul); // Groesse der Kette
 	size_t Lcell = 2;
 	int N = args.get<int>("N",L); // Teilchenzahl
 	int x0 = L/2;
-	qarray<MODELC::Symmetry::Nq> Q = MODELC::singlet(N); // Quantenzahl des Grundzustandes
+	
+	qarray<MODELC::Symmetry::Nq> Q = MODELC::singlet(2*N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
+	double Uc = args.get<double>("Uc",0.); // U auf den c-Plaetzen
+	double mu = args.get<double>("mu",0.5*U); // U auf den f-Plaetzen
+	double V = args.get<double>("V",0.); // V*nc*nf
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",1.); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
+	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
+	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
 	
-	bool SAVE_GS = args.get<double>("SAVE_GS",false);
-	string LOAD_GS = args.get<string>("LOAD_GS","");
+	bool SAVE_GS = args.get<bool>("SAVE_GS",false);
+	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
+	bool RELOAD = args.get<bool>("RELOAD",false);
+	bool CALC_SPEC = args.get<bool>("CALC_SPEC",true);
 	
 	vector<string> specs = args.get_list<string>("specs",{"PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission
 	string specstring = "";
 	int Nspec = specs.size();
 	Green.resize(Nspec);
-	size_t Dlim = args.get<size_t>("Dlim",100ul);
+	size_t Mlim = args.get<size_t>("Mlim",800ul);
 	double dt = args.get<double>("dt",0.025);
-	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
+	double tol_DeltaS = args.get<double>("tol_DeltaS",5e-3);
 	double tmax = args.get<double>("tmax",4.);
 	double tol_compr = args.get<double>("tol_compr",1e-4);
 	int Nt = static_cast<int>(tmax/dt);
@@ -98,45 +106,56 @@ int main (int argc, char* argv[])
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
-	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_U=",U); // Dateiname
-	string base = make_string("L=",L,"_N=",N,"_") + param_base;
-	string tbase = make_string("dt=",dt,"_tolΔS=",tol_DeltaS);
-	model_info += make_string();
-	model_info += (BETAPROP)? make_string("_βmax=",betamax) : "_βmax=inf";
+	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U);
+	if (Uc!=0.) param_base += make_string("_Uc=",Uc);
+	param_base += make_string("_V=",V,"_beta=",beta); // Dateiname
+	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
+	lout << base << endl;
+	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
 	
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
+	
+	//cout << hopping_PAM_T(4,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.) << endl;
+	//cout << endl;
+	//cout << hopping_PAM_T(6,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.) << endl;
+	//assert(1==-1);
 	
 	// Parameter fuer den Grundzustand:
 	DMRG::CONTROL::GLOB GlobParams;
 	GlobParams.min_halfsweeps = args.get<size_t>("min_halfsweeps",4);
 	GlobParams.max_halfsweeps = args.get<size_t>("max_halfsweeps",8);
-	GlobParams.Dinit = args.get<size_t>("Dinit",2ul);
-	GlobParams.Qinit = args.get<size_t>("Qinit",6ul);
+	GlobParams.Minit = args.get<size_t>("Minit",1ul);
+	GlobParams.Qinit = args.get<size_t>("Qinit",1ul);
 	
 	// Parameter des Modells
-	vector<Param> params;
-	if (Ly==1)
-	{
-		// Ungerade Plaetze sollen f-Plaetze mit U sein:
-		params.push_back({"U",0.,0});
-		params.push_back({"U",U,1});
-		
-		// Hopping
-		ArrayXXcd tFull = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,false); // ANCILLA=false
-//		lout << "hopping:" << endl << tFull << endl;
-		params.push_back({"tFull",tFull});
-		
-		params.push_back({"maxPower",2ul}); // hoechste Potenz von H
-	}
+	vector<Param> params_Tfin;
+	// l%4=2 Plaetze sollen f-Plaetze mit U sein:
+	params_Tfin.push_back({"Uph",Uc,0}); // c
+	params_Tfin.push_back({"Uph",0.,1}); // bath(c)
+	params_Tfin.push_back({"Uph",U,2}); // f
+	params_Tfin.push_back({"Uph",0.,3}); // bath(f)
+//	params_Tfin.push_back({"mu",+mu,0}); // c
+//	params_Tfin.push_back({"mu",0.,1}); // bath(c)
+//	params_Tfin.push_back({"mu",+mu,2}); // f
+//	params_Tfin.push_back({"mu",0.,3}); // bath(f)
+	
+	// Hopping
+	ArrayXXcd tFull = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,false); // ANCILLA_HOPPING=false
+	params_Tfin.push_back({"tFull",tFull});
+	params_Tfin.push_back({"maxPower",2ul}); // hoechste Potenz von H
 	
 	// Parameter fuer die t-Propagation mit beta: Rueckpropagation der Badplaetze
 	vector<Param> pparams;
-	pparams.push_back({"U",0.,0});
-	pparams.push_back({"U",U,2});
-	pparams.push_back({"U",0.,1});
-	pparams.push_back({"U",-U,3});
-	ArrayXXcd tFull_ancilla = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.); // ANCILLA=true
+	pparams.push_back({"Uph",+Uc,0}); // c
+	pparams.push_back({"Uph",-Uc,1}); // bath(c)
+	pparams.push_back({"Uph",+U,2}); // f
+	pparams.push_back({"Uph",-U,3}); // bath(f)
+//	pparams.push_back({"mu",+mu,0});
+//	pparams.push_back({"mu",-mu,1});
+//	pparams.push_back({"mu",+mu,2});
+//	pparams.push_back({"mu",-mu,3});
+	ArrayXXcd tFull_ancilla = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.); // ANCILLA_HOPPING=true
 	pparams.push_back({"tFull",tFull_ancilla});
 	pparams.push_back({"maxPower",2ul});
 	
@@ -145,172 +164,25 @@ int main (int argc, char* argv[])
 	lout << endl << "β=0 Entangler " << H_Tinf.info() << endl;
 	
 	// Modell fuer die β-Propagation
-	MODELC H(dLphys*L,params); H.precalc_TwoSiteData();
-	lout << endl << "physical Hamiltonian " << H.info() << endl << endl;
+	MODELC H_Tfin(dLphys*L,params_Tfin); H_Tfin.precalc_TwoSiteData();
+	lout << endl << "physical Hamiltonian " << H_Tfin.info() << endl << endl;
 	
 	// Modell fuer die t-propagation
 	MODELC Hp(dLphys*L,pparams); Hp.precalc_TwoSiteData();
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
-	// DMRG solver
-	MODELC::StateXcd PsiT;
-	Eigenstate<MODEL::StateXd> g;
-	MODEL::Solver DMRG(VERB);
-	DMRG.userSetGlobParam();
-	DMRG.GlobParam = GlobParams;
-	
-	// groundstate beta=0 -> g
-	DMRG.edgeState(H_Tinf, g, MODEL::singlet(2*N), LANCZOS::EDGE::GROUND, false);
-	lout << endl;
-	
-	// Zero hopping may cause problems. Restart until the correct product state is reached.
-	if (Ly==1)
+	SpectralManager<MODELC> SpecMan(specs,Hp);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, base, LOAD_GS, SAVE_GS, VERB);
+	if (CALC_SPEC)
 	{
-		vector<bool> ENTROPY_CHECK;
-		for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
-		bool ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-		
-		while (ALL == false)
+		SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
+		auto itSSF = find(specs.begin(), specs.end(), "SSF");
+		if (itSSF != specs.end())
 		{
-			lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
-			DMRG.edgeState(H_Tinf, g, MODELC::singlet(2*N), LANCZOS::EDGE::GROUND, false);
-			ENTROPY_CHECK.clear();
-			for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
-			for (int l=1; l<2*L-1; l+=2)
-			{
-				bool TEST = abs(g.state.entropy()(l))<1e-10;
-//				lout << "l=" << l << ", S=" << abs(g.state.entropy()(l)) << "\t" << boolalpha << TEST << endl;
-			}
-			ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-//			lout << boolalpha << "ALL=" << ALL << endl;
+			int iz = distance(specs.begin(), itSSF);
+			SpecMan.resize_Green(wd, param_base, 1, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+			SpecMan.set_measurement(iz, "SSF",1.,dLphys, Q, Lcell, 1,"S","wavepacket",false);
 		}
-	}
-	
-	PsiT = g.state.cast<complex<double>>();
-	PsiT.eps_svd = tol_compr_beta;
-	PsiT.min_Nsv = 0ul;
-	PsiT.max_Nsv = 100ul;
-	TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd> TDVPT(H,PsiT);
-	
-	// or propagation of T=inf solution g to finite beta
-	double betaval = 0.;
-	ofstream ThermoFiler(make_string("thermodyn_",base,".dat"));
-	for (int i=0; i<Nbeta; ++i)
-	{
-		Stopwatch<> betaStepper;
-		TDVPT.t_step(H, PsiT, -0.5*dbeta, 1);
-		PsiT /= sqrt(dot(PsiT,PsiT));
-		betaval = (i+1)*dbeta;
-		lout << TDVPT.info() << endl;
-		lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
-		double e = isReal(avg(PsiT,H,PsiT))/L;
-		double C = betaval*betaval*isReal(avg(PsiT,H,PsiT,2)-pow(avg(PsiT,H,PsiT),2))/N;
-		
-		auto PsiTtmp = PsiT; PsiTtmp.entropy_skim();
-		lout << "S=" << PsiTtmp.entropy().transpose() << endl;
-		
-		double Nphys = 0.;
-		for (int i=0; i<dLphys*L; i+=dLphys)
-		{
-			double ni = isReal(avg(PsiT, H.n(i,0), PsiT));
-			double di = isReal(avg(PsiT, H.d(i,0), PsiT));
-			double ns = isReal(avg(PsiT, H.ns(i,0), PsiT));
-			double nh = isReal(avg(PsiT, H.nh(i,0), PsiT));
-			cout << "i=" << i << ", n=" << ni << ", d=" << di << ", ns=" << ns << ", nh=" << nh << endl;
-			Nphys += ni;
-		}
-		double Nancl = 0.;
-		for (int i=dLphys-1; i<dLphys*L; i+=dLphys)
-		{
-			Nancl += isReal(avg(PsiT, H.n(i,dLphys%2), PsiT));
-		}
-		
-		lout << "β=" << betaval << ", T=" << 1./betaval << ", e=" << e << ", C=" << C << ", Nphys=" << Nphys << ", Nancl=" << Nancl << endl;
-		ThermoFiler << 1./betaval << "\t" << C << "\t" << e << endl;
-		lout << betaStepper.info("βstep") << endl;
-		lout << endl;
-	}
-	ThermoFiler.close();
-	
-	PsiT.entropy_skim();
-	lout << "entropy in thermal state: " << PsiT.entropy().transpose() << endl;
-	
-	// =============== GREENSFUNKTION ===============
-	MODELC::StateXcd Phi = PsiT.cast<complex<double>>();
-	Phi.eps_svd = tol_compr_beta;
-	Phi.min_Nsv = 0ul;
-	Phi.max_Nsv = 100ul;
-	
-	// OxV for time propagation
-	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> O(Nspec);
-	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> Odag(Nspec);
-	for (int z=0; z<Nspec; ++z) O[z].resize(L);
-	for (int z=0; z<Nspec; ++z) Odag[z].resize(L);
-	
-	for (int z=0; z<Nspec; ++z)
-	for (int l=0; l<L; ++l)
-	{
-		//O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,Lhetero/2+l,specs[z]);
-		O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H,dLphys*l,specs[z]);
-		double dagfactor;
-		if (specs[z] == "SSF")
-		{
-			dagfactor = sqrt(3);
-		}
-		else if (specs[z] == "PES")
-		{
-			dagfactor = -sqrt(2);
-		}
-		else if (specs[z] == "IPE")
-		{
-			dagfactor = +sqrt(2);
-		}
-		else
-		{
-			dagfactor = 1.;
-		}
-		Odag[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H,dLphys*l,VMPS::DAG(specs[z]),dagfactor);
-	}
-	
-	//---------check---------
-//	lout << endl;
-//	for (int z=0; z<Nspec; ++z)
-//	{
-//		lout << "check z=" << z 
-//			 << ", spec=" << specs[z] << ", dag=" << VMPS::DAG(specs[z]) 
-//			 << ", Phi: " << avg(Phi, Odag[z][L/2], O[z][L/2], Phi) 
-//			 << ", g.state: " << avg(g.state, Odag[z][L/2], O[z][L/2], g.state) 
-//			 << endl;
-//	}
-	
-	vector<vector<MODELC::StateXcd>> OxPhi0(Nspec);
-	for (int z=0; z<Nspec; ++z)
-	{
-		OxPhi0[z].resize(Lcell);
-		for (int i=0; i<Lcell; ++i)
-		{
-			OxV_exact(O[z][L/2+i], Phi, OxPhi0[z][i], 2., DMRG::VERBOSITY::ON_EXIT);
-		}
-	}
-	
-	for (int z=0; z<Nspec; ++z)
-	{
-		string spec = specs[z];
-		Green[z] = GreenPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double> >
-			       (wd+spec+"_"+param_base+"_"+tbase,tmax,Nt,wmin,wmax,wpoints,QR,qpoints,INT);
-		Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
-	}
-	Green[0].set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
-	
-	#pragma omp parallel for
-	for (int z=0; z<Nspec; ++z)
-	{
-		string spec = specs[z];
-		Green[z].set_lim_Nsv(Dlim);
-//		Green[z].set_h_ooura(1e-4);
-		Green[z].set_tol_DeltaS(tol_DeltaS);
-		Green[z].compute_thermal_cell(Hp, Odag[z], Phi, OxPhi0[z], VMPS::TIME_DIR(spec));
-		Green[z].FT_allSites();
-		Green[z].save(false); // IGNORE_CELL=false
+		SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 }
