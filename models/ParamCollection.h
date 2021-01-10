@@ -98,7 +98,7 @@ ArrayXXd hopping_snub (int L=60, double lambda1=1., double lambda2=0.)
 
                 res(13,27) = l1;
                 res(13,28) = l1;
-
+                
                 res(15,29) = l1;
                 res(15,30) = l1;
                 
@@ -191,7 +191,10 @@ ArrayXXd hopping_snub (int L=60, double lambda1=1., double lambda2=0.)
 
                 res(52,59) = l1;
 
+                res(53,55) = l1;
                 res(53,59) = l1;
+
+                res(55,59) = l1;
         }
         res += res.transpose().eval();
         return res;
