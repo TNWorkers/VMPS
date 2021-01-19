@@ -285,45 +285,60 @@ int main (int argc, char* argv[])
 		target.save_vector(n,"n");
 		target.save_vector(d,"d");
 		
-		VectorXd SdagScc(50); SdagScc.setZero();
-		VectorXd SdagSff(50); SdagSff.setZero();
-		VectorXd SdagScf(50); SdagScf.setZero();
-		VectorXd SdagSfc(50); SdagSfc.setZero();
+		VectorXd SdagS_cc(50); SdagS_cc.setZero();
+		VectorXd SdagS_ff(50); SdagS_ff.setZero();
+		VectorXd SdagS_cf(50); SdagS_cf.setZero();
+		VectorXd SdagS_fc(50); SdagS_fc.setZero();
 		VectorXd nn_cc(50); nn_cc.setZero();
 		VectorXd nn_ff(50); nn_ff.setZero();
 		VectorXd nn_cf(50); nn_cf.setZero();
 		VectorXd nn_fc(50); nn_fc.setZero();
-		for (int l=0, i=0; i<50; l+=2, i+=1)
+		
+		double SdagS_loc = isReal(avg(g.state, H.SdagS(0,1), g.state));
+		double nn_loc = isReal(avg(g.state, H.nn(0,1), g.state));
+		lout << "SdagS=" << SdagS_loc << endl;
+		lout << "nn=" << nn_loc << endl;
+		
+		#pragma omp parallel for
+		for (int l=0; l<100; l+=2)
 		{
-			MODEL Haux(l+2+L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+			MODEL Haux(l+2+2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
 			Haux.transform_base(Q,false); // PRINT=false
 			
-			SdagScc(i) = isReal(avg(g.state, Haux.SdagS(0,l+2), g.state));
-			SdagSff(i) = isReal(avg(g.state, Haux.SdagS(1,l+2), g.state));
-			SdagScf(i) = isReal(avg(g.state, Haux.SdagS(0,l+1), g.state));
-			SdagSfc(i) = isReal(avg(g.state, Haux.SdagS(1,l+1), g.state));
+//			cout << "cc: " << 0 << "\t" << l+2 << endl;
+//			cout << "ff: " << 1 << "\t" << l+3 << endl;
+//			cout << "cf: " << 0 << "\t" << l+3 << endl;
+//			cout << "fc: " << 1 << "\t" << l+2 << endl;
+//			cout << endl;
 			
-			nn_cc(i) = isReal(avg(g.state, Haux.nn(0,l+2), g.state));
-			nn_ff(i) = isReal(avg(g.state, Haux.nn(1,l+2), g.state));
-			nn_cf(i) = isReal(avg(g.state, Haux.nn(0,l+1), g.state));
-			nn_fc(i) = isReal(avg(g.state, Haux.nn(1,l+1), g.state));
+			SdagS_cc(l/2) = isReal(avg(g.state, Haux.SdagS(0,l+2), g.state));
+			SdagS_ff(l/2) = isReal(avg(g.state, Haux.SdagS(1,l+3), g.state));
+			SdagS_cf(l/2) = isReal(avg(g.state, Haux.SdagS(0,l+3), g.state));
+			SdagS_fc(l/2) = isReal(avg(g.state, Haux.SdagS(1,l+2), g.state));
+			nn_cc(l/2) = isReal(avg(g.state, Haux.nn(0,l+2), g.state));
+			nn_ff(l/2) = isReal(avg(g.state, Haux.nn(1,l+3), g.state));
+			nn_cf(l/2) = isReal(avg(g.state, Haux.nn(0,l+3), g.state));
+			nn_fc(l/2) = isReal(avg(g.state, Haux.nn(1,l+2), g.state));
 		}
 		
-		lout << "first 10 spin-spin correlations:" << endl;
-		lout << "cc:" << SdagScc.head(10).transpose() << endl;
-		lout << "ff:" << SdagSff.head(10).transpose() << endl;
-		lout << "cf:" << SdagScf.head(10).transpose() << endl;
-		lout << "fc:" << SdagSfc.head(10).transpose() << endl;
+		lout << "first 10 non-local spin-spin correlations:" << endl;
+		lout << "cc:" << SdagS_cc.head(10).transpose() << endl;
+		lout << "ff:" << SdagS_ff.head(10).transpose() << endl;
+		lout << "cf:" << SdagS_cf.head(10).transpose() << endl;
+		lout << "fc:" << SdagS_fc.head(10).transpose() << endl;
 		
-		target.save_vector(SdagScc,"SdagScc");
-		target.save_vector(SdagSff,"SdagSff");
-		target.save_vector(SdagScf,"SdagScf");
-		target.save_vector(SdagSfc,"SdagSfc");
+		target.save_vector(SdagS_cc,"SdagScc");
+		target.save_vector(SdagS_ff,"SdagSff");
+		target.save_vector(SdagS_cf,"SdagScf");
+		target.save_vector(SdagS_fc,"SdagSfc");
 		
-		target.save_vector(SdagScc,"nn_cc");
-		target.save_vector(SdagSff,"nn_ff");
-		target.save_vector(SdagScf,"nn_cf");
-		target.save_vector(SdagSfc,"nn_fc");
+		target.save_vector(nn_cc,"nn_cc");
+		target.save_vector(nn_ff,"nn_ff");
+		target.save_vector(nn_cf,"nn_cf");
+		target.save_vector(nn_fc,"nn_fc");
+		
+		target.save_scalar(SdagS_loc,"SdagS_loc");
+		target.save_scalar(nn_loc,"nn_loc");
 		
 		target.close();
 	}
