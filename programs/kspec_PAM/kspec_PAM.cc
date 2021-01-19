@@ -233,45 +233,6 @@ int main (int argc, char* argv[])
 			lout << "hopping matrix diagonalization: " << e0free << ", VUMPS (should be slightly lower): " << SpecMan.energy() << endl;
 		}
 		
-		HDF5Interface target("obs_"+param_base+make_string("_Lcell=",L)+".h5",WRITE);
-		
-		VectorXd n(L); n.setZero();
-		VectorXd d(L); d.setZero();
-		for (int l=0; l<L; ++l)
-		{
-			n(l) = isReal(avg(SpecMan.ground(), H.n(l), SpecMan.ground()));
-			d(l) = isReal(avg(SpecMan.ground(), H.d(l), SpecMan.ground()));
-			lout << "l=" << l << ", n=" << n(l) << endl;
-			lout << "l=" << l << ", d=" << d(l) << endl;
-		}
-		target.save_vector(n,"n");
-		target.save_vector(d,"d");
-		
-		VectorXd SdagScc(50); SdagScc.setZero();
-		VectorXd SdagSff(50); SdagSff.setZero();
-		VectorXd SdagScf(50); SdagScf.setZero();
-		VectorXd SdagSfc(50); SdagSfc.setZero();
-		for (int l=0, i=0; i<50; l+=2, i+=1)
-		{
-			MODEL Haux(l+2+L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
-			Haux.transform_base(Q,false); // PRINT=false
-			SdagScc(i) = isReal(avg(SpecMan.ground(), Haux.SdagS(0,l+2), SpecMan.ground()));
-			SdagSff(i) = isReal(avg(SpecMan.ground(), Haux.SdagS(1,l+2), SpecMan.ground()));
-			SdagScf(i) = isReal(avg(SpecMan.ground(), Haux.SdagS(0,l+1), SpecMan.ground()));
-			SdagSfc(i) = isReal(avg(SpecMan.ground(), Haux.SdagS(1,l+1), SpecMan.ground()));
-		}
-		lout << "first 10 spin-spin correlations SdagS:" << endl;
-		lout << "cc:" << SdagScc.head(10).transpose() << endl;
-		lout << "ff:" << SdagSff.head(10).transpose() << endl;
-		lout << "cf:" << SdagScf.head(10).transpose() << endl;
-		lout << "fc:" << SdagSfc.head(10).transpose() << endl;
-		target.save_vector(SdagScc,"SdagScc");
-		target.save_vector(SdagSff,"SdagSff");
-		target.save_vector(SdagScf,"SdagScf");
-		target.save_vector(SdagSfc,"SdagSfc");
-		
-		target.close();
-		
 //		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
 		
 		if (specs.size() != 0)

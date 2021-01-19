@@ -61,11 +61,11 @@ int main (int argc, char* argv[])
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nf*nc
-	double tfc = args.get<double>("tfc",0.5); // Hybridisierung fc
+	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",0.5); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
@@ -270,18 +270,61 @@ int main (int argc, char* argv[])
 		
 		lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << endl;
 		
-		// Besetzungszahlen
+		// observables
+		HDF5Interface target("obs_"+param_base+make_string("_Lcell=",L)+".h5",WRITE);
+		
+		VectorXd n(L); n.setZero();
+		VectorXd d(L); d.setZero();
 		for (int l=0; l<L; ++l)
 		{
-			lout << "l=" << l << ", n=" << isReal(avg(g.state, H.n(l), g.state)) << endl;
+			n(l) = isReal(avg(g.state, H.n(l), g.state));
+			d(l) = isReal(avg(g.state, H.d(l), g.state));
+			lout << "l=" << l << ", n=" << n(l) << endl;
+			lout << "l=" << l << ", d=" << d(l) << endl;
 		}
-		// fc Spin-Spin-Korrelationen
-		if (Ly==1)
+		target.save_vector(n,"n");
+		target.save_vector(d,"d");
+		
+		VectorXd SdagScc(50); SdagScc.setZero();
+		VectorXd SdagSff(50); SdagSff.setZero();
+		VectorXd SdagScf(50); SdagScf.setZero();
+		VectorXd SdagSfc(50); SdagSfc.setZero();
+		VectorXd nn_cc(50); nn_cc.setZero();
+		VectorXd nn_ff(50); nn_ff.setZero();
+		VectorXd nn_cf(50); nn_cf.setZero();
+		VectorXd nn_fc(50); nn_fc.setZero();
+		for (int l=0, i=0; i<50; l+=2, i+=1)
 		{
-			for (int l=0; l<L; l=l+2)
-			{
-				lout << "l=" << l << "," << l+1 << ", SdagS=" << isReal(avg(g.state, H.SdagS(l,l+1), g.state)) << endl;
-			}
+			MODEL Haux(l+2+L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+			Haux.transform_base(Q,false); // PRINT=false
+			
+			SdagScc(i) = isReal(avg(g.state, Haux.SdagS(0,l+2), g.state));
+			SdagSff(i) = isReal(avg(g.state, Haux.SdagS(1,l+2), g.state));
+			SdagScf(i) = isReal(avg(g.state, Haux.SdagS(0,l+1), g.state));
+			SdagSfc(i) = isReal(avg(g.state, Haux.SdagS(1,l+1), g.state));
+			
+			nn_cc(i) = isReal(avg(g.state, Haux.nn(0,l+2), g.state));
+			nn_ff(i) = isReal(avg(g.state, Haux.nn(1,l+2), g.state));
+			nn_cf(i) = isReal(avg(g.state, Haux.nn(0,l+1), g.state));
+			nn_fc(i) = isReal(avg(g.state, Haux.nn(1,l+1), g.state));
 		}
+		
+		lout << "first 10 spin-spin correlations:" << endl;
+		lout << "cc:" << SdagScc.head(10).transpose() << endl;
+		lout << "ff:" << SdagSff.head(10).transpose() << endl;
+		lout << "cf:" << SdagScf.head(10).transpose() << endl;
+		lout << "fc:" << SdagSfc.head(10).transpose() << endl;
+		
+		target.save_vector(SdagScc,"SdagScc");
+		target.save_vector(SdagSff,"SdagSff");
+		target.save_vector(SdagScf,"SdagScf");
+		target.save_vector(SdagSfc,"SdagSfc");
+		
+		target.save_vector(SdagScc,"nn_cc");
+		target.save_vector(SdagSff,"nn_ff");
+		target.save_vector(SdagScf,"nn_cf");
+		target.save_vector(SdagSfc,"nn_fc");
+		
+		target.close();
 	}
 }
