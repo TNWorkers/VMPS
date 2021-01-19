@@ -77,6 +77,7 @@ int main (int argc, char* argv[])
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	bool RELOAD = args.get<bool>("RELOAD",false);
 	bool CALC_SPEC = args.get<bool>("CALC_SPEC",true);
+	bool TEST_GS = args.get<bool>("TEST_GS",false);
 	
 	vector<string> specs = args.get_list<string>("specs",{"PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission
 	string specstring = "";
@@ -170,6 +171,23 @@ int main (int argc, char* argv[])
 	// Modell fuer die t-propagation
 	MODELC Hp(dLphys*L,pparams); Hp.precalc_TwoSiteData();
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
+	
+	if (TEST_GS)
+	{
+		vector<Param> paramsT0;
+		paramsT0.push_back({"Uph",+Uc,0}); // c
+		paramsT0.push_back({"Uph",+U,1}); // f
+		ArrayXXcd tFullT0 = hopping_PAM(L/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
+		paramsT0.push_back({"tFull",tFullT0});
+		paramsT0.push_back({"maxPower",2ul});
+		cout << tFullT0.rows() << "x" << tFullT0.cols() << endl;
+		MODELC HT0(L,paramsT0); HT0.precalc_TwoSiteData();
+		Eigenstate<MODEL::StateXcd> gT0;
+		MODELC::Solver DMRG(VERB);
+		DMRG.userSetGlobParam();
+		DMRG.GlobParam = GlobParams;
+		DMRG.edgeState(HT0, gT0, MODELC::singlet(N), LANCZOS::EDGE::GROUND);
+	}
 	
 	SpectralManager<MODELC> SpecMan(specs,Hp);
 	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, base, LOAD_GS, SAVE_GS, VERB);

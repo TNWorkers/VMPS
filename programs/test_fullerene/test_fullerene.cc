@@ -173,6 +173,39 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 //	lout << "scale test: " << avg(Psi.state,HmE,Psi.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
 }
 
+map<string,int> make_Lmap()
+{
+	map<string,int> m;
+	//
+	m["CHAIN"] = 0; // chain
+	m["RING"] = 0; // ring
+	// Platonic solids:
+	m["P04"] = 4; // tetrahedron
+	m["P06"] = 6; // octahedron
+	m["P08"] = 8; // cube
+	m["P12"] = 12; // icosahedron
+	m["P20"] = 20; // dodecahedron
+	// Fullerenes:
+	m["C20"] = 20; // dodecahedron
+	m["C24"] = 24;
+	m["C26"] = 26;
+	m["C30"] = 30;
+	m["C40"] = 40;
+	m["C60"] = 60;
+	// Archimedean solids:
+	m["TTH"] = 12; // truncated tetrahedron: NOT IMPLEMENTED
+	m["COH"] = 12; // cuboctahedron: NOT IMPLEMENTED
+	m["TOH"] = 24; // truncated octahedron: NOT IMPLEMENTED
+	m["IDD"] = 30; // icosidodecahedron
+	m["SDD"] = 60; // snub dodecahedron: NOT IMPLEMENTED
+	// sodalite cages:
+	m["SOD15"] = 15;
+	m["SOD32"] = 32;
+	m["SOD50"] = 50;
+	m["SOD60"] = 60;
+	return m;
+}
+
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
@@ -187,6 +220,10 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
+	string MOL = args.get<string>("MOL","C60");
+	int VARIANT = args.get<int>("VARIANT",0);
+	map<string,int> Lmap = make_Lmap();
+	if (MOL!="LIN" and MOL!="CRC") L = Lmap[MOL]; // for linear chain, include chain length using -L
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
@@ -258,9 +295,6 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	bool ICOSIDODECA = args.get<int>("ICOSIDODECA",false);
-	int VARIANT = args.get<int>("VARIANT",0);
-	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
 	{
@@ -270,10 +304,7 @@ int main (int argc, char* argv[])
 	{
 		base = make_string("L=",L,"_D=",D,"_S=",S);
 	}
-	if (ICOSIDODECA)
-	{
-		base += make_string("_molecule=3.5.3.5");
-	}
+	base += make_string("_MOL=",MOL);
 	if (CALC_DOS)
 	{
 		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
@@ -287,17 +318,6 @@ int main (int argc, char* argv[])
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
-	// glob. params
-	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
-	GlobParam.Minit = args.get<size_t>("Minit",2ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
-	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
-	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
-	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
-	
 	lout.set(base+".log",wd+"log");
 	
 	// dyn. params
@@ -308,23 +328,34 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",50ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",200ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
 	size_t end_2site = args.get<size_t>("end_2site",30ul);
 	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
+	double eps_svd = args.get<double>("eps_svd",1e-10);
+	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
+	
+	// glob. params
+	DMRG::CONTROL::GLOB GlobParam;
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+4ul);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
+	GlobParam.Minit = args.get<size_t>("Minit",2ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
+	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
+	GlobParam.CALC_S_ON_EXIT = false;
+	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
+	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
+	
+	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
 	size_t end_alpha = args.get<size_t>("end_alpha",0.8*GlobParam.max_halfsweeps);
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
-	
-	double eps_svd = args.get<double>("eps_svd",1e-10);
-	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
-	
-	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
-	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
@@ -335,20 +366,34 @@ int main (int argc, char* argv[])
 	#endif
 	
 	ArrayXXd hopping;
-	if (L!=12 and L!=20 and L!=24 and L!=26 and L!=30 and L!=40 and L!=60)
+	if (MOL=="RING")
 	{
 		hopping = J*create_1D_PBC(L); // Heisenberg ring for testing
 	}
+	else if (MOL=="CHAIN")
+	{
+		hopping = J*create_1D_OBC(L); // Heisenberg chain for testing
+	}
+	else if (MOL.at(0) == 'P')
+	{
+		hopping = J*hopping_Platonic(L,VARIANT);
+	}
+	else if (MOL=="IDD")
+	{
+		hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
+	}
+	else if (MOL.substr(0,3) == "SOD")
+	{
+		hopping = J*hopping_sodaliteCage(L,VARIANT);
+	}
+	else if (MOL.at(0)=='C')
+	{
+		hopping = J*hopping_fullerene(L,VARIANT);
+	}
 	else
 	{
-		if (ICOSIDODECA)
-		{
-			hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
-		}
-		else
-		{
-			hopping = J*hopping_fullerene(L,VARIANT);
-		}
+		lout << "Unknown molecule!" << endl;
+		throw;
 	}
 	
 	bool PERMUTE = args.get<int>("PERMUTE",false);
@@ -433,10 +478,42 @@ int main (int argc, char* argv[])
 //			}
 			
 			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
+			
+//			// test excited S=1
+//			MODEL::Solver DMRG2(VERB);
+//			DMRG2.Epenalty = Epenalty;
+//			DMRG2.userSetGlobParam();
+//			DMRG2.userSetDynParam();
+//			GlobParam.min_halfsweeps = 16ul;
+//			GlobParam.max_halfsweeps = 20ul;
+//			DMRG2.GlobParam = GlobParam;
+//			DMRG2.DynParam = DynParam;
+//			DMRG2.push_back(g.state);
+//			excited1.state = g.state;
+//			excited1.state.setRandom();
+//			excited1.state.sweep(0,DMRG::BROOM::QR);
+//			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+//			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
 		}
 		else
 		{
 			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+			
+//			// test excited S=1
+//			MODEL::Solver DMRG2(VERB);
+//			DMRG2.Epenalty = Epenalty;
+//			DMRG2.userSetGlobParam();
+//			DMRG2.userSetDynParam();
+//			GlobParam.min_halfsweeps = 16ul;
+//			GlobParam.max_halfsweeps = 20ul;
+//			DMRG2.GlobParam = GlobParam;
+//			DMRG2.DynParam = DynParam;
+//			DMRG2.push_back(g.state);
+//			excited1.state = g.state;
+//			excited1.state.setRandom();
+//			excited1.state.sweep(0,DMRG::BROOM::QR);
+//			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+//			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
 		}
 		
 		if (LOAD2!="")
