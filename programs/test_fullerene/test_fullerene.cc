@@ -197,7 +197,7 @@ map<string,int> make_Lmap()
 	m["COH"] = 12; // cuboctahedron: NOT IMPLEMENTED
 	m["TOH"] = 24; // truncated octahedron: NOT IMPLEMENTED
 	m["IDD"] = 30; // icosidodecahedron
-	m["SDD"] = 60; // snub dodecahedron: NOT IMPLEMENTED
+	m["SDD"] = 60; // snub dodecahedron
 	// sodalite cages:
 	m["SOD15"] = 15;
 	m["SOD32"] = 32;
@@ -381,6 +381,10 @@ int main (int argc, char* argv[])
 	else if (MOL=="IDD")
 	{
 		hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
+	}
+	else if (MOL=="SDD")
+	{
+		hopping = J*hopping_Archimedean("3^4.5",VARIANT);
 	}
 	else if (MOL.substr(0,3) == "SOD")
 	{

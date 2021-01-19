@@ -49,158 +49,6 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	}
 }
 
-ArrayXXd hopping_snub (int L=60, double lambda1=1., double lambda2=0.)
-{
-        ArrayXXd res(L,L); res.setZero();
-        double l1 = lambda1;
-        if (L==60)
-        {
-                for (int i=0; i<=58; ++i) res(i,i+1) = l1;
-                res( 0, 4) = l1;
-                res( 0, 6) = l1;
-                res( 0, 7) = l1;
-                res( 0, 8) = l1;
-                
-                res( 1, 8) = l1;
-                res( 1, 9) = l1;
-                res( 1,10) = l1;
-                
-                res( 2,10) = l1;
-                res( 2,11) = l1;
-                res( 2,12) = l1;
-                
-                res( 3,12) = l1;
-                res( 3,13) = l1;
-                res( 3,14) = l1;
-                
-                res( 4, 6) = l1;
-                res( 4,14) = l1;
-                
-                res( 5,14) = l1;
-                res( 5,15) = l1;
-                res( 5,16) = l1;
-                
-                res( 6,18) = l1;
-                
-                res( 7,18) = l1;
-                res( 7,19) = l1;
-                
-                res( 8,21) = l1;
-                
-                res( 9,21) = l1;
-                res( 9,22) = l1;
-                
-                res(10,24) = l1;
-                
-                res(11,24) = l1;
-                res(11,25) = l1;
-                
-                res(12,27) = l1;
-
-                res(13,27) = l1;
-                res(13,28) = l1;
-                
-                res(15,29) = l1;
-                res(15,30) = l1;
-                
-                res(16,30) = l1;
-                res(16,31) = l1;
-
-                res(17,31) = l1;
-                res(17,32) = l1;
-                res(17,33) = l1;
-
-                res(18,33) = l1;
-
-                res(19,33) = l1;
-                res(19,34) = l1;
-
-                res(20,34) = l1;
-                res(20,35) = l1;
-                res(20,36) = l1;
-
-                res(21,36) = l1;
-
-                res(22,36) = l1;
-                res(22,37) = l1;
-
-                res(23,37) = l1;
-                res(23,38) = l1;
-                res(23,39) = l1;
-
-                res(24,39) = l1;
-
-                res(25,39) = l1;
-                res(25,40) = l1;
-
-                res(26,40) = l1;
-                res(26,41) = l1;
-                res(26,42) = l1;
-
-                res(27,42) = l1;
-
-                res(28,42) = l1;
-                res(28,43) = l1;
-
-                res(29,43) = l1;
-                res(29,44) = l1;
-
-                res(30,44) = l1;
-
-                res(31,46) = l1;
-
-                res(32,46) = l1;
-                res(32,47) = l1;
-
-                res(34,48) = l1;
-
-                res(35,48) = l1;
-                res(35,49) = l1;
-
-                res(37,50) = l1;
-
-                res(38,50) = l1;
-                res(38,51) = l1;
-
-                res(40,52) = l1;
-
-                res(41,52) = l1;
-                res(41,53) = l1;
-
-                res(43,54) = l1;
-
-                res(44,54) = l1;
-
-                res(45,54) = l1;
-                res(45,55) = l1;
-                res(45,56) = l1;
-
-                res(46,56) = l1;
-
-                res(47,56) = l1;
-                res(47,57) = l1;
-
-                res(48,57) = l1;
-
-                res(49,57) = l1;
-                res(49,58) = l1;
-
-                res(50,58) = l1;
-
-                res(51,58) = l1;
-                res(51,59) = l1;
-
-                res(52,59) = l1;
-
-                res(53,55) = l1;
-                res(53,59) = l1;
-
-                res(55,59) = l1;
-        }
-        res += res.transpose().eval();
-        return res;
-}
-
 ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1.)
 {
 	ArrayXXd res;
@@ -210,7 +58,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		int L=30;
 		res.resize(L,L); res.setZero();
 		
-		if (VARIANT==0) // my naive counting
+		if (VARIANT==1) // my naive counting
 		{
 			res(0,1) = lambda1;
 			res(1,2) = lambda1;
@@ -279,7 +127,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 			res(28,29) = lambda1;
 			res(25,29) = lambda1;
 		}
-		else if (VARIANT==1) // According to Exler, Schnack (2003)
+		else if (VARIANT==2) // According to Exler, Schnack (2003)
 		{
 			res(1-1,3-1) = lambda1;
 			res(1-1,4-1) = lambda1;
@@ -370,12 +218,162 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 			res(28-1,29-1) = lambda1;
 		}
 	}
-        else if (vertex_conf == "3.3.3.3.5") // icosidodecahedron
-        {
-                return hopping_snub(60, lambda1);
-        }
+	else if (vertex_conf == "3^4.5") // snub dodecahedron
+	{
+		int L=60;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=58; ++i) res(i,i+1) = lambda1;
+		
+		res( 0, 4) = lambda1;
+		res( 0, 6) = lambda1;
+		res( 0, 7) = lambda1;
+		res( 0, 8) = lambda1;
+		
+		res( 1, 8) = lambda1;
+		res( 1, 9) = lambda1;
+		res( 1,10) = lambda1;
+		
+		res( 2,10) = lambda1;
+		res( 2,11) = lambda1;
+		res( 2,12) = lambda1;
+		
+		res( 3,12) = lambda1;
+		res( 3,13) = lambda1;
+		res( 3,14) = lambda1;
+		
+		res( 4, 6) = lambda1;
+		res( 4,14) = lambda1;
+		
+		res( 5,14) = lambda1;
+		res( 5,15) = lambda1;
+		res( 5,16) = lambda1;
+		
+		res( 6,18) = lambda1;
+		
+		res( 7,18) = lambda1;
+		res( 7,19) = lambda1;
+		
+		res( 8,21) = lambda1;
+		
+		res( 9,21) = lambda1;
+		res( 9,22) = lambda1;
+		
+		res(10,24) = lambda1;
+		
+		res(11,24) = lambda1;
+		res(11,25) = lambda1;
+		
+		res(12,27) = lambda1;
+		
+		res(13,27) = lambda1;
+		res(13,28) = lambda1;
+		
+		res(15,29) = lambda1;
+		res(15,30) = lambda1;
+		
+		res(16,30) = lambda1;
+		res(16,31) = lambda1;
+		
+		res(17,31) = lambda1;
+		res(17,32) = lambda1;
+		res(17,33) = lambda1;
+		
+		res(18,33) = lambda1;
+		
+		res(19,33) = lambda1;
+		res(19,34) = lambda1;
+		
+		res(20,34) = lambda1;
+		res(20,35) = lambda1;
+		res(20,36) = lambda1;
+		
+		res(21,36) = lambda1;
+		
+		res(22,36) = lambda1;
+		res(22,37) = lambda1;
+		
+		res(23,37) = lambda1;
+		res(23,38) = lambda1;
+		res(23,39) = lambda1;
+		
+		res(24,39) = lambda1;
+		
+		res(25,39) = lambda1;
+		res(25,40) = lambda1;
+		
+		res(26,40) = lambda1;
+		res(26,41) = lambda1;
+		res(26,42) = lambda1;
+		
+		res(27,42) = lambda1;
+		
+		res(28,42) = lambda1;
+		res(28,43) = lambda1;
+		
+		res(29,43) = lambda1;
+		res(29,44) = lambda1;
+		
+		res(30,44) = lambda1;
+		
+		res(31,46) = lambda1;
+		
+		res(32,46) = lambda1;
+		res(32,47) = lambda1;
+		
+		res(34,48) = lambda1;
+		
+		res(35,48) = lambda1;
+		res(35,49) = lambda1;
+		
+		res(37,50) = lambda1;
+		
+		res(38,50) = lambda1;
+		res(38,51) = lambda1;
+		
+		res(40,52) = lambda1;
+		
+		res(41,52) = lambda1;
+		res(41,53) = lambda1;
+		
+		res(43,54) = lambda1;
+		
+		res(44,54) = lambda1;
+		
+		res(45,54) = lambda1;
+		res(45,55) = lambda1;
+		res(45,56) = lambda1;
+		
+		res(46,56) = lambda1;
+		
+		res(47,56) = lambda1;
+		res(47,57) = lambda1;
+		
+		res(48,57) = lambda1;
+		
+		res(49,57) = lambda1;
+		res(49,58) = lambda1;
+		
+		res(50,58) = lambda1;
+		
+		res(51,58) = lambda1;
+		res(51,59) = lambda1;
+		
+		res(52,59) = lambda1;
+		
+		res(53,55) = lambda1;
+		res(53,59) = lambda1;
+		
+		res(55,59) = lambda1;
+	}
 	
 	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		auto res_ = compress_CuthillMcKee(res);
+		res = res_;
+	}
 	
 	return res;
 }
