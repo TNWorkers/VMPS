@@ -302,7 +302,10 @@ int main (int argc, char* argv[])
 		#pragma omp parallel for
 		for (int l=0; l<100; l+=2)
 		{
-			MODEL Haux(l+2+2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+			int Laux=0;
+			while (Laux<l+3) Laux += L;
+//			cout << "l=" << l << ", Laux=" << Laux << endl;
+			MODEL Haux(Laux, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
 			Haux.transform_base(Q,false); // PRINT=false
 			
 //			cout << "cc: " << 0 << "\t" << l+2 << endl;

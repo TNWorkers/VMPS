@@ -1299,6 +1299,27 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	
 	bool MESSAGE_ALPHA = false;
 	
+	//----<increase before first sweep, useful when state is loaded>----
+	if (DynParam.Mincr_per(0) == 0)
+	{
+		// increase by Mincr_abs for small Mmax and by Mincr_rel for large Mmax(e.g. add 10% of current Mmax)
+		size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Mincr_rel(0) * Vout.state.max_Nsv), 
+		                                             Vout.state.max_Nsv + DynParam.Mincr_abs(0));
+		// do not increase beyond Mlimit
+		Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Mlimit);
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			if (Vout.state.max_Nsv != Mmax_old)
+			{
+				lout << "Mmax=" << Mmax_old << "→" << Vout.state.max_Nsv << endl;
+				Mmax_old = Vout.state.max_Nsv;
+			}
+			lout << endl;
+		}
+	}
+	//----</increase before first sweep, useful when state is loaded>----
+	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{

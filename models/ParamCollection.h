@@ -366,6 +366,63 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		
 		res(55,59) = lambda1;
 	}
+	else if (vertex_conf == "4.6^2") // truncated octahedron
+	{
+		int L=24;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=4; ++i) res(i,i+1) = lambda1;
+		res(0,5) = lambda1;
+		
+		res(5,6) = lambda1;
+		res(0,9) = lambda1;
+		res(1,10) = lambda1;
+		res(2,13) = lambda1;
+		res(3,14) = lambda1;
+		res(4,17) = lambda1;
+		
+		for (int i=6; i<=16; ++i) res(i,i+1) = lambda1;
+		res(6,17) = lambda1;
+		
+		res(7,19) = lambda1;
+		res(8,20) = lambda1;
+		res(11,21) = lambda1;
+		res(12,22) = lambda1;
+		res(15,23) = lambda1;
+		res(16,18) = lambda1;
+		
+		for (int i=18; i<=22; ++i) res(i,i+1) = lambda1;
+		res(18,23) = lambda1;
+	}
+	else if (vertex_conf == "3.4.3.4") // cuboctahedron
+	{
+		int L=12;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=2; ++i) res(i,i+1) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(0,4) = lambda1;
+		res(3,4) = lambda1;
+		res(0,5) = lambda1;
+		res(1,5) = lambda1;
+		res(1,6) = lambda1;
+		res(2,6) = lambda1;
+		res(2,7) = lambda1;
+		res(3,7) = lambda1;
+		
+		res(4,8) = lambda1;
+		res(7,8) = lambda1;
+		res(4,9) = lambda1;
+		res(5,9) = lambda1;
+		res(5,10) = lambda1;
+		res(6,10) = lambda1;
+		res(6,11) = lambda1;
+		res(7,11) = lambda1;
+		
+		for (int i=8; i<=10; ++i) res(i,i+1) = lambda1;
+		res(8,11) = lambda1;
+	}
 	
 	res += res.transpose().eval();
 	
@@ -887,6 +944,8 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 {
 	std::vector<std::pair<std::size_t, std::size_t>> edges;
 	
+	ArrayXXd res(L,L); res.setZero();
+	
 	if (L==60)
 	{
 		if (VARIANT==0)
@@ -952,8 +1011,18 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 			add_tetrahedron(47,48,49,59,edges); // dmax=12
 		}
 	}
-	
-	ArrayXXd res(L,L); res.setZero();
+	else if (L==20)
+	{
+		add_tetrahedron(0,3,4,12,edges);
+		add_tetrahedron(0,1,5,13,edges);
+		add_tetrahedron(1,2,6,14,edges);
+		add_tetrahedron(2,3,7,15,edges);
+		
+		add_tetrahedron(4,8,9,16,edges);
+		add_tetrahedron(5,9,10,17,edges);
+		add_tetrahedron(6,10,11,18,edges);
+		add_tetrahedron(7,8,11,19,edges);
+	}
 	
 	for (int e=0; e<edges.size(); ++e)
 	{
@@ -963,6 +1032,11 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 	}
 	
 	res += res.transpose().eval();
+	
+	if (L==20 and VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
 	
 	return res;
 }

@@ -194,15 +194,16 @@ map<string,int> make_Lmap()
 	m["C60"] = 60;
 	// Archimedean solids:
 	m["TTH"] = 12; // truncated tetrahedron: NOT IMPLEMENTED
-	m["COH"] = 12; // cuboctahedron: NOT IMPLEMENTED
-	m["TOH"] = 24; // truncated octahedron: NOT IMPLEMENTED
+	m["COH"] = 12; // cuboctahedron
+	m["TOH"] = 24; // truncated octahedron
 	m["IDD"] = 30; // icosidodecahedron
 	m["SDD"] = 60; // snub dodecahedron
 	// sodalite cages:
 	m["SOD15"] = 15;
+	m["SOD20"] = 20; // cuboctahedron decorated with P04
 	m["SOD32"] = 32;
-	m["SOD50"] = 50;
-	m["SOD60"] = 60;
+	m["SOD50"] = 50; // icosidodecahedron decorated with P04
+	m["SOD60"] = 60; // rectified truncated octahedron decorated with P04
 	return m;
 }
 
@@ -326,7 +327,7 @@ int main (int argc, char* argv[])
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
-	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
+	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
 	size_t Mincr_abs = args.get<size_t>("Mincr_abs",200ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
@@ -341,7 +342,7 @@ int main (int argc, char* argv[])
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+4ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+Mincr_per);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
 	GlobParam.Minit = args.get<size_t>("Minit",2ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
@@ -353,7 +354,7 @@ int main (int argc, char* argv[])
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
-	size_t end_alpha = args.get<size_t>("end_alpha",0.8*GlobParam.max_halfsweeps);
+	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per);
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	
@@ -377,6 +378,14 @@ int main (int argc, char* argv[])
 	else if (MOL.at(0) == 'P')
 	{
 		hopping = J*hopping_Platonic(L,VARIANT);
+	}
+	else if (MOL=="TOH")
+	{
+		hopping = J*hopping_Archimedean("4.6^2",VARIANT);
+	}
+	else if (MOL=="COH")
+	{
+		hopping = J*hopping_Archimedean("3.4.3.4",VARIANT);
 	}
 	else if (MOL=="IDD")
 	{
