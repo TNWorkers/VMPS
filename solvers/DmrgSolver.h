@@ -365,6 +365,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		Vout.state.max_Nsv = Vout.state.calc_Mmax();
 		Mmax_old = Vout.state.max_Nsv;
+//		cout << termcolor::blue << "Vout.state.max_Nsv=" << Vout.state.max_Nsv << ", Mmax_old=" << Mmax_old << termcolor::reset << endl;
 	}
 	
 //	Vout.state.graph("ginit");

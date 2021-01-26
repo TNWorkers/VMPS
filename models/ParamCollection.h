@@ -1,6 +1,8 @@
 #ifndef PARAMCOLLECTION
 #define PARAMCOLLECTION
 
+#include <set>
+
 #include "ParamHandler.h"
 #include "CuthillMcKeeCompressor.h" // from ALGS
 
