@@ -35,6 +35,10 @@ typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
 #include "DmrgLinearAlgebra.h"
 #include "solvers/SpectralManager.h"
 
+#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
+#include "InterpolGSL.h"
+#include "IntervalIterator.h"
+
 vector<GreenPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>>> Green;
 
 int main (int argc, char* argv[])
@@ -61,7 +65,7 @@ int main (int argc, char* argv[])
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
 	double Uc = args.get<double>("Uc",0.); // U auf den c-Plaetzen
-	double mu = args.get<double>("mu",0.5*U); // U auf den f-Plaetzen
+//	double mu = args.get<double>("mu",0.5*U); // chem. Potential
 	double V = args.get<double>("V",0.); // V*nc*nf
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
@@ -189,18 +193,22 @@ int main (int argc, char* argv[])
 		DMRG.edgeState(HT0, gT0, MODELC::singlet(N), LANCZOS::EDGE::GROUND);
 	}
 	
-	SpectralManager<MODELC> SpecMan(specs,Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, base, LOAD_GS, SAVE_GS, VERB);
-	if (CALC_SPEC)
+	else
 	{
-		SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
-		auto itSSF = find(specs.begin(), specs.end(), "SSF");
-		if (itSSF != specs.end())
+		SpectralManager<MODELC> SpecMan(specs,Hp);
+		SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, base, LOAD_GS, SAVE_GS, VERB);
+		
+		if (CALC_SPEC)
 		{
-			int iz = distance(specs.begin(), itSSF);
-			SpecMan.resize_Green(wd, param_base, 1, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
-			SpecMan.set_measurement(iz, "SSF",1.,dLphys, Q, Lcell, 1,"S","wavepacket",false);
+			SpecMan.apply_operators_on_thermal_state(Lcell,dLphys);
+			auto itSSF = find(specs.begin(), specs.end(), "SSF");
+			if (itSSF != specs.end())
+			{
+				int iz = distance(specs.begin(), itSSF);
+				SpecMan.resize_Green(wd, param_base, 1, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+				SpecMan.set_measurement(iz, "SSF",1.,dLphys, Q, Lcell, 1,"S","wavepacket",false);
+			}
+			SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 		}
-		SpecMan.compute_thermal(wd, param_base, dLphys, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 }

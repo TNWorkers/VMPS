@@ -777,7 +777,7 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		
 //		cout << "sqnormVin=" << overlapsVin.sum() << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(overlapsVinSum-Vout.squaredNorm());
-		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)

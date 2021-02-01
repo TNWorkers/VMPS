@@ -46,6 +46,7 @@ public:
 	
 	const Umps<Symmetry,Scalar> &ground() const {return g.state;};
 	const double &energy() const {return g.energy;};
+	const Mps<Symmetry,Scalar> &get_PhiT() const {return PhiT;};
 	
 	void make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, int Ns, 
 	               double tmax, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 

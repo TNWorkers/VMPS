@@ -425,12 +425,41 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		for (int i=8; i<=10; ++i) res(i,i+1) = lambda1;
 		res(8,11) = lambda1;
 	}
+	else if (vertex_conf == "3.6^2") // truncated tetrahedron = C12
+	{
+		int L=12;
+		res.resize(L,L); res.setZero();
+		
+		res(0,1) = lambda1;
+		res(1,4) = lambda1;
+		res(4,8) = lambda1;
+		res(5,8) = lambda1;
+		res(2,5) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(0,3) = lambda1;
+		res(1,3) = lambda1;
+		
+		res(4,9) = lambda1;
+		res(8,9) = lambda1;
+		
+		res(5,6) = lambda1;
+		res(2,6) = lambda1;
+		
+		res(3,7) = lambda1;
+		res(6,10) = lambda1;
+		res(9,11) = lambda1;
+		
+		res(7,10) = lambda1;
+		res(10,11) = lambda1;
+		res(7,11) = lambda1;
+	}
 	
 	res += res.transpose().eval();
 	
 	if (VARIANT==0)
 	{
-		auto res_ = compress_CuthillMcKee(res);
+		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
 	}
 	
@@ -815,12 +844,16 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=18; i<=22; ++i) res(i,i+1) = lambda1;
 		res(18,23) = lambda1;
 	}
+	else if (L==12)
+	{
+		return hopping_Archimedean("3.6^2",VARIANT,lambda1);
+	}
 	
 	res += res.transpose().eval();
 	
 	if (VARIANT==0)
 	{
-		auto res_ = compress_CuthillMcKee(res);
+		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
 	}
 	
@@ -915,11 +948,12 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 	
 	res += res.transpose().eval();
 	
-	if (VARIANT==0)
-	{
-		auto res_ = compress_CuthillMcKee(res);
-		res = res_;
-	}
+	// not required for small Platonic solids
+//	if (VARIANT==0)
+//	{
+//		auto res_ = compress_CuthillMcKee(res);
+//		res = res_;
+//	}
 	
 	return res;
 }
@@ -1177,7 +1211,7 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 //		
 ////		if (jx==0 and jy==0)
 ////		{
-////			cout << ix << ", " << iy << " -> index=" << index_i << endl;
+////			cout << ix << ", " << iy << " → index=" << index_i << endl;
 ////		}
 //		
 //		if (abs(ix-jx) == 1 and (iy==jy))

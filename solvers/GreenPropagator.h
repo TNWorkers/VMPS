@@ -552,8 +552,8 @@ private:
 	void propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	void counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	
-	void propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
-	                        Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
+//	void propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+//	                        Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
 	void propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
 	                             vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS);
 	

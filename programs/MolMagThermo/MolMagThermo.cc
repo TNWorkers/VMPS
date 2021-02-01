@@ -95,7 +95,7 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	{
 		ofstream SFiler(make_string(wd,"S_",base,".dat"));
 		SFiler << "#" << Psi.info() << endl;
-//		#pragma omp parallel for
+		#pragma omp parallel for
 		for (int l=0; l<L; ++l)
 		{
 			double res = 0;
@@ -108,7 +108,7 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 				res = avg(Psi, H.Sz(l), Psi) / sqrt(S*(S+1.));
 			}
 			#endif
-//			#pragma omp critical
+			#pragma omp critical
 			{
 				SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
 				lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
@@ -131,14 +131,14 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 		
 		vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
 		
-//		#pragma omp parallel for
+		#pragma omp parallel for
 		for (int k=0; k<indices.size(); ++k)
 		{
 			int i = indices[k].first;
 			int j = indices[k].second;
 			double val = avg(Psi, H.SdagS(i,j), Psi);
 			
-//			#pragma omp critical
+			#pragma omp critical
 			{
 				lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
 				CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
@@ -154,23 +154,35 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	CorrFilerAll.close();
 }
 
-void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L)
+void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L, string base, string wd, string label)
 {
+	ofstream VarFiler(make_string(wd,"var_",base,".dat"));
+	lout << label << ":" << endl;
+	VarFiler << "#" << label << endl;
+	VarFiler << "#" << Psi.state.info() << endl;
+	
 	Stopwatch<> Timer;
 	lout << endl;
 	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
 	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
+	VarFiler << setprecision(16) << "E=" << E << setprecision(6) << endl;
 	lout << Timer.info("E") << endl;
+	VarFiler << Timer.info("E") << endl;
 	
 	if (maxPower == 1)
 	{
-		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L << setprecision(6) << endl;
+		double var = abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L;
+		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	else
 	{
-		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L << setprecision(6) << endl;
+		double var = abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L;
+		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	lout << Timer.info("varE") << endl;
+	VarFiler.close();
 	
 //	auto HmE = H;
 //	double factor = args.get<double>("factor",1.);
@@ -192,6 +204,7 @@ map<string,int> make_Lmap()
 	m["P12"] = 12; // icosahedron
 	m["P20"] = 20; // dodecahedron
 	// Fullerenes:
+	m["C12"] = 12; // =truncated tetrahedron ATT
 	m["C20"] = 20; // =dodecahedron P20
 	m["C24"] = 24;
 	m["C26"] = 26;
@@ -199,17 +212,30 @@ map<string,int> make_Lmap()
 	m["C40"] = 40;
 	m["C60"] = 60;
 	// Archimedean solids:
-	m["TTH"] = 12; // truncated tetrahedron: NOT IMPLEMENTED
-	m["COH"] = 12; // cuboctahedron
-	m["TOH"] = 24; // truncated octahedron
-	m["IDD"] = 30; // icosidodecahedron
-	m["SDD"] = 60; // snub dodecahedron
+	m["ATT"] = 12; // truncated tetrahedron
+	m["ACO"] = 12; // cuboctahedron
+	m["ATO"] = 24; // truncated octahedron
+	m["AID"] = 30; // icosidodecahedron
+	m["ASD"] = 60; // snub dodecahedron
 	// sodalite cages:
 	m["SOD15"] = 15; // NOT IMPLEMENTED
 	m["SOD20"] = 20; // cuboctahedron decorated with P04
 	m["SOD32"] = 32; // NOT IMPLEMENTED
 	m["SOD50"] = 50; // icosidodecahedron decorated with P04
 	m["SOD60"] = 60; // rectified truncated octahedron decorated with P04
+	return m;
+}
+
+map<string,string> make_vertexMap()
+{
+	map<string,string> m;
+	
+	m["ATT"] = "3.6^2";
+	m["ACO"] = "3.4.3.4";
+	m["ATO"] = "4.6^2";
+	m["AID"] = "3.5.3.5";
+	m["ASD"] = "3^4.5";
+	
 	return m;
 }
 
@@ -229,9 +255,12 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
+	bool PRINT_FREE = args.get<bool>("PRINT_FREE",false);
+	if constexpr (MODEL::FAMILY == HUBBARD) PRINT_FREE = true;
 	string MOL = args.get<string>("MOL","C60");
 	int VARIANT = args.get<int>("VARIANT",0);
 	map<string,int> Lmap = make_Lmap();
+	map<string,string> Vmap = make_vertexMap();
 	if (MOL!="LIN" and MOL!="CRC") L = Lmap[MOL]; // for linear chain, include chain length using -L
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
@@ -252,9 +281,9 @@ int main (int argc, char* argv[])
 	
 	string LOAD = args.get<string>("LOAD","");
 	int Nexc = args.get<int>("Nexc",0);
+	int ninit = args.get<int>("ninit",0); // ninit=0: start with 1st excited state, ninit=1: start with 2nd excited state etc.
 	vector<string> LOAD_EXCITED = args.get_list<string>("LOAD_EXCITED",{});
-	if (LOAD_EXCITED.size()>0) Nexc = LOAD_EXCITED.size();
-//	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
+//	if (LOAD_EXCITED.size()>0) Nexc = LOAD_EXCITED.size();
 	double Epenalty = args.get<double>("Epenalty",1e4);
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_CORR_EXCITED = args.get<bool>("CALC_CORR_EXCITED",false);
@@ -290,18 +319,22 @@ int main (int argc, char* argv[])
 				if (parsed_vals[j] == "β")
 				{
 					betainit = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: betainit=" << betainit << endl;
 				}
 				else if (parsed_vals[j] == "dβ")
 				{
 					dbeta = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: dbeta=" << dbeta << endl;
 				}
 				else if (parsed_vals[j] == "Mlim")
 				{
 					Mlim = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: Mlim=" << Mlim << endl;
 				}
 				else if (parsed_vals[j] == "tol")
 				{
 					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: tol_beta_compr=" << tol_beta_compr << endl;
 				}
 			}
 		}
@@ -319,14 +352,22 @@ int main (int argc, char* argv[])
 				if (parsed_vals[j] == "L")
 				{
 					L = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: L=" << L << endl;
 				}
 				else if (parsed_vals[j] == "S")
 				{
 					S = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: S=" << S << endl;
 				}
 				else if (parsed_vals[j] == "M")
 				{
 					M = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: M=" << M << endl;
+				}
+				else if (parsed_vals[j] == "U")
+				{
+					U = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: U=" << U << endl;
 				}
 			}
 		}
@@ -363,8 +404,6 @@ int main (int argc, char* argv[])
 //	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
-	
-	lout.set(base+".log",wd+"log");
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
@@ -403,6 +442,8 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	
+	lout.set(make_string(base,"_Mlimit=",GlobParam.Mlimit,".log"),wd+"log");
+	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
 	omp_set_nested(1);
@@ -424,21 +465,9 @@ int main (int argc, char* argv[])
 	{
 		hopping = J*hopping_Platonic(L,VARIANT);
 	}
-	else if (MOL=="TOH")
+	else if (MOL.at(0) == 'A')
 	{
-		hopping = J*hopping_Archimedean("4.6^2",VARIANT);
-	}
-	else if (MOL=="COH")
-	{
-		hopping = J*hopping_Archimedean("3.4.3.4",VARIANT);
-	}
-	else if (MOL=="IDD")
-	{
-		hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
-	}
-	else if (MOL=="SDD")
-	{
-		hopping = J*hopping_Archimedean("3^4.5",VARIANT);
+		hopping = J*hopping_Archimedean(Vmap[MOL],VARIANT);
 	}
 	else if (MOL.substr(0,3) == "SOD")
 	{
@@ -473,7 +502,7 @@ int main (int argc, char* argv[])
 	}
 	
 	// free fermions
-	if constexpr (MODEL::FAMILY == HUBBARD)
+	if (PRINT_FREE)
 	{
 		SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
 		VectorXd occ = Eugen.eigenvalues().head(N/2);
@@ -545,7 +574,8 @@ int main (int argc, char* argv[])
 		if (Nexc>0)
 		{
 			lout << termcolor::blue << "CALC_GAP" << termcolor::reset << endl;
-			for (int n=LOAD_EXCITED.size(); n<Nexc; ++n)
+			lout << "ninit=" << ninit << ", Nexc=" << Nexc << endl;
+			for (int n=ninit; n<Nexc; ++n)
 			{
 				lout << "------ n=" << n << " ------" << endl;
 				GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_n=",n,"_",base);
@@ -557,12 +587,15 @@ int main (int argc, char* argv[])
 				DMRGe.GlobParam = GlobParam;
 				DMRGe.DynParam = DynParam;
 				DMRGe.push_back(g.state);
-				for (int m=0; m<n; ++m) DMRGe.push_back(excited[m].state);
+				for (int m=0; m<n; ++m)
+				{
+					DMRGe.push_back(excited[m].state);
+				}
 				
-				if (LOAD_EXCITED.size() == 0)
+				if (LOAD_EXCITED.size() <= n)
 				{
 					excited[n].state = g.state;
-					excited[n].state.setRandom();
+//					excited[n].state.setRandom();
 					excited[n].state.sweep(0,DMRG::BROOM::QR);
 					excited[n].state /= sqrt(dot(excited[n].state,excited[n].state));
 				}
@@ -602,16 +635,14 @@ int main (int argc, char* argv[])
 			
 			if (CALC_VAR)
 			{
-				lout << endl << "ground state variance:" << endl;
-				calc_var(H, g, LOAD, maxPower, L);
+				calc_var(H, g, LOAD, maxPower, L, base, wd, "ground state variance");
 			}
 			
 			if (CALC_VAR_EXCITED and (Nexc>0 or LOAD_EXCITED.size()>0))
 			{
 				for (int n=0; n<excited.size(); ++n)
 				{
-					lout << endl << "excited state n=" << n << " variance:" << endl;
-					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L);
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, base, wd, make_string("excited state n=",n," variance:"));
 				}
 			}
 			
