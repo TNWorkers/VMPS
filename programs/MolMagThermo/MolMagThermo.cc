@@ -433,7 +433,7 @@ int main (int argc, char* argv[])
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
 	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
-	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",2);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
 	
 	// alpha

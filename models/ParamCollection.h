@@ -1277,7 +1277,7 @@ inline double conjIfImag (double x) {return x;}
 inline std::complex<double> conjIfImag (std::complex<double> x) {return conj(x);}
 
 template<typename Scalar>
-Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty)
+Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty, bool PBC=false)
 {
 	Array<Scalar,Dynamic,Dynamic> t1site(2,2); t1site = 0;
 	t1site(0,1) = tfc;
@@ -1297,6 +1297,34 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar
 		res(2*l+1, 2*l+2) = tx;
 		res(2*l,   2*l+3) = conjIfImag(ty);
 	}
+	
+//	cout << "OBC:" << endl;
+//	cout << endl << res << endl << endl;
+	if (PBC)
+	{
+		for (int l=0; l<2*L-4; l+=2)
+		{
+			// increase hopping range
+			res(l,  l+4) = res(l,  l+2); // d=2 -> d=4
+			res(l,  l+5) = res(l,  l+3); // d=3 -> d=5
+			res(l+1,l+4) = res(l+1,l+2); // d=1 -> d=3
+			res(l+1,l+5) = res(l+1,l+3); // d=2 -> d=4
+			// delete NN hopping except for edges
+			if (l>=2)
+			{
+				res(l,  l+2) = 0.;
+				res(l,  l+3) = 0.;
+				res(l+1,l+2) = 0.;
+				res(l+1,l+3) = 0.;
+			}
+		}
+//		res(0,2*L-2) = res(0,2);
+//		res(0,2*L-1) = res(0,3);
+//		res(1,2*L-2) = res(1,2);
+//		res(1,2*L-1) = res(1,3);
+	}
+//	cout << "PBC:" << endl;
+//	cout << endl << res << endl << endl;
 	
 	res.matrix() += res.matrix().adjoint().eval();
 	
