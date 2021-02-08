@@ -100,8 +100,8 @@ const map<string,any> HubbardSU2xU1::defaults =
 
 const map<string,any> HubbardSU2xU1::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
-	{"Mincr_abs", 50ul}, {"Mincr_per", 2ul}, {"Mincr_rel", 1.1},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",21ul}, {"eps_svd",1e-7},
+	{"Mincr_abs", 50ul}, {"Mincr_per", 4ul}, {"Mincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",24ul}, {"min_halfsweeps",1ul},
 	{"Minit",2ul}, {"Qinit",2ul}, {"Mlimit",1000ul},

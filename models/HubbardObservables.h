@@ -1033,7 +1033,7 @@ hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	return make_corr(locx1,locx2,locy1,locy2, 
 	                 F[locx1].d(locy1)-F[locx1].n(locy1)+F[locx1].Id(),
 	                 F[locx2].d(locy2)-F[locx2].n(locy2)+F[locx2].Id(),
-					 Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	                 Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1146,10 +1146,10 @@ typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
-				 {
-					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::BOSONIC, PROP::HERMITIAN);
-					 // return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
-				 }
+	{
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::BOSONIC, PROP::HERMITIAN);
+		// return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	}
 	else
 	{
 		vector<Mpo<Symmetry,Scalar> > out(3);

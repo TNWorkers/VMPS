@@ -51,7 +51,7 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	}
 }
 
-ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1.)
+ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
 	ArrayXXd res;
 	
@@ -60,7 +60,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		int L=30;
 		res.resize(L,L); res.setZero();
 		
-		if (VARIANT==1) // my naive counting
+		if (VARIANT==1 or VARIANT==0) // my naive counting
 		{
 			res(0,1) = lambda1;
 			res(1,2) = lambda1;
@@ -431,11 +431,11 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		res.resize(L,L); res.setZero();
 		
 		res(0,1) = lambda1;
-		res(1,4) = lambda1;
+		res(1,4) = lambda2;
 		res(4,8) = lambda1;
-		res(5,8) = lambda1;
+		res(5,8) = lambda2;
 		res(2,5) = lambda1;
-		res(0,2) = lambda1;
+		res(0,2) = lambda2;
 		
 		res(0,3) = lambda1;
 		res(1,3) = lambda1;
@@ -446,9 +446,9 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		res(5,6) = lambda1;
 		res(2,6) = lambda1;
 		
-		res(3,7) = lambda1;
-		res(6,10) = lambda1;
-		res(9,11) = lambda1;
+		res(3,7) = lambda2;
+		res(6,10) = lambda2;
+		res(9,11) = lambda2;
 		
 		res(7,10) = lambda1;
 		res(10,11) = lambda1;
@@ -457,7 +457,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 	
 	res += res.transpose().eval();
 	
-	if (VARIANT==0)
+	if (VARIANT==0 and vertex_conf != "3.6^2")
 	{
 		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
@@ -846,7 +846,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 	}
 	else if (L==12)
 	{
-		return hopping_Archimedean("3.6^2",VARIANT,lambda1);
+		return hopping_Archimedean("3.6^2",VARIANT,lambda1,lambda2);
 	}
 	
 	res += res.transpose().eval();
@@ -944,6 +944,23 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 	else if (L==20) // dodecahedron
 	{
 		res = hopping_fullerene(L, VARIANT, lambda1, lambda1);
+	}
+	else if (L==8) // cube
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(2,3) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(0,5) = lambda1;
+		res(1,6) = lambda1;
+		res(2,7) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(4,5) = lambda1;
+		res(5,6) = lambda1;
+		res(6,7) = lambda1;
+		res(4,7) = lambda1;
 	}
 	
 	res += res.transpose().eval();
@@ -1047,17 +1064,87 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 			add_tetrahedron(47,48,49,59,edges); // dmax=12
 		}
 	}
+	else if (L==50)
+	{
+		if (VARIANT==0)
+		{
+			add_tetrahedron(0,2,3,6,edges);
+			add_tetrahedron(3,8,7,9,edges);
+			add_tetrahedron(8,11,19,20,edges);
+			add_tetrahedron(4,10,11,12,edges);
+			add_tetrahedron(0,1,4,5,edges);
+			
+			add_tetrahedron(6,16,17,18,edges);
+			add_tetrahedron(9,21,22,23,edges);
+			add_tetrahedron(20,33,34,35,edges);
+			add_tetrahedron(12,24,25,26,edges);
+			add_tetrahedron(5,13,14,15,edges);
+			
+			add_tetrahedron(15,17,29,30,edges);
+			add_tetrahedron(18,22,31,32,edges);
+			add_tetrahedron(23,34,36,37,edges);
+			add_tetrahedron(25,35,38,39,edges);
+			add_tetrahedron(14,26,27,28,edges);
+			
+			add_tetrahedron(30,42,43,44,edges);
+			add_tetrahedron(32,44,45,46,edges);
+			add_tetrahedron(37,46,47,48,edges);
+			add_tetrahedron(39,41,48,49,edges);
+			add_tetrahedron(28,40,41,42,edges);
+		}
+		else if (VARIANT==1)
+		{
+			add_tetrahedron(0,1,6,12,edges);
+			add_tetrahedron(1,2,7,13,edges);
+			add_tetrahedron(2,3,8,14,edges);
+			add_tetrahedron(3,4,9,10,edges);
+			add_tetrahedron(0,4,5,11,edges);
+			
+			add_tetrahedron(12,21,31,32,edges);
+			add_tetrahedron(13,23,33,34,edges);
+			add_tetrahedron(14,15,25,26,edges);
+			add_tetrahedron(10,17,27,28,edges);
+			add_tetrahedron(11,19,29,30,edges);
+			
+			add_tetrahedron(20,30,31,38,edges);
+			add_tetrahedron(22,32,33,39,edges);
+			add_tetrahedron(24,25,34,35,edges);
+			add_tetrahedron(16,26,27,36,edges);
+			add_tetrahedron(18,28,29,37,edges);
+			
+			add_tetrahedron(38,44,45,49,edges);
+			add_tetrahedron(39,40,45,46,edges);
+			add_tetrahedron(35,41,46,47,edges);
+			add_tetrahedron(36,42,47,48,edges);
+			add_tetrahedron(37,43,48,49,edges);
+		}
+	}
 	else if (L==20)
 	{
-		add_tetrahedron(0,3,4,12,edges);
-		add_tetrahedron(0,1,5,13,edges);
-		add_tetrahedron(1,2,6,14,edges);
-		add_tetrahedron(2,3,7,15,edges);
-		
-		add_tetrahedron(4,8,9,16,edges);
-		add_tetrahedron(5,9,10,17,edges);
-		add_tetrahedron(6,10,11,18,edges);
-		add_tetrahedron(7,8,11,19,edges);
+		if (VARIANT==0)
+		{
+			add_tetrahedron(0,1,4,5,edges);
+			add_tetrahedron(0,2,3,6,edges);
+			add_tetrahedron(3,7,8,9,edges);
+			add_tetrahedron(8,4,10,11,edges);
+			
+			add_tetrahedron(5,13,12,14,edges);
+			add_tetrahedron(6,14,15,16,edges);
+			add_tetrahedron(9,16,17,18,edges);
+			add_tetrahedron(11,13,18,19,edges);
+		}
+		else if (VARIANT==1)
+		{
+			add_tetrahedron(0,3,4,12,edges);
+			add_tetrahedron(0,1,5,13,edges);
+			add_tetrahedron(1,2,6,14,edges);
+			add_tetrahedron(2,3,7,15,edges);
+			
+			add_tetrahedron(4,8,9,16,edges);
+			add_tetrahedron(5,9,10,17,edges);
+			add_tetrahedron(6,10,11,18,edges);
+			add_tetrahedron(7,8,11,19,edges);
+		}
 	}
 	
 	for (int e=0; e<edges.size(); ++e)
@@ -1069,7 +1156,7 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 	
 	res += res.transpose().eval();
 	
-	if (L==20 and VARIANT==0)
+	if (VARIANT==0)
 	{
 		compress_CuthillMcKee(res,true);
 	}

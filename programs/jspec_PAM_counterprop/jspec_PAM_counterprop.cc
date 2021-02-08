@@ -62,21 +62,34 @@ MatrixXcd onsite (int L, double Eevn, double Eodd)
 	return res;
 }
 
-complex<double> calc_Joverlap (const vector<MODEL::StateXcd> &Psi0, const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
+//complex<double> calc_Joverlap (const vector<MODEL::StateXcd> &Psi0, const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
+//{
+//	int N = Psi.size();
+//	MatrixXcd res(N,N);
+//	
+//	#pragma omp parallel for collapse(2)
+//	for (int i=0; i<N; ++i)
+//	for (int j=0; j<N; ++j)
+//	{
+//		res(i,j) = dot(Psi0[i],Psi[j]);
+//	}
+//	
+//	return phase*res.sum();
+//}
+
+complex<double> calc_Joverlap_counterprop (const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
 {
-	int N = Psi.size();
+	int N = Psi.size()/2;
 	MatrixXcd res(N,N);
 	
 	#pragma omp parallel for collapse(2)
 	for (int i=0; i<N; ++i)
 	for (int j=0; j<N; ++j)
 	{
-		res(i,j) = dot(Psi0[i],Psi[j]);
+		res(i,j) = dot(Psi[i+N],Psi[j]);
 	}
 	
-	res *= phase;
-	
-	return res.sum();
+	return phase*res.sum();
 }
 
 enum DAMPING {GAUSS, LORENTZ, NODAMPING};
@@ -179,8 +192,8 @@ int main (int argc, char* argv[])
 	
 	string spec = args.get<string>("spec","JJC"); // JJC, JJE
 	size_t Mstart = args.get<size_t>("Mstart",400ul); // anfaengliche Bonddimension fuer Dynamik
-	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // Bonddimension fuer Dynamik
-	double dt = args.get<double>("dt",0.1);
+	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // max. Bonddimension fuer Dynamik
+	double dt = args.get<double>("dt",0.2);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
 	double tmax = args.get<double>("tmax",4.);
 	int Nt = tmax/dt+1;
@@ -254,7 +267,7 @@ int main (int argc, char* argv[])
 	
 	DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 	
-	vector<MODEL::StateXcd> JCxg(L/2);
+	vector<MODEL::StateXcd> JCxg(L);
 	
 	lout << endl << "Applying J to ground state for all sites..." << endl;
 	
@@ -278,7 +291,6 @@ int main (int argc, char* argv[])
 			// cdag(i)*c(i+1)
 			if (i+2 <= ilast)
 			{
-//				cout << "set forw: " << i << "," << i+2 << endl;
 				MODEL::StateXcd OxVres;
 				OxV_exact(H.cdagc(i,i+2), g.state, OxVres, tol_OxV, CVERB);
 				tmp.push_back(OxVres);
@@ -287,11 +299,44 @@ int main (int argc, char* argv[])
 			// cdag(i)*c(i-1)
 			if (i-2 >= 0)
 			{
-//				cout << "set back: " << i << "," << i-2 << endl;
 				MODEL::StateXcd OxVres;
 				OxV_exact(H.cdagc(i,i-2), g.state, OxVres, tol_OxV, CVERB);
 				tmp.push_back(OxVres);
 				factors.push_back(-1.i*tcc);
+			}
+			
+			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
+		}
+		
+		// Apply (J_i)^{\dagger} for backward time propagation
+		#pragma omp parallel for
+		for (int i=0; i<=ilast; i+=2)
+		{
+			int s = L/2+i/2;
+			int slast = L/2+L/2-1;
+			
+			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
+			JCxg[s] = g.state;
+			
+			vector<MODEL::StateXcd> tmp;
+			vector<complex<double>> factors;
+			
+			// (cdag(i)*c(i+1))^dag
+			if (i+2 <= ilast)
+			{
+				MODEL::StateXcd OxVres;
+				OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
+				tmp.push_back(OxVres);
+				factors.push_back(-1.i*tcc);
+			}
+			// (cdag(i)*c(i-1))^dag
+			if (i-2 >= 0)
+			{
+				MODEL::StateXcd OxVres;
+				OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
+				tmp.push_back(OxVres);
+				factors.push_back(+1.i*tcc);
 			}
 			
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
@@ -392,60 +437,169 @@ int main (int argc, char* argv[])
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
 			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
 		}
+		
+		// Apply (J_i)^{\dagger} for backward time propagation
+		#pragma omp parallel for
+		for (int i=0; i<=ilast; i+=2)
+		{
+			int s = L/2+i/2;
+			int slast = L/2+L/2-1;
+			
+			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
+			JCxg[s] = g.state;
+			
+			vector<MODEL::StateXcd> tmp;
+			vector<complex<double>> factors;
+			
+			// term tcc*tcc
+			// cdag(i)*c(i+2)
+			if (i+4 <= ilast)
+			{
+				MODEL::StateXcd OxVres;
+				OxV_exact(H.cdagc(i+4,i), g.state, OxVres, tol_OxV, CVERB);
+				tmp.push_back(OxVres);
+				factors.push_back(-1.i*tcc*tcc);
+			}
+			// cdag(i-2)*c(i)
+			if (i-4 >= 0)
+			{
+				MODEL::StateXcd OxVres;
+				OxV_exact(H.cdagc(i-4,i), g.state, OxVres, tol_OxV, CVERB);
+				tmp.push_back(OxVres);
+				factors.push_back(+1.i*tcc*tcc);
+			}
+			
+			// term 0.5*tfc*tcc
+			if (tfc != 0.)
+			{
+				// cdag(i)*f(i+1)
+				if (i+3 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+3,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-0.5i*tcc*tfc);
+				}
+				// fdag(i)*c(i-1)
+				if (i+1 <= ilast and i-2>=0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-2,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+0.5i*tcc*tfc);
+				}
+				
+				// fdag(i)*c(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+2,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-0.5i*tcc*tfc);
+				}
+				// cdag(i)*f(i-1)
+				if (i-1 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-1,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+0.5i*tcc*tfc);
+				}
+			}
+			
+			// term Ec*tcc
+			if (Ec != 0.)
+			{
+				// cdag(i)*c(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tcc*Ec);
+				}
+				// cdag(i)*c(i-1)
+				if (i-2 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tcc*Ec);
+				}
+			}
+			
+			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
+		}
 	}
 	
 	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
 	
+//	for (int i=0; i<L/2; ++i) JCxg.push_back(JCxg[i]);
 	vector<MODEL::StateXcd> Psi = JCxg;
-	for (int i=0; i<L/2; ++i)
+	JCxg.resize(0);
+	for (int i=0; i<L; ++i)
 	{
 		Psi[i].eps_svd = tol_compr;
 		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
 	}
 	
-	vector<TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>> TDVP(L/2);
-	for (int i=0; i<L/2; ++i)
+	for (int i=0; i<L; ++i)
+	{
+		lout << i << "\t" << Psi[i].info() << endl;
+		if (i==L/2-1) lout << "----" << endl;
+	}
+	lout << endl;
+	
+	vector<TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>> TDVP(L);
+	for (int i=0; i<L; ++i)
 	{
 		TDVP[i] = TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>(H,Psi[i]);
 	}
 	
-	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L/2);
+	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L);
 	vector<vector<bool>> TWO_SITE(L);
-	for (int i=0; i<L/2; ++i)
+	for (int i=0; i<L; ++i)
 	{
-		DMRG::VERBOSITY::OPTION SOBSVERB = (i==L/4)? VERB : DMRG::VERBOSITY::SILENT;
+		DMRG::VERBOSITY::OPTION SOBSVERB = (i==3*L/4)? VERB : DMRG::VERBOSITY::SILENT;
 		Sobs[i] = EntropyObserver<MODEL::StateXcd>(H.length(), Nt, SOBSVERB, tol_DeltaS);
 		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.);
 	}
 	
-	// calc overlap at t=0
-	vector<MatrixXcd> Joverlap(Nt);
+//	vector<MatrixXcd> Joverlap(Nt);
 	VectorXcd JoverlapSum(Nt);
 	
 	Stopwatch<> TpropTimer;
-	IntervalIterator t(0.,tmax,Nt);
-	for (t=t.begin(2); t!=t.end(); ++t)
+	IntervalIterator t(0.,tmax/2,Nt);
+	IntervalIterator tfull(0.,tmax,Nt); //tfull=tfull.begin(2);
+	for (t=t.begin(2), tfull=tfull.begin(2); t!=t.end(); ++t, ++tfull)
 	{
-		lout << "t=" << *t << endl;
 		Stopwatch<> StepTimer;
 		
-		JoverlapSum(t.index()) =  calc_Joverlap(JCxg, Psi, exp(+1.i*g.energy*(*t)))/(0.5*L);
-		t << JoverlapSum(t.index());
-		lout << "save results at t=" << *t << ", res=" << JoverlapSum(t.index()) << endl;
-		t.save(make_string(spec+"t_",base,"_",tbase,".dat"));
+		JoverlapSum(t.index()) = calc_Joverlap_counterprop(Psi, exp(+1.i*g.energy*(*tfull)))/(0.5*L);
+		tfull << JoverlapSum(t.index());
+		lout << "save results at tfull=" << *tfull << ", res=" << JoverlapSum(t.index()) << endl;
+		tfull.save(make_string(spec+"t_",base,"_",tbase,".dat"));
 		
 		if (t.index() != t.end()-1)
 		{
 			#pragma omp parallel for
-			for (int i=0; i<L/2; ++i)
+			for (int i=0; i<L; ++i)
 			{
 				//-----------------------------------------------------------
-				TDVP[i].t_step_adaptive(H, Psi[i], -1.i*dt, TWO_SITE[i], 1);
+				if (i<L/2)
+				{
+					TDVP[i].t_step_adaptive(H, Psi[i], -1.i*0.5*dt, TWO_SITE[i], 1); // forwards
+				}
+				else
+				{
+					TDVP[i].t_step_adaptive(H, Psi[i], +1.i*0.5*dt, TWO_SITE[i], 1); // backwards
+				}
 				//-----------------------------------------------------------
 				
-				if (i==L/4)
+				if (i==3*L/4)
 				{
-					lout << "propagated to t=" << *t << endl;
+					lout << "propagated to t=±" << *t+0.5*dt << ", tfull=±" << *tfull+dt << endl;
 					lout << TDVP[i].info() << endl;
 					lout << Psi[i].info() << endl;
 					lout << StepTimer.info("time step") << endl;
@@ -462,11 +616,11 @@ int main (int argc, char* argv[])
 			}
 			
 			#pragma omp parallel for
-			for (int i=0; i<L/2; ++i)
+			for (int i=0; i<L; ++i)
 			{
 				auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
-				TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
-				if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/4) lout << StepTimer.info("entropy calculation") << endl;
+				TWO_SITE[i] = Sobs[i].TWO_SITE(tfull.index(), PsiTmp);
+				if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==3*L/4) lout << StepTimer.info("entropy calculation") << endl;
 			}
 		}
 		
@@ -475,7 +629,7 @@ int main (int argc, char* argv[])
 	}
 	lout << endl;
 	
-	VectorXd tvals = t.get_abscissa();
+	VectorXd tvals = tfull.get_abscissa();
 	for (int i=0; i<tvals.rows(); ++i)
 	{
 		lout << "t=" << tvals(i) << "\t" << JoverlapSum(i) << endl;

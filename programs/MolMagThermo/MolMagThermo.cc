@@ -55,6 +55,7 @@ typedef VMPS::HeisenbergSU2 MODEL;
 //typedef VMPS::HeisenbergU1 MODEL;
 //#define USING_U1
 
+/* 
 ArrayXXd permute_random (const ArrayXXd &A)
 {
 	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
@@ -65,6 +66,7 @@ ArrayXXd permute_random (const ArrayXXd &A)
 //	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
 	return A_p.array();
 }
+ */
 
 // returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
@@ -248,7 +250,6 @@ int main (int argc, char* argv[])
 	double U = args.get<double>("U",0.);
 	double J = args.get<double>("J",1.);
 	double Bz = args.get<double>("Bz",0.);
-	int N = args.get<int>("N",L);
 	int S = args.get<int>("S",0);
 	int M = args.get<int>("M",0);
 	size_t D = args.get<size_t>("D",2ul);
@@ -262,6 +263,7 @@ int main (int argc, char* argv[])
 	map<string,int> Lmap = make_Lmap();
 	map<string,string> Vmap = make_vertexMap();
 	if (MOL!="LIN" and MOL!="CRC") L = Lmap[MOL]; // for linear chain, include chain length using -L
+	int N = args.get<int>("N",L);
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
@@ -278,6 +280,7 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
+	bool PRINT_BETASTEPS = args.get<bool>("PRINT_BETASTEPS",false);
 	
 	string LOAD = args.get<string>("LOAD","");
 	int Nexc = args.get<int>("Nexc",0);
@@ -336,6 +339,11 @@ int main (int argc, char* argv[])
 					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
 					lout << "extracted: tol_beta_compr=" << tol_beta_compr << endl;
 				}
+				else if (parsed_vals[j] == "MOL")
+				{
+					MOL = boost::lexical_cast<string>(parsed_vals[j+1]);
+					lout << "extracted: MOL=" << MOL << endl;
+				}
 			}
 		}
 	}
@@ -369,6 +377,11 @@ int main (int argc, char* argv[])
 					U = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: U=" << U << endl;
 				}
+				else if (parsed_vals[j] == "MOL")
+				{
+					MOL = boost::lexical_cast<string>(parsed_vals[j+1]);
+					lout << "extracted: MOL=" << MOL << endl;
+				}
 			}
 		}
 	}
@@ -391,11 +404,18 @@ int main (int argc, char* argv[])
 		}
 		#endif
 	}
-	base += make_string("_MOL=",MOL);
-	if (CALC_DOS)
+	if (MOL=="C60" and VARIANT==0)
 	{
-		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
+		base += make_string("_MOL=","C60CMK");
 	}
+	else
+	{
+		base += make_string("_MOL=",MOL);
+	}
+//	if (CALC_DOS)
+//	{
+//		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
+//	}
 	if (BETAPROP)
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Mlim=",Mlim);
@@ -483,11 +503,23 @@ int main (int argc, char* argv[])
 		throw;
 	}
 	
+	bool RING = args.get<bool>("RING",false);
+	double J2 = args.get<double>("J2",0.9);
+	if (RING and VARIANT==0)
+	{
+		vector<int> ringsites = {16,17,27,30,20, 21,31,38,28,29, 39,42,32,33,43, 35,25,24,34,26};
+		for (int i=0; i<ringsites.size(); ++i)
+		{
+			hopping(ringsites[i],ringsites[(i+1)%20]) = J2;
+			hopping(ringsites[(i+1)%20],ringsites[i]) = J2;
+		}
+	}
+	
 	bool PERMUTE = args.get<int>("PERMUTE",false);
-	if (PERMUTE)
+	/*if (PERMUTE)
 	{
 		hopping = permute_random(hopping);
-	}
+	}*/
 	
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)
@@ -505,6 +537,7 @@ int main (int argc, char* argv[])
 	if (PRINT_FREE)
 	{
 		SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
+		lout << Eugen.eigenvalues().transpose() << endl;
 		VectorXd occ = Eugen.eigenvalues().head(N/2);
 		VectorXd unocc = Eugen.eigenvalues().tail(L-N/2);
 		lout << "orbital energies occupied:" << endl << occ.transpose()  << endl;
@@ -605,7 +638,6 @@ int main (int argc, char* argv[])
 				
 				overlaps(0) = dot(g.state,excited[n].state);
 				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
-				lout << "initial overlap=" << overlaps.transpose() << endl;
 				
 				DMRGe.edgeState(H, excited[n], Q, LANCZOS::EDGE::GROUND, true);
 				
@@ -947,12 +979,13 @@ int main (int argc, char* argv[])
 		
 		if (LOAD != "")
 		{
-			PsiT.load(LOAD);
+			PsiT.load(LOAD,s_betainit);
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
 			     << "Mlim=" << Mlim << ", "
 			     << "tol=" << tol_beta_compr << ", "
+			     << "s=" << s_betainit << ", "
 			     << boolalpha << "BETA1STEP=" << BETA1STEP
 			     << termcolor::reset << endl;
 		}
@@ -1061,35 +1094,32 @@ int main (int argc, char* argv[])
 		{
 			betavals.push_back(0.01);
 			betasteps.push_back(0.01);
-			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
 			{
 				betasteps.push_back(0.01);
 				double beta_last = betavals[betavals.size()-1];
 				betavals.push_back(beta_last+0.01);
-				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+				if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			}
 		}
 		else
 		{
-			assert(betainit>=0.2);
+			assert(betainit>=0.2 and "It makes no sense to load states with beta<0.2, just start over!");
 			betavals.push_back(betainit+dbeta);
 			betasteps.push_back(dbeta);
-			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
-			
-			// This makes: s_betainit = log(2) + accumulated ln(Z)
-			// From here additional contributions in ln(Z) are added; and beta*e is added at each step
-			double e = avg(PsiT,H,PsiT)/L;
-			s_betainit -= betainit*e;
+			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
 		
-		while (betavals[betavals.size()-1] < betamax)
+		while (abs(betavals[betavals.size()-1]-betamax) > 1e-10)
 		{
+//			bool TMP = betavals[betavals.size()-1] < betamax;
+//			cout << "betavals[betavals.size()-1]=" << betavals[betavals.size()-1] << ", betamax=" << betamax << boolalpha << ", smaller=" << TMP << endl;
 			betasteps.push_back(dbeta);
 			double beta_last = betavals[betavals.size()-1];
 			betavals.push_back(beta_last+dbeta);
-			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
 		lout << endl;
 //		betavals.pop_back();
@@ -1148,7 +1178,12 @@ int main (int argc, char* argv[])
 				{
 					string filename = make_string(wd,"state_β=",beta,"_",base);
 					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
-					PsiT.save(filename);
+					
+					VectorXd tmp = VectorXd::Map(lnZvec.data(), lnZvec.size());
+					double s_save = s_betainit + tmp.sum()/L;
+					// This makes: s_betainit = log(2) + accumulated ln(Z); when the state is loaded again
+					
+					PsiT.save(filename,base,s_save);
 				}
 				lout << TDVPT.info() << endl;
 				lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
