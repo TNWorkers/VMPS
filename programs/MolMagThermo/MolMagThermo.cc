@@ -262,7 +262,7 @@ int main (int argc, char* argv[])
 	int VARIANT = args.get<int>("VARIANT",0);
 	map<string,int> Lmap = make_Lmap();
 	map<string,string> Vmap = make_vertexMap();
-	if (MOL!="LIN" and MOL!="CRC") L = Lmap[MOL]; // for linear chain, include chain length using -L
+	if (MOL!="CHAIN" and MOL!="RING") L = Lmap[MOL]; // for linear chain, include chain length using -L
 	int N = args.get<int>("N",L);
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
@@ -280,7 +280,6 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
-	bool PRINT_BETASTEPS = args.get<bool>("PRINT_BETASTEPS",false);
 	
 	string LOAD = args.get<string>("LOAD","");
 	int Nexc = args.get<int>("Nexc",0);
@@ -339,11 +338,6 @@ int main (int argc, char* argv[])
 					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
 					lout << "extracted: tol_beta_compr=" << tol_beta_compr << endl;
 				}
-				else if (parsed_vals[j] == "MOL")
-				{
-					MOL = boost::lexical_cast<string>(parsed_vals[j+1]);
-					lout << "extracted: MOL=" << MOL << endl;
-				}
 			}
 		}
 	}
@@ -376,11 +370,6 @@ int main (int argc, char* argv[])
 				{
 					U = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: U=" << U << endl;
-				}
-				else if (parsed_vals[j] == "MOL")
-				{
-					MOL = boost::lexical_cast<string>(parsed_vals[j+1]);
-					lout << "extracted: MOL=" << MOL << endl;
 				}
 			}
 		}
@@ -979,13 +968,12 @@ int main (int argc, char* argv[])
 		
 		if (LOAD != "")
 		{
-			PsiT.load(LOAD,s_betainit);
+			PsiT.load(LOAD);
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
 			     << "Mlim=" << Mlim << ", "
 			     << "tol=" << tol_beta_compr << ", "
-			     << "s=" << s_betainit << ", "
 			     << boolalpha << "BETA1STEP=" << BETA1STEP
 			     << termcolor::reset << endl;
 		}
@@ -1094,32 +1082,35 @@ int main (int argc, char* argv[])
 		{
 			betavals.push_back(0.01);
 			betasteps.push_back(0.01);
-			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
 			{
 				betasteps.push_back(0.01);
 				double beta_last = betavals[betavals.size()-1];
 				betavals.push_back(beta_last+0.01);
-				if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			}
 		}
 		else
 		{
-			assert(betainit>=0.2 and "It makes no sense to load states with beta<0.2, just start over!");
+			assert(betainit>=0.2);
 			betavals.push_back(betainit+dbeta);
 			betasteps.push_back(dbeta);
-			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			
+			// This makes: s_betainit = log(2) + accumulated ln(Z)
+			// From here additional contributions in ln(Z) are added; and beta*e is added at each step
+			double e = avg(PsiT,H,PsiT)/L;
+			s_betainit -= betainit*e;
 		}
 		
-		while (abs(betavals[betavals.size()-1]-betamax) > 1e-10)
+		while (betavals[betavals.size()-1] < betamax)
 		{
-//			bool TMP = betavals[betavals.size()-1] < betamax;
-//			cout << "betavals[betavals.size()-1]=" << betavals[betavals.size()-1] << ", betamax=" << betamax << boolalpha << ", smaller=" << TMP << endl;
 			betasteps.push_back(dbeta);
 			double beta_last = betavals[betavals.size()-1];
 			betavals.push_back(beta_last+dbeta);
-			if (PRINT_BETASTEPS) lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
 		lout << endl;
 //		betavals.pop_back();
@@ -1178,12 +1169,7 @@ int main (int argc, char* argv[])
 				{
 					string filename = make_string(wd,"state_β=",beta,"_",base);
 					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
-					
-					VectorXd tmp = VectorXd::Map(lnZvec.data(), lnZvec.size());
-					double s_save = s_betainit + tmp.sum()/L;
-					// This makes: s_betainit = log(2) + accumulated ln(Z); when the state is loaded again
-					
-					PsiT.save(filename,base,s_save);
+					PsiT.save(filename);
 				}
 				lout << TDVPT.info() << endl;
 				lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;

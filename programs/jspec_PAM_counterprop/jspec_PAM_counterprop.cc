@@ -191,7 +191,7 @@ int main (int argc, char* argv[])
 	bool RELOAD = args.get<bool>("RELOAD",false);
 	
 	string spec = args.get<string>("spec","JJC"); // JJC, JJE
-	size_t Mstart = args.get<size_t>("Mstart",400ul); // anfaengliche Bonddimension fuer Dynamik
+	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
 	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // max. Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.2);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
@@ -218,7 +218,7 @@ int main (int argc, char* argv[])
 	// Parameter fuer den Grundzustand:
 	DMRG::CONTROL::GLOB GlobSweepParamsOBC;
 	GlobSweepParamsOBC.min_halfsweeps = args.get<size_t>("min_halfsweeps",10ul);
-	GlobSweepParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
+	GlobSweepParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",30ul);
 	GlobSweepParamsOBC.Minit = args.get<size_t>("Minit",2ul);
 	GlobSweepParamsOBC.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobSweepParamsOBC.CALC_S_ON_EXIT = false;
@@ -274,7 +274,7 @@ int main (int argc, char* argv[])
 	int ilast = L-2;
 	double tol_OxV = 2.; // val>1 = do not compress
 	
-	if (spec == "JJC")
+		if (spec == "JJC")
 	{
 		#pragma omp parallel for
 		for (int i=0; i<=ilast; i+=2)
@@ -288,28 +288,51 @@ int main (int argc, char* argv[])
 			vector<MODEL::StateXcd> tmp;
 			vector<complex<double>> factors;
 			
-			// cdag(i)*c(i+1)
-			if (i+2 <= ilast)
+			if (tcc != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i,i+2), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(+1.i*tcc);
+				// cdag(i)*c(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i,i+2), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tcc);
+				}
+				// cdag(i)*c(i-1)
+				if (i-2 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i,i-2), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tcc);
+				}
 			}
-			// cdag(i)*c(i-1)
-			if (i-2 >= 0)
+			
+			if (tff != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i,i-2), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(-1.i*tcc);
+				// fdag(i)*f(i+1)
+				if (i+3 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i+3), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff);
+				}
+				// fdag(i)*f(i-1)
+				if (i-1 >= 0 and i+1<= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i-1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff);
+				}
 			}
 			
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
 			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
 		}
 		
-		// Apply (J_i)^{\dagger} for backward time propagation
+		////// adjoint
 		#pragma omp parallel for
 		for (int i=0; i<=ilast; i+=2)
 		{
@@ -322,21 +345,44 @@ int main (int argc, char* argv[])
 			vector<MODEL::StateXcd> tmp;
 			vector<complex<double>> factors;
 			
-			// (cdag(i)*c(i+1))^dag
-			if (i+2 <= ilast)
+			if (tcc != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(-1.i*tcc);
+				// cdag(i)*c(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tcc);
+				}
+				// cdag(i)*c(i-1)
+				if (i-2 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tcc);
+				}
 			}
-			// (cdag(i)*c(i-1))^dag
-			if (i-2 >= 0)
+			
+			if (tff != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(+1.i*tcc);
+				// fdag(i)*f(i+1)
+				if (i+3 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+3,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff);
+				}
+				// fdag(i)*f(i-1)
+				if (i-1 >= 0 and i+1<= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-1,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff);
+				}
 			}
 			
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
@@ -358,24 +404,47 @@ int main (int argc, char* argv[])
 			vector<complex<double>> factors;
 			
 			// term tcc*tcc
-			// cdag(i)*c(i+2)
-			if (i+4 <= ilast)
+			if (tcc != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i,i+4), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(+1.i*tcc*tcc);
-			}
-			// cdag(i-2)*c(i)
-			if (i-4 >= 0)
-			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i,i-4), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(-1.i*tcc*tcc);
+				// cdag(i)*c(i+2)
+				if (i+4 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i,i+4), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tcc*tcc);
+				}
+				// cdag(i)*c(i-2)
+				if (i-4 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i,i-4), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tcc*tcc);
+				}
 			}
 			
-			// term 0.5*tfc*tcc
+			if (tff != 0.)
+			{
+				// fdag(i)*f(i+2)
+				if (i+5 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i+5), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff*tff);
+				}
+				// fdag(i)*f(i-2)
+				if (i-3 >= 0 and i+1 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i-3), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff*tff);
+				}
+			}
+			
+			// term 0.5*tfc*(tcc+tff)
 			if (tfc != 0.)
 			{
 				// cdag(i)*f(i+1)
@@ -384,7 +453,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i,i+3), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*tcc*tfc);
+					factors.push_back(+0.5i*(tcc+tff)*tfc);
 				}
 				// fdag(i)*c(i-1)
 				if (i+1 <= ilast and i-2>=0)
@@ -392,7 +461,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i+1,i-2), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*tcc*tfc);
+					factors.push_back(-0.5i*(tcc+tff)*tfc);
 				}
 				
 				// fdag(i)*c(i+1)
@@ -401,7 +470,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i+1,i+2), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*tcc*tfc);
+					factors.push_back(+0.5i*(tcc+tff)*tfc);
 				}
 				// cdag(i)*f(i-1)
 				if (i-1 >= 0)
@@ -409,12 +478,12 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i,i-1), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*tcc*tfc);
+					factors.push_back(-0.5i*(tcc+tff)*tfc);
 				}
 			}
 			
 			// term Ec*tcc
-			if (Ec != 0.)
+			if (Ec != 0. and tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
 				if (i+2 <= ilast)
@@ -434,11 +503,56 @@ int main (int argc, char* argv[])
 				}
 			}
 			
+			// term Ef*tff
+			if (Ef != 0. and tff != 0.)
+			{
+				// fdag(i)*f(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i+3), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff*Ef);
+				}
+				// fdag(i)*f(i-1)
+				if (i-2 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+1,i-1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff*Ef);
+				}
+			}
+			
+			// term U*tff
+			if (tff != 0. and U != 0.)
+			{
+				MODEL::StateXcd OxVres1;
+				OxV_exact(H.n(i), g.state, OxVres1, tol_OxV, CVERB);
+				
+				// fdag(i)*f(i+1)*nf(i)
+				if (i+3 <= ilast)
+				{	
+					MODEL::StateXcd OxVres2;
+					OxV_exact(H.cdagc(i+1,i+3), OxVres1, OxVres2, tol_OxV, CVERB);
+					tmp.push_back(OxVres2);
+					factors.push_back(+1.i*U*tff);
+				}
+				// fdag(i)*f(i-1)*nf(i)
+				if (i+1 <= ilast and i-1>=0)
+				{
+					MODEL::StateXcd OxVres2;
+					OxV_exact(H.cdagc(i+1,i-1), OxVres1, OxVres2, tol_OxV, CVERB);
+					tmp.push_back(OxVres2);
+					factors.push_back(-1.i*U*tff);
+				}
+			}
+			
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
 			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
 		}
 		
-		// Apply (J_i)^{\dagger} for backward time propagation
+		////// adjoint
 		#pragma omp parallel for
 		for (int i=0; i<=ilast; i+=2)
 		{
@@ -452,24 +566,47 @@ int main (int argc, char* argv[])
 			vector<complex<double>> factors;
 			
 			// term tcc*tcc
-			// cdag(i)*c(i+2)
-			if (i+4 <= ilast)
+			if (tcc != 0.)
 			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i+4,i), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(-1.i*tcc*tcc);
-			}
-			// cdag(i-2)*c(i)
-			if (i-4 >= 0)
-			{
-				MODEL::StateXcd OxVres;
-				OxV_exact(H.cdagc(i-4,i), g.state, OxVres, tol_OxV, CVERB);
-				tmp.push_back(OxVres);
-				factors.push_back(+1.i*tcc*tcc);
+				// cdag(i)*c(i+2)
+				if (i+4 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+4,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tcc*tcc);
+				}
+				// cdag(i)*c(i-2)
+				if (i-4 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-4,i), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tcc*tcc);
+				}
 			}
 			
-			// term 0.5*tfc*tcc
+			if (tff != 0.)
+			{
+				// fdag(i)*f(i+2)
+				if (i+5 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+5,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff*tff);
+				}
+				// fdag(i)*f(i-2)
+				if (i-3 >= 0 and i+1 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-3,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff*tff);
+				}
+			}
+			
+			// term 0.5*tfc*(tcc+tff)
 			if (tfc != 0.)
 			{
 				// cdag(i)*f(i+1)
@@ -478,7 +615,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i+3,i), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*tcc*tfc);
+					factors.push_back(-0.5i*(tcc+tff)*tfc);
 				}
 				// fdag(i)*c(i-1)
 				if (i+1 <= ilast and i-2>=0)
@@ -486,7 +623,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i-2,i+1), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*tcc*tfc);
+					factors.push_back(+0.5i*(tcc+tff)*tfc);
 				}
 				
 				// fdag(i)*c(i+1)
@@ -495,7 +632,7 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i+2,i+1), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*tcc*tfc);
+					factors.push_back(-0.5i*(tcc+tff)*tfc);
 				}
 				// cdag(i)*f(i-1)
 				if (i-1 >= 0)
@@ -503,12 +640,12 @@ int main (int argc, char* argv[])
 					MODEL::StateXcd OxVres;
 					OxV_exact(H.cdagc(i-1,i), g.state, OxVres, tol_OxV, CVERB);
 					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*tcc*tfc);
+					factors.push_back(+0.5i*(tcc+tff)*tfc);
 				}
 			}
 			
 			// term Ec*tcc
-			if (Ec != 0.)
+			if (Ec != 0. and tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
 				if (i+2 <= ilast)
@@ -528,6 +665,51 @@ int main (int argc, char* argv[])
 				}
 			}
 			
+			// term Ef*tff
+			if (Ef != 0. and tff != 0.)
+			{
+				// fdag(i)*f(i+1)
+				if (i+2 <= ilast)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i+3,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(-1.i*tff*Ef);
+				}
+				// fdag(i)*f(i-1)
+				if (i-2 >= 0)
+				{
+					MODEL::StateXcd OxVres;
+					OxV_exact(H.cdagc(i-1,i+1), g.state, OxVres, tol_OxV, CVERB);
+					tmp.push_back(OxVres);
+					factors.push_back(+1.i*tff*Ef);
+				}
+			}
+			
+			// term U*tff
+			if (tff != 0. and U != 0.)
+			{
+				MODEL::StateXcd OxVres1;
+				OxV_exact(H.n(i), g.state, OxVres1, tol_OxV, CVERB);
+				
+				// fdag(i)*f(i+1)*nf(i)
+				if (i+3 <= ilast)
+				{	
+					MODEL::StateXcd OxVres2;
+					OxV_exact(H.cdagc(i+3,i+1), OxVres1, OxVres2, tol_OxV, CVERB);
+					tmp.push_back(OxVres2);
+					factors.push_back(-1.i*U*tff);
+				}
+				// fdag(i)*f(i-1)*nf(i)
+				if (i+1 <= ilast and i-1>=0)
+				{
+					MODEL::StateXcd OxVres2;
+					OxV_exact(H.cdagc(i-1,i+1), OxVres1, OxVres2, tol_OxV, CVERB);
+					tmp.push_back(OxVres2);
+					factors.push_back(+1.i*U*tff);
+				}
+			}
+			
 			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
 			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
 		}
@@ -535,17 +717,12 @@ int main (int argc, char* argv[])
 	
 	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
 	
-//	for (int i=0; i<L/2; ++i) JCxg.push_back(JCxg[i]);
 	vector<MODEL::StateXcd> Psi = JCxg;
 	JCxg.resize(0);
 	for (int i=0; i<L; ++i)
 	{
 		Psi[i].eps_svd = tol_compr;
 		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
-	}
-	
-	for (int i=0; i<L; ++i)
-	{
 		lout << i << "\t" << Psi[i].info() << endl;
 		if (i==L/2-1) lout << "----" << endl;
 	}
@@ -607,10 +784,10 @@ int main (int argc, char* argv[])
 				
 				if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 				{
-					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),Mlimit);
+					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
 					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
 					{
-						lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+						lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
 					}
 				}
 			}
