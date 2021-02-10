@@ -29,13 +29,16 @@ Logger lout;
 #include "Stopwatch.h"
 #include "IntervalIterator.h"
 
+#include "LanczosWrappers.h"
+#include "HubbardModel.h"
+
 #include "solvers/DmrgSolver.h"
 #include "solvers/MpsCompressor.h"
 #include "solvers/EntropyObserver.h"
 #include "solvers/TDVPPropagator.h"
 #include "DmrgLinearAlgebra.h"
 
-//#include "models/HubbardSU2xU1.h"
+#include "models/HubbardSU2xU1.h"
 //typedef VMPS::HubbardSU2xU1 MODEL; // reell
 
 #include "models/PeierlsHubbardSU2xU1.h"
@@ -62,22 +65,7 @@ MatrixXcd onsite (int L, double Eevn, double Eodd)
 	return res;
 }
 
-//complex<double> calc_Joverlap (const vector<MODEL::StateXcd> &Psi0, const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
-//{
-//	int N = Psi.size();
-//	MatrixXcd res(N,N);
-//	
-//	#pragma omp parallel for collapse(2)
-//	for (int i=0; i<N; ++i)
-//	for (int j=0; j<N; ++j)
-//	{
-//		res(i,j) = dot(Psi0[i],Psi[j]);
-//	}
-//	
-//	return phase*res.sum();
-//}
-
-complex<double> calc_Joverlap_counterprop (const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
+complex<double> calc_Joverlap (const vector<MODEL::StateXcd> &Psi, const complex<double> &phase)
 {
 	int N = Psi.size()/2;
 	MatrixXcd res(N,N);
@@ -154,6 +142,38 @@ void FT_and_save (const VectorXd &tvals, double tmax, const VectorXcd &data, dou
 	InterpIm.kill_splines();
 }
 
+void push_term (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, 
+                const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors)
+{
+	if (i>=0 and i<=ilast and j>=0 and j<=ilast)
+	{
+		MODEL::StateXcd OxVres;
+		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB);
+		states.push_back(OxVres);
+		factors.push_back(lambda);
+	}
+}
+
+void push_corrhop (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, 
+                   const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors, bool DAG=false)
+{
+	if (i>=0 and i<=ilast and j>=0 and j<=ilast)
+	{
+		MODEL::StateXcd OxVres;
+		if (DAG)
+		{
+			OxV_exact(H.cdag_nc(i,j), target, OxVres, tol_OxV, CVERB);
+		}
+		else
+		{
+			OxV_exact(H.cdagn_c(i,j), target, OxVres, tol_OxV, CVERB);
+		}
+		states.push_back(OxVres);
+		factors.push_back(lambda);
+	}
+}
+
+/////////////////////////////////
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -267,14 +287,71 @@ int main (int argc, char* argv[])
 	
 	DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 	
-	vector<MODEL::StateXcd> JCxg(L);
+	vector<MODEL::StateXcd> JCxg(L/2);
 	
 	lout << endl << "Applying J to ground state for all sites..." << endl;
 	
 	int ilast = L-2;
 	double tol_OxV = 2.; // val>1 = do not compress
 	
-		if (spec == "JJC")
+	// Test mit ED
+	
+	/*
+	HubbardModel HED(L,L/2,L/2,U,BC_DANGLING);
+	Eigenstate<VectorXd> gED;
+	LanczosSolver<HubbardModel,VectorXd,double> Lutz;
+	Lutz.edgeState(HED,gED);
+	cout << "gED.energy=" << gED.energy << endl;
+//	SparseMatrixXd Op = (HED.hopping_element(1,3,UP)+HED.hopping_element(1,3,DN)) * (HED.n(1,UP)+HED.n(1,DN));
+	SparseMatrixXd Op =  (HED.n(2,UP)+HED.n(2,DN)) * (HED.hopping_element(4,2,UP)+HED.hopping_element(4,2,DN));
+//	cout << "avgED=" << gED.state.dot(Op*gED.state) << endl;
+	
+	VMPS::HubbardSU2xU1 HDMRG(L,{{"U",U}},BC::OPEN);
+	Eigenstate<VMPS::HubbardSU2xU1::StateXd> gDMRG;
+	VMPS::HubbardSU2xU1::Solver DMRG_(DMRG::VERBOSITY::SILENT);
+	DMRG_.GlobParam = GlobSweepParamsOBC;
+	DMRG_.userSetGlobParam();
+	DMRG_.edgeState(HDMRG, gDMRG, {1,static_cast<int>(L)}, LANCZOS::EDGE::GROUND);
+	cout << "gDMRG.energy=" << gDMRG.energy << endl;
+	
+	cout << setprecision(3) << endl;
+	MatrixXd MresED1(L,L);
+	MatrixXd MresDMRG1(L,L);
+	MatrixXd MresED2(L,L);
+	MatrixXd MresDMRG2(L,L);
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		SparseMatrixXd Op1 = (HED.n(j,UP)+HED.n(j,DN)) * (HED.hopping_element(j,i,UP)+HED.hopping_element(j,i,DN)); // n(j)*cdagc(i,j) = cdag_nc
+		SparseMatrixXd Op2 = (HED.hopping_element(j,i,UP)+HED.hopping_element(j,i,DN)) * (HED.n(i,UP)+HED.n(i,DN)); // cdagc(i,j)*n(i) = cdagn_c
+		double resED1 = gED.state.dot(Op1*gED.state);
+		double resED2 = gED.state.dot(Op2*gED.state);
+		double resDMRG1 = avg(gDMRG.state, HDMRG.cdag_nc(i,j), gDMRG.state);
+		double resDMRG2 = avg(gDMRG.state, HDMRG.cdagn_c(i,j), gDMRG.state);
+		MresED1(i,j) = resED1;
+		MresDMRG1(i,j) = resDMRG1;
+		MresED2(i,j) = resED2;
+		MresDMRG2(i,j) = resDMRG2;
+		double nED = gED.state.dot((HED.n(i,UP)+HED.n(i,DN))*gED.state);
+		double nDMRG = avg(gDMRG.state, HDMRG.n(i), gDMRG.state);
+		cout << "i=" << i << ", j=" << j << ", ED=" << resED1 << ", DMRG=" <<  resDMRG1 << ", diff=" << abs(resED1-resDMRG1) << endl;
+		cout << "i=" << i << ", j=" << j << ", ED=" << resED2 << ", DMRG=" <<  resDMRG2 << ", diff=" << abs(resED2-resDMRG2) << endl;
+		cout << endl;
+	}
+	cout << endl << MresED1 << endl << endl;
+	cout << endl << MresDMRG1 << endl << endl;
+	cout << endl << MresED1-MresDMRG1 << endl << endl;
+	cout << endl << MresED1.array()/MresDMRG1.array() << endl << endl;
+	
+	cout << endl << MresED2 << endl << endl;
+	cout << endl << MresDMRG2 << endl << endl;
+	cout << endl << MresED2-MresDMRG2 << endl << endl;
+	cout << endl << MresED2.array()/MresDMRG2.array() << endl << endl;
+	
+	cout << setprecision(6) << endl;
+	*/
+	
+	if (spec == "JJC")
 	{
 		#pragma omp parallel for
 		for (int i=0; i<=ilast; i+=2)
@@ -285,109 +362,75 @@ int main (int argc, char* argv[])
 			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			JCxg[s] = g.state;
 			
-			vector<MODEL::StateXcd> tmp;
+			vector<MODEL::StateXcd> states;
 			vector<complex<double>> factors;
 			
 			if (tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i+2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc);
-				}
+				push_term(i, i+2, ilast, +1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i-2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc);
-				}
+				push_term(i, i-2, ilast, -1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			if (tff != 0.)
 			{
 				// fdag(i)*f(i+1)
-				if (i+3 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i+3), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff);
-				}
-				// fdag(i)*f(i-1)
-				if (i-1 >= 0 and i+1<= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i-1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff);
-				}
+				push_term(i+1, i+3, ilast, +1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				// fdag(i)f(i-1)
+				push_term(i+1, i-1, ilast, -1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
-			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
+			if (states.size() > 0)
+			{
+				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+			}
+			else
+			{
+				JCxg[s] = g.state;
+			}
 		}
 		
-		////// adjoint
-		#pragma omp parallel for
-		for (int i=0; i<=ilast; i+=2)
-		{
-			int s = L/2+i/2;
-			int slast = L/2+L/2-1;
-			
-			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-			JCxg[s] = g.state;
-			
-			vector<MODEL::StateXcd> tmp;
-			vector<complex<double>> factors;
-			
-			if (tcc != 0.)
-			{
-				// cdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc);
-				}
-				// cdag(i)*c(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc);
-				}
-			}
-			
-			if (tff != 0.)
-			{
-				// fdag(i)*f(i+1)
-				if (i+3 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+3,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff);
-				}
-				// fdag(i)*f(i-1)
-				if (i-1 >= 0 and i+1<= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-1,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff);
-				}
-			}
-			
-			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
-		}
+//		//-----adjoint-----
+//		#pragma omp parallel for
+//		for (int i=0; i<=ilast; i+=2)
+//		{
+//			int s = L/2+i/2;
+//			int slast = L/2+L/2-1;
+//			
+//			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
+//			JCxg[s] = g.state;
+//			
+//			vector<MODEL::StateXcd> states;
+//			vector<complex<double>> factors;
+//			
+//			if (tcc != 0.)
+//			{
+//				// cdag(i)*c(i+1)
+//				push_term(i+2, i, ilast, -1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+//				// cdag(i)*c(i-1)
+//				push_term(i-2, i, ilast, +1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//			
+//			if (tff != 0.)
+//			{
+//				// fdag(i)*f(i+1)
+//				push_term(i+3, i+1, ilast, -1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
+//				// fdag(i)f(i-1)
+//				push_term(i-1, i+1, ilast, +1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//			
+//			if (states.size() > 0)
+//			{
+//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+//			}
+//			else
+//			{
+//				JCxg[s] = g.state;
+//			}
+//		}
 	}
 	else if (spec == "JJE")
 	{
@@ -400,324 +443,166 @@ int main (int argc, char* argv[])
 			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			JCxg[s] = g.state;
 			
-			vector<MODEL::StateXcd> tmp;
+			vector<MODEL::StateXcd> states;
 			vector<complex<double>> factors;
 			
 			// term tcc*tcc
 			if (tcc != 0.)
 			{
 				// cdag(i)*c(i+2)
-				if (i+4 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i+4), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc*tcc);
-				}
+				push_term(i, i+4, ilast, +1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-2)
-				if (i-4 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i-4), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc*tcc);
-				}
+				push_term(i, i-4, ilast, -1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			if (tff != 0.)
 			{
 				// fdag(i)*f(i+2)
-				if (i+5 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i+5), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff*tff);
-				}
+				push_term(i+1, i+5, ilast, +1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*f(i-2)
-				if (i-3 >= 0 and i+1 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i-3), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff*tff);
-				}
+				push_term(i+1, i-3, ilast, -1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term 0.5*tfc*(tcc+tff)
 			if (tfc != 0.)
 			{
 				// cdag(i)*f(i+1)
-				if (i+3 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i+3), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*(tcc+tff)*tfc);
-				}
+				push_term(i,   i+3, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*c(i-1)
-				if (i+1 <= ilast and i-2>=0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i-2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*(tcc+tff)*tfc);
-				}
-				
+				push_term(i+1, i-2, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i+2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*(tcc+tff)*tfc);
-				}
+				push_term(i+1, i+2, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*f(i-1)
-				if (i-1 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i-1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*(tcc+tff)*tfc);
-				}
+				push_term(i,   i-1, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term Ec*tcc
 			if (Ec != 0. and tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i+2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc*Ec);
-				}
+				push_term(i, i+2, ilast, +1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i,i-2), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc*Ec);
-				}
+				push_term(i, i-2, ilast, -1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term Ef*tff
 			if (Ef != 0. and tff != 0.)
 			{
 				// fdag(i)*f(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i+3), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff*Ef);
-				}
+				push_term(i+1, i+3, ilast, +1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*f(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+1,i-1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff*Ef);
-				}
+				push_term(i+1, i-1, ilast, -1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term U*tff
-			if (tff != 0. and U != 0.)
+			if (tff != 0. and U != 0. and i+1 <= ilast)
 			{
-				MODEL::StateXcd OxVres1;
-				OxV_exact(H.n(i), g.state, OxVres1, tol_OxV, CVERB);
-				
-				// fdag(i)*f(i+1)*nf(i)
-				if (i+3 <= ilast)
-				{	
-					MODEL::StateXcd OxVres2;
-					OxV_exact(H.cdagc(i+1,i+3), OxVres1, OxVres2, tol_OxV, CVERB);
-					tmp.push_back(OxVres2);
-					factors.push_back(+1.i*U*tff);
-				}
-				// fdag(i)*f(i-1)*nf(i)
-				if (i+1 <= ilast and i-1>=0)
-				{
-					MODEL::StateXcd OxVres2;
-					OxV_exact(H.cdagc(i+1,i-1), OxVres1, OxVres2, tol_OxV, CVERB);
-					tmp.push_back(OxVres2);
-					factors.push_back(-1.i*U*tff);
-				}
+				// fdag(i)*nf(i)*f(i+1)
+				push_corrhop(i+1, i+3, ilast, +1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false);
+				// fdag(i)*nf(i)*f(i-1)
+				push_corrhop(i+1, i-1, ilast, -1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false);
 			}
 			
-			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
+			if (states.size() > 0)
+			{
+				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+			}
+			else
+			{
+				JCxg[s] = g.state;
+			}
 		}
 		
-		////// adjoint
-		#pragma omp parallel for
-		for (int i=0; i<=ilast; i+=2)
-		{
-			int s = L/2+i/2;
-			int slast = L/2+L/2-1;
-			
-			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-			JCxg[s] = g.state;
-			
-			vector<MODEL::StateXcd> tmp;
-			vector<complex<double>> factors;
-			
-			// term tcc*tcc
-			if (tcc != 0.)
-			{
-				// cdag(i)*c(i+2)
-				if (i+4 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+4,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc*tcc);
-				}
-				// cdag(i)*c(i-2)
-				if (i-4 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-4,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc*tcc);
-				}
-			}
-			
-			if (tff != 0.)
-			{
-				// fdag(i)*f(i+2)
-				if (i+5 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+5,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff*tff);
-				}
-				// fdag(i)*f(i-2)
-				if (i-3 >= 0 and i+1 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-3,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff*tff);
-				}
-			}
-			
-			// term 0.5*tfc*(tcc+tff)
-			if (tfc != 0.)
-			{
-				// cdag(i)*f(i+1)
-				if (i+3 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+3,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*(tcc+tff)*tfc);
-				}
-				// fdag(i)*c(i-1)
-				if (i+1 <= ilast and i-2>=0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-2,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*(tcc+tff)*tfc);
-				}
-				
-				// fdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+2,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-0.5i*(tcc+tff)*tfc);
-				}
-				// cdag(i)*f(i-1)
-				if (i-1 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-1,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+0.5i*(tcc+tff)*tfc);
-				}
-			}
-			
-			// term Ec*tcc
-			if (Ec != 0. and tcc != 0.)
-			{
-				// cdag(i)*c(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+2,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tcc*Ec);
-				}
-				// cdag(i)*c(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-2,i), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tcc*Ec);
-				}
-			}
-			
-			// term Ef*tff
-			if (Ef != 0. and tff != 0.)
-			{
-				// fdag(i)*f(i+1)
-				if (i+2 <= ilast)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i+3,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(-1.i*tff*Ef);
-				}
-				// fdag(i)*f(i-1)
-				if (i-2 >= 0)
-				{
-					MODEL::StateXcd OxVres;
-					OxV_exact(H.cdagc(i-1,i+1), g.state, OxVres, tol_OxV, CVERB);
-					tmp.push_back(OxVres);
-					factors.push_back(+1.i*tff*Ef);
-				}
-			}
-			
-			// term U*tff
-			if (tff != 0. and U != 0.)
-			{
-				MODEL::StateXcd OxVres1;
-				OxV_exact(H.n(i), g.state, OxVres1, tol_OxV, CVERB);
-				
-				// fdag(i)*f(i+1)*nf(i)
-				if (i+3 <= ilast)
-				{	
-					MODEL::StateXcd OxVres2;
-					OxV_exact(H.cdagc(i+3,i+1), OxVres1, OxVres2, tol_OxV, CVERB);
-					tmp.push_back(OxVres2);
-					factors.push_back(-1.i*U*tff);
-				}
-				// fdag(i)*f(i-1)*nf(i)
-				if (i+1 <= ilast and i-1>=0)
-				{
-					MODEL::StateXcd OxVres2;
-					OxV_exact(H.cdagc(i-1,i+1), OxVres1, OxVres2, tol_OxV, CVERB);
-					tmp.push_back(OxVres2);
-					factors.push_back(+1.i*U*tff);
-				}
-			}
-			
-			MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-			Compadre.lincomboCompress(tmp, factors, JCxg[s], g.state, Mlimit, 1e-7);
-		}
+//		//-----adjoint-----
+//		#pragma omp parallel for
+//		for (int i=0; i<=ilast; i+=2)
+//		{
+//			int s = L/2+i/2;
+//			int slast = L/2+L/2-1;
+//			
+//			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
+//			JCxg[s] = g.state;
+//			
+//			vector<MODEL::StateXcd> states;
+//			vector<complex<double>> factors;
+//			
+//			// term tcc*tcc
+//			if (tcc != 0.)
+//			{
+//				// cdag(i)*c(i+2)
+//				push_term(i+4, i, ilast, -1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+//				// cdag(i)*c(i-2)
+//				push_term(i-4, i, ilast, +1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//				
+//			if (tff != 0.)
+//			{
+//				// fdag(i)*f(i+2)
+//				push_term(i+5, i+1, ilast, -1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
+//				// fdag(i)*f(i-2)
+//				push_term(i-3, i+1, ilast, +1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//			
+//			// term 0.5*tfc*(tcc+tff)
+//			if (tfc != 0.)
+//			{
+//				// cdag(i)*f(i+1)
+//				push_term(i+3, i,   ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+//				// fdag(i)*c(i-1)
+//				push_term(i-2, i+1, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+//				// fdag(i)*c(i+1)
+//				push_term(i+2, i+1, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+//				// cdag(i)*f(i-1)
+//				push_term(i-1, i,   ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//				
+//			// term Ec*tcc
+//			if (Ec != 0. and tcc != 0.)
+//			{
+//				// cdag(i)*c(i+1)
+//				push_term(i+2, i, ilast, -1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
+//				// cdag(i)*c(i-1)
+//				push_term(i-2, i, ilast, +1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//			
+//			// term Ef*tff
+//			if (Ef != 0. and tff != 0.)
+//			{
+//				// fdag(i)*f(i+1)
+//				push_term(i+3, i+1, ilast, -1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
+//				// fdag(i)*f(i-1)
+//				push_term(i-1, i+1, ilast, +1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
+//			}
+//			
+//			// term U*tff
+//			if (tff != 0. and U != 0. and i+1 <= ilast)
+//			{
+//				// (fdag(i)*nf(i)*f(i+1))^dag = fdag(i+1)*nf(i)*f(i)
+//				push_corrhop(i+3, i+1, ilast, -1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
+//				// (fdag(i)*nf(i)*f(i-1))^dag = fdag(i-1)*nf(i)*f(i)
+//				push_corrhop(i-1, i+1, ilast, +1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
+//			}
+//			
+//			if (states.size() > 0)
+//			{
+//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+//			}
+//			else
+//			{
+//				JCxg[s] = g.state;
+//			}
+//		}
 	}
 	
 	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
 	
 	vector<MODEL::StateXcd> Psi = JCxg;
+	for (int i=0; i<L/2; ++i)
+	{
+		Psi.push_back(JCxg[i]);
+	}
 	JCxg.resize(0);
 	for (int i=0; i<L; ++i)
 	{
@@ -753,7 +638,7 @@ int main (int argc, char* argv[])
 	{
 		Stopwatch<> StepTimer;
 		
-		JoverlapSum(t.index()) = calc_Joverlap_counterprop(Psi, exp(+1.i*g.energy*(*tfull)))/(0.5*L);
+		JoverlapSum(t.index()) = calc_Joverlap(Psi, exp(+1.i*g.energy*(*tfull)))/(0.5*L);
 		tfull << JoverlapSum(t.index());
 		lout << "save results at tfull=" << *tfull << ", res=" << JoverlapSum(t.index()) << endl;
 		tfull.save(make_string(spec+"t_",base,"_",tbase,".dat"));
@@ -804,7 +689,8 @@ int main (int argc, char* argv[])
 		lout << TpropTimer.info("total running time",false) << endl;
 		lout << endl;
 	}
-	lout << endl;
+	
+	lout << "saved to: " << make_string(spec+"t_",base,"_",tbase,".dat") << endl << endl;
 	
 	VectorXd tvals = tfull.get_abscissa();
 	for (int i=0; i<tvals.rows(); ++i)
@@ -814,4 +700,6 @@ int main (int argc, char* argv[])
 	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=GAUSS",".dat"), GAUSS);
 	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=LORENTZ",".dat"), LORENTZ);
 	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=NO",".dat"), NODAMPING);
+	
+	lout << endl << "saved to: " << make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=[...].dat") << endl;
 }

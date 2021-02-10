@@ -48,6 +48,12 @@ public:
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdag_nc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagn_c (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
@@ -651,6 +657,66 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 		out[0] = cdagc<UP>(locx1,locx2,locy1,locy2);
 		out[1] = cdagc<DN>(locx1,locx2,locy1,locy2);
 		return out;
+	}
+}
+
+// n(j)*cdag(i)*c(j)
+// = cdag(i)*n(j)*c(j) for i!=0
+// = n(i)^2 for i==j
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HubbardObservables<Symmetry,Scalar>::
+cdag_nc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	if constexpr (Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2())
+	{
+		if (locx1 == locx2)
+		{
+			assert(locy1 == locy2);
+			return make_local (locx1, locy1, F[locx1].n(locy1)*F[locx1].n(locy1), 1., PROP::BOSONIC, PROP::HERMITIAN);
+		}
+		else
+		{
+			return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].n(locy2)*F[locx2].c(locy2), Symmetry::qvacuum(), sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+		}
+	}
+	else if constexpr (Dummy::IS_SPIN_SU2() and Dummy::IS_CHARGE_SU2())
+	{
+		throw;
+	}
+	else
+	{
+		throw;
+	}
+}
+
+// cdag(i)*c(j)*n(i)
+// = cdag(i)*n(i)*c(j) for i!=0
+// = n(i)^2 for i==j
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HubbardObservables<Symmetry,Scalar>::
+cdagn_c (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	if constexpr (Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2())
+	{
+		if (locx1 == locx2)
+		{
+			assert(locy1 == locy2);
+			return make_local (locx1, locy1, F[locx1].n(locy1)*F[locx1].n(locy1), 1., PROP::BOSONIC, PROP::HERMITIAN);
+		}
+		else
+		{
+			return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1)*F[locx1].n(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+		}
+	}
+	else if constexpr (Dummy::IS_SPIN_SU2() and Dummy::IS_CHARGE_SU2())
+	{
+		throw;
+	}
+	else
+	{
+		throw;
 	}
 }
 
