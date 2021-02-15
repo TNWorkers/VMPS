@@ -397,9 +397,13 @@ int main (int argc, char* argv[])
 			if (tff != 0. and U != 0. and i+1 <= ilast)
 			{
 				// fdag(i)*nf(i)*f(i+1)
-				push_corrhop(i+1, i+3, ilast, +1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_corrhop(i+1, i+3, ilast, +0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false); // false=cdagn_c
 				// fdag(i)*nf(i)*f(i-1)
-				push_corrhop(i+1, i-1, ilast, -1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_corrhop(i+1, i-1, ilast, -0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false);
+				// fdag(i+1)*nf(i)*f(i)
+				push_corrhop(i+3, i+1, ilast, -0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true); // true=cdag_nc
+				// fdag(i-1)*nf(i)*f(i)
+				push_corrhop(i-1, i+1, ilast, +0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
 			}
 			
 			if (states.size() > 0)

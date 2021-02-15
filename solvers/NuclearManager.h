@@ -313,7 +313,7 @@ make_Hamiltonian (bool LOAD, bool SAVE, string wd)
 	if (sigma>0.) filename += make_string("_sigma=",sigma);
 	filename += make_string("_j=",levelstring);
 	if (PARAM!="Seminole") filename += make_string("_PARAM=",PARAM);
-	filename += ".h5";
+//	filename += ".h5";
 	
 	if (LOAD)
 	{
@@ -513,7 +513,7 @@ compute (bool LOAD, bool SAVE, string wd)
 	for (int Nshell=0; Nshell<=2*L; ++Nshell)
 	{
 		int A = Z+Nclosed+Nshell;
-		lout << "A=" << A << ", Z=" << Z << ", N=" << Nclosed+Nshell << ", Nshell=" << Nshell << "/" << 2*L << ", progress=" << round(Nshell*1./2*L*100,1) << "%" << endl;
+		lout << "A=" << A << ", Z=" << Z << ", N=" << Nclosed+Nshell << ", Nshell=" << Nshell << "/" << 2*L << ", progress=" << round(Nshell*1./(2*L)*100,1) << "%" << endl;
 		
 		g[Nshell] = calc_gs(Nshell);
 		

@@ -259,7 +259,7 @@ int main (int argc, char* argv[])
 	bool PRINT_FREE = args.get<bool>("PRINT_FREE",false);
 	if constexpr (MODEL::FAMILY == HUBBARD) PRINT_FREE = true;
 	string MOL = args.get<string>("MOL","C60");
-	int VARIANT = args.get<int>("VARIANT",0);
+	int VARIANT = args.get<int>("VARIANT",0); // to try different enumeration variants
 	map<string,int> Lmap = make_Lmap();
 	map<string,string> Vmap = make_vertexMap();
 	if (MOL!="CHAIN" and MOL!="RING") L = Lmap[MOL]; // for linear chain, include chain length using -L
@@ -285,7 +285,6 @@ int main (int argc, char* argv[])
 	int Nexc = args.get<int>("Nexc",0);
 	int ninit = args.get<int>("ninit",0); // ninit=0: start with 1st excited state, ninit=1: start with 2nd excited state etc.
 	vector<string> LOAD_EXCITED = args.get_list<string>("LOAD_EXCITED",{});
-//	if (LOAD_EXCITED.size()>0) Nexc = LOAD_EXCITED.size();
 	double Epenalty = args.get<double>("Epenalty",1e4);
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_CORR_EXCITED = args.get<bool>("CALC_CORR_EXCITED",false);
@@ -451,7 +450,7 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	
-	lout.set(make_string(base,"_Mlimit=",GlobParam.Mlimit,".log"),wd+"log");
+	lout.set(make_string(base,"_Mlimit=",GlobParam.Mlimit,".log"), wd+"log", true);
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
@@ -492,9 +491,10 @@ int main (int argc, char* argv[])
 		throw;
 	}
 	
+	// change hopping along the ring for C60
 	bool RING = args.get<bool>("RING",false);
 	double J2 = args.get<double>("J2",0.9);
-	if (RING and VARIANT==0)
+	if (RING and VARIANT==0 and MOL=="C60")
 	{
 		vector<int> ringsites = {16,17,27,30,20, 21,31,38,28,29, 39,42,32,33,43, 35,25,24,34,26};
 		for (int i=0; i<ringsites.size(); ++i)
@@ -504,8 +504,8 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	bool PERMUTE = args.get<int>("PERMUTE",false);
-	/*if (PERMUTE)
+	/*bool PERMUTE = args.get<int>("PERMUTE",false);
+	if (PERMUTE)
 	{
 		hopping = permute_random(hopping);
 	}*/
