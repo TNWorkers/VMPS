@@ -239,6 +239,12 @@ int main (int argc, char* argv[])
 	GlobSweepParamsOBC.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobSweepParamsOBC.CALC_S_ON_EXIT = false;
 	
+	DMRG::CONTROL::DYN  DynParamsOBC;
+	size_t start_alpha = args.get<size_t>("start_alpha",0);
+	size_t end_alpha = args.get<size_t>("end_alpha",21ul);
+	double alpha = args.get<double>("alpha",100.);
+	DynParamsOBC.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	
 	// Gemeinsame Parameter bei unendlichen und offenen Randbedingungen
 	vector<Param> params;
 	
@@ -278,8 +284,8 @@ int main (int argc, char* argv[])
 	MODEL::Solver DMRG(VERB);
 	DMRG.GlobParam = GlobSweepParamsOBC;
 	DMRG.userSetGlobParam();
-//	DMRG.DynParam = DynParam;
-//	DMRG.userSetDynParam();
+	DMRG.DynParam = DynParamsOBC;
+	DMRG.userSetDynParam();
 	
 	DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 	
@@ -323,7 +329,7 @@ int main (int argc, char* argv[])
 			if (states.size() > 0)
 			{
 				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
 			}
 			else
 			{
@@ -409,7 +415,7 @@ int main (int argc, char* argv[])
 			if (states.size() > 0)
 			{
 				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
 			}
 			else
 			{
@@ -490,7 +496,7 @@ int main (int argc, char* argv[])
 //			if (states.size() > 0)
 //			{
 //				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-7);
+//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
 //			}
 //			else
 //			{
@@ -561,26 +567,34 @@ int main (int argc, char* argv[])
 					lout << "propagated to t=" << *t << endl;
 					lout << TDVP[i].info() << endl;
 					lout << Psi[i].info() << endl;
-					lout << StepTimer.info("time step") << endl;
 				}
 				
 				if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 				{
 					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
-					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/4)
 					{
-						lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+						lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+					}
+				}
+				else
+				{
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/2)
+					{
+						lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
 					}
 				}
 			}
+			lout << StepTimer.info("time step") << endl;
 			
 			#pragma omp parallel for
 			for (int i=0; i<L/2; ++i)
 			{
 				auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
 				TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
-				if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/4) lout << StepTimer.info("entropy calculation") << endl;
 			}
+			
+			if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
 		}
 		
 		lout << TpropTimer.info("total running time",false) << endl;
