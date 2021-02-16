@@ -286,6 +286,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		// resize Vout
 		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Minit, Qtot_input, GlobParam.Qinit);
+		// reset stuff after constructor:
 		Vout.state.max_Nsv = GlobParam.Minit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
@@ -365,6 +366,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		Vout.state.max_Nsv = Vout.state.calc_Mmax();
 		Mmax_old = Vout.state.max_Nsv;
+		Vout.state.min_Nsv = DynParam.min_Nsv(0);
+		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 //		cout << termcolor::blue << "Vout.state.max_Nsv=" << Vout.state.max_Nsv << ", Mmax_old=" << Mmax_old << termcolor::reset << endl;
 	}
 	
