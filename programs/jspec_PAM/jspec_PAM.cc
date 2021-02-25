@@ -141,7 +141,7 @@ void FT_and_save (const VectorXd &tvals, double tmax, const VectorXcd &data, dou
 
 void push_term (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors)
 {
-	if (i>=0 and i<=ilast and j>=0 and j<=ilast)
+	if (i>=0 and i<H.length() and j>=0 and j<H.length())
 	{
 		MODEL::StateXcd OxVres;
 		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB);
@@ -153,7 +153,7 @@ void push_term (int i, int j, int ilast, complex<double> lambda, double tol_OxV,
 void push_corrhop (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, 
                    const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors, bool DAG=false)
 {
-	if (i>=0 and i<=ilast and j>=0 and j<=ilast)
+	if (i>=0 and i<H.length() and j>=0 and j<H.length())
 	{
 		MODEL::StateXcd OxVres;
 		if (DAG)
@@ -400,7 +400,7 @@ int main (int argc, char* argv[])
 			}
 			
 			// term U*tff
-			if (tff != 0. and U != 0. and i+1 <= ilast)
+			if (tff != 0. and U != 0.)
 			{
 				// fdag(i)*nf(i)*f(i+1)
 				push_corrhop(i+1, i+3, ilast, +0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false); // false=cdagn_c
@@ -422,87 +422,6 @@ int main (int argc, char* argv[])
 				JCxg[s] = g.state;
 			}
 		}
-		
-//		//-----adjoint-----
-//		#pragma omp parallel for
-//		for (int i=0; i<=ilast; i+=2)
-//		{
-//			int s = L/2+i/2;
-//			int slast = L/2+L/2-1;
-//			
-//			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-//			JCxg[s] = g.state;
-//			
-//			vector<MODEL::StateXcd> states;
-//			vector<complex<double>> factors;
-//			
-//			// term tcc*tcc
-//			if (tcc != 0.)
-//			{
-//				// cdag(i)*c(i+2)
-//				push_term(i+4, i, ilast, -1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
-//				// cdag(i)*c(i-2)
-//				push_term(i-4, i, ilast, +1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
-//			}
-//				
-//			if (tff != 0.)
-//			{
-//				// fdag(i)*f(i+2)
-//				push_term(i+5, i+1, ilast, -1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
-//				// fdag(i)*f(i-2)
-//				push_term(i-3, i+1, ilast, +1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
-//			}
-//			
-//			// term 0.5*tfc*(tcc+tff)
-//			if (tfc != 0.)
-//			{
-//				// cdag(i)*f(i+1)
-//				push_term(i+3, i,   ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
-//				// fdag(i)*c(i-1)
-//				push_term(i-2, i+1, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
-//				// fdag(i)*c(i+1)
-//				push_term(i+2, i+1, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
-//				// cdag(i)*f(i-1)
-//				push_term(i-1, i,   ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
-//			}
-//				
-//			// term Ec*tcc
-//			if (Ec != 0. and tcc != 0.)
-//			{
-//				// cdag(i)*c(i+1)
-//				push_term(i+2, i, ilast, -1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
-//				// cdag(i)*c(i-1)
-//				push_term(i-2, i, ilast, +1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
-//			}
-//			
-//			// term Ef*tff
-//			if (Ef != 0. and tff != 0.)
-//			{
-//				// fdag(i)*f(i+1)
-//				push_term(i+3, i+1, ilast, -1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
-//				// fdag(i)*f(i-1)
-//				push_term(i-1, i+1, ilast, +1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
-//			}
-//			
-//			// term U*tff
-//			if (tff != 0. and U != 0. and i+1 <= ilast)
-//			{
-//				// (fdag(i)*nf(i)*f(i+1))^dag = fdag(i+1)*nf(i)*f(i)
-//				push_corrhop(i+3, i+1, ilast, -1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
-//				// (fdag(i)*nf(i)*f(i-1))^dag = fdag(i-1)*nf(i)*f(i)
-//				push_corrhop(i-1, i+1, ilast, +1.i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
-//			}
-//			
-//			if (states.size() > 0)
-//			{
-//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
-//			}
-//			else
-//			{
-//				JCxg[s] = g.state;
-//			}
-//		}
 	}
 	
 	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
@@ -574,7 +493,7 @@ int main (int argc, char* argv[])
 					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
 					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/4)
 					{
-						lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+						lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
 					}
 				}
 				else

@@ -244,6 +244,8 @@ map<string,string> make_vertexMap()
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
+	Eigen::initParallel();
+	
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
 	double t = args.get<double>("t",1.);
@@ -425,8 +427,8 @@ int main (int argc, char* argv[])
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",30ul);
-	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	size_t end_2site = args.get<size_t>("end_2site",20ul);
+	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%2==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	double eps_svd = args.get<double>("eps_svd",1e-10);
 	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
@@ -446,7 +448,7 @@ int main (int argc, char* argv[])
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
-	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per);
+	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per+1ul);
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	

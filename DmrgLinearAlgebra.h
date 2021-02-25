@@ -6,6 +6,7 @@
 #include "Mps.h"
 #include "Mpo.h"
 #include "solvers/MpsCompressor.h"
+#include "ParamHandler.h"
 
 /**@file
 \brief External functions to manipulate Mps and Mpo objects.*/
@@ -782,6 +783,58 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout,
 	Mps<Symmetry,Scalar> Vtmp;
 	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY);
 	Vinout = Vtmp;
+}
+
+template<typename Hamiltonian, typename Scalar>
+Hamiltonian sum (const Hamiltonian &H1, const Hamiltonian &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
+{
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Terms1 = H1;
+	Terms1.set_verbosity(VERBOSITY);
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Terms2 = H2;
+	Terms2.set_verbosity(VERBOSITY);
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Sum_asTerms = Hamiltonian::sum(Terms1,Terms2);
+	Mpo<typename Hamiltonian::Symmetry,Scalar> Sum_asMpo(Sum_asTerms);
+	vector<Param> params;
+	Hamiltonian Hres(Sum_asMpo,params);
+	return Hres;
+}
+
+template<typename Hamiltonian, typename Scalar>
+Hamiltonian prod (const Hamiltonian &H1, const Hamiltonian &H2, const qarray<Hamiltonian::Symmetry::Nq> &Qtot=Hamiltonian::Symmetry::qvacuum(), DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
+{
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Terms1 = H1;
+	Terms1.set_verbosity(VERBOSITY);
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Terms2 = H2;
+	Terms2.set_verbosity(VERBOSITY);
+	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Prod_asTerms = Hamiltonian::prod(Terms1,Terms2,Qtot);
+	Mpo<typename Hamiltonian::Symmetry,Scalar> Prod_asMpo(Prod_asTerms);
+	vector<Param> params;
+	Hamiltonian Hres(Prod_asMpo,params);
+	return Hres;
+}
+
+template<typename Symmetry, typename Scalar=double>
+Mpo<Symmetry,Scalar> sum (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
+{
+	MpoTerms<Symmetry,Scalar> Terms1 = H1;
+	Terms1.set_verbosity(VERBOSITY);
+	MpoTerms<Symmetry,Scalar> Terms2 = H2;
+	Terms2.set_verbosity(VERBOSITY);
+	MpoTerms<Symmetry,Scalar> Sum_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
+	Mpo<Symmetry,Scalar> Sum_asMpo(Sum_asTerms);
+	return Sum_asMpo;
+}
+
+template<typename Symmetry, typename Scalar=double>
+Mpo<Symmetry,Scalar> prod (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, const qarray<Symmetry::Nq> &Qtot=Symmetry::qvacuum(), DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
+{
+	MpoTerms<Symmetry,Scalar> Terms1 = H1;
+	Terms1.set_verbosity(VERBOSITY);
+	MpoTerms<Symmetry,Scalar> Terms2 = H2;
+	Terms2.set_verbosity(VERBOSITY);
+	MpoTerms<Symmetry,Scalar> Prod_asTerms = MpoTerms<Symmetry,Scalar>::prod(Terms1,Terms2,Qtot);
+	Mpo<Symmetry,Scalar> Prod_asMpo(Prod_asTerms);
+	return Prod_asMpo;
 }
 
 #endif

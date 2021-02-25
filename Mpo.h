@@ -38,6 +38,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar> class Vumps
 template<typename Symmetry, typename Scalar=double>
 class Mpo : public MpoTerms<Symmetry,Scalar>
 {
+public:
 	typedef SparseMatrixXd SparseMatrixType;
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	static constexpr size_t Nq = Symmetry::Nq;
@@ -57,9 +58,13 @@ public:
 	
 	Mpo() : MpoTerms<Symmetry, Scalar>(){};
 	
-	Mpo(size_t L_input);
+	Mpo(MpoTerms<Symmetry,Scalar>& Terms)
+	:MpoTerms<Symmetry,Scalar>(Terms)
+	{};
 	
-	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
+	Mpo (size_t L_input);
+	
+	Mpo (std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
 	
 	template<typename CouplScalar>
 	void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
@@ -218,7 +223,10 @@ Mpo(std::size_t L_input)
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
 Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, BC BC_input, DMRG::VERBOSITY::OPTION VERB_input)
-: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input, VERB_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input) {this->set_name(label_input);}
+: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input, VERB_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input)
+{
+	this->set_name(label_input);
+}
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 push_width(const std::size_t width, const std::size_t loc, const Scalar lambda, const OperatorType& outOp, const std::vector<OperatorType>& trans, const OperatorType& inOp)

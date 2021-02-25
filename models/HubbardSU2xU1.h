@@ -52,7 +52,7 @@ public:
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
-private:
+//private:
 	
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
@@ -60,6 +60,18 @@ private:
 public:
 	
 	HubbardSU2xU1() : Mpo(){};
+	
+	HubbardSU2xU1(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,HubbardSU2xU1::defaults),
+	 ParamReturner(HubbardSU2xU1::sweep_defaults)
+	{
+		ParamHandler P(params,HubbardSU2xU1::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	/**

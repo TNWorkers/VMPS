@@ -1228,11 +1228,15 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 {
 	Stopwatch<> Chronos;
 	
+	Stopwatch<> OptTimer;
 	PivotVector<Symmetry,Scalar> Apair;
 	prodOptimize2(H,Vin,Vout,Apair);
+	t_opt += OptTimer.time();
+	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Apair.data);
 	t_sweep += SweepTimer.time();
+	
 	pivot = Vout.get_pivot();
 	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);

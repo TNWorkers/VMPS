@@ -153,7 +153,7 @@ public:
 
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-																							  const ArrayXd &Bz, const ArrayXd &mu, 
+																							  const ArrayXd &Bz, const ArrayXd &mu, const ArrayXd &nu,
 																							  const ArrayXd &Kz) const;
 
 	/**
@@ -169,7 +169,8 @@ public:
 	 */
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-																							 const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, const ArrayXd &Kz, const ArrayXd &Kx, 
+																							 const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, const ArrayXd &nu,
+																							 const ArrayXd &Kz, const ArrayXd &Kx, 
 																							 const ArrayXXd &Dy) const;
 	/**
 	 * Creates the full Heisenberg (XYZ) Hamiltonian on the supersite.
@@ -431,11 +432,10 @@ HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const
 	{
 		if (J(i,j) != 0.)
 		{
-			if
-				constexpr (Symmetry::IS_SPIN_SU2())
-						  {
-							  Oout += J(i,j)*std::sqrt(3.) * (OperatorType::prod(Sdag(i),S(j),Symmetry::qvacuum())).template cast<Scalar_>();
-						  }
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				Oout += J(i,j)*std::sqrt(3.) * (OperatorType::prod(Sdag(i),S(j),Symmetry::qvacuum())).template cast<Scalar_>();
+			}
 			else
 			{
 				Oout += J(i,j) * (OperatorType::prod(Sz(i),Sz(j),Symmetry::qvacuum())).template cast<Scalar_>();
@@ -451,9 +451,7 @@ HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const
 template<typename Symmetry_, size_t order>
 template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,-1,-1> > >::type SpinBase<Symmetry_,order>::
-HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-                       const ArrayXd &Bz, const ArrayXd &mu, 
-                       const ArrayXd &Kz) const
+HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, const ArrayXd &Bz, const ArrayXd &mu, const ArrayXd &nu, const ArrayXd &Kz) const
 {
 	assert(Bz.rows() == N_orbitals and Kz.rows() == N_orbitals);
 	
@@ -478,7 +476,11 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (mu(i) != 0.) {Mout -= mu(i) * (0.5*Id()-Scomp(SZ,i));} // for Kitaev chain: -mu*n = -mu*(1/2-Sz)
+		if (mu(i) != 0.) {Mout += mu(i) * (Scomp(SZ,i)-0.5*Id());} // for Kitaev chain: -mu*n = -mu*(1/2-Sz) = mu*(Sz-1/2)
+	}
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (nu(i) != 0.) {Mout += nu(i) * (Scomp(SZ,i)+0.5*Id());}
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
@@ -492,13 +494,14 @@ template<typename Symmetry_, size_t order>
 template<typename Dummy>
 typename std::enable_if<Dummy::NO_SPIN_SYM(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,-1,-1> > >::type SpinBase<Symmetry_,order>::
 HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-                       const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, 
+                       const ArrayXd &Bz, const ArrayXd &Bx, 
+                       const ArrayXd &mu, const ArrayXd &nu,
                        const ArrayXd &Kz, const ArrayXd &Kx,
                        const ArrayXXd &Dy) const
 {
 	assert(Bz.rows() == N_orbitals and Bx.rows() == N_orbitals and Kz.rows() == N_orbitals and Kx.rows() == N_orbitals);
 	
-	OperatorType Mout = HeisenbergHamiltonian(Jxy, Jz, Bz, mu, Kz);
+	OperatorType Mout = HeisenbergHamiltonian(Jxy, Jz, Bz, mu, nu, Kz);
 	
 	for (int i=0; i<N_orbitals; ++i)
 	for (int j=0; j<i; ++j)

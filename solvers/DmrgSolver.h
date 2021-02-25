@@ -1044,8 +1044,9 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
+				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
+			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
@@ -1173,8 +1174,9 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
+				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
+			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -1248,7 +1250,12 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
 		lout << termcolor::bold << Eedge << "=" << setprecision(15) << Vout.energy << ", "
-			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
+		     << Eedge << "/L=" << Vout.energy/N_phys;
+		if (Psi0.size() > 0)
+		{
+			lout << ", gap=" << setprecision(16) << Vout.energy-E0;
+		}
+		lout << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
 		

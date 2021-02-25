@@ -29,6 +29,7 @@ namespace MPO_STATUS
 
 template<typename Symmetry, typename Scalar> class MpoTerms
 {
+public:
     typedef SiteOperator<Symmetry,Scalar> OperatorType;
     typedef typename Symmetry::qType qType;
     typedef Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
@@ -3789,7 +3790,7 @@ sum(const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &botto
             out.decrement_auxdim(loc, Symmetry::qvacuum());
         }
 	}
-    out.set_name(top.get_name()+"+"+bottom.get_name());
+    out.set_name(top.get_name()+"\n+"+bottom.get_name());
     out.compress(tolerance);
     out.calc(1);
     return out;
