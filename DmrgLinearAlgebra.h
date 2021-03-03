@@ -736,6 +736,8 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	}
 	else
 	{
+//		cout << Vout.info() << endl;
+//		cout << "dot=" << dot(Vout,Vout) << endl;
 		Vout.sweep(0,DMRG::BROOM::QR);
 		
 		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
@@ -786,7 +788,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout,
 }
 
 template<typename Hamiltonian, typename Scalar>
-Hamiltonian sum (const Hamiltonian &H1, const Hamiltonian &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
+Hamiltonian sum (const Hamiltonian &H1, const Hamiltonian &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Terms1 = H1;
 	Terms1.set_verbosity(VERBOSITY);
@@ -808,7 +810,7 @@ Hamiltonian prod (const Hamiltonian &H1, const Hamiltonian &H2, const qarray<Ham
 	Terms2.set_verbosity(VERBOSITY);
 	MpoTerms<typename Hamiltonian::Symmetry,Scalar> Prod_asTerms = Hamiltonian::prod(Terms1,Terms2,Qtot);
 	Mpo<typename Hamiltonian::Symmetry,Scalar> Prod_asMpo(Prod_asTerms);
-	vector<Param> params;
+	vector<Param> params; // needs a better solution: params contains info on Ly and states projected out of the basis
 	Hamiltonian Hres(Prod_asMpo,params);
 	return Hres;
 }

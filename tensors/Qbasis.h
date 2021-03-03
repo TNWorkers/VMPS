@@ -297,7 +297,7 @@ find(const std::string& ident) const
 		auto [qVal,num,basis] = q;
 		if(basis.find(ident)) {return qVal;}
 	}
-	assert( 1!=1 and "The ident is not in the basis" );
+	assert(1!=1 and "The ident is not in the basis");
 }
 
 template<typename Symmetry>
@@ -744,7 +744,6 @@ combine (const Qbasis<Symmetry>& other, bool FLIP) const
 						(it->second).push_back(entry);
 					}
 				}
-
 			}
 		}
 	}
@@ -799,7 +798,7 @@ std::string Qbasis<Symmetry>::
 print() const
 {
 	std::stringstream out;
-#ifdef HELPERS_IO_TABLE
+	#ifdef HELPERS_IO_TABLE
 	TextTable t( '-', '|', '+' );
 	t.add("Q");
 	t.add("Dim(Q)");
@@ -813,7 +812,7 @@ print() const
 		
 		//ss << q_Phys;
 		tt << plain.size();
-
+		
 		uu << curr_num;
 		// uu << "(";
 		// for (auto it = plain.cbegin(); it != plain.cend(); it++)
@@ -832,9 +831,9 @@ print() const
 		t.endOfRow();
 	}
 	out << t;
-#else
+	#else
 	out << "The stream operator for Qbasis needs the TextTable library.";
-#endif
+	#endif
 	return out.str();
 }
 

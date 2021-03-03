@@ -51,9 +51,23 @@ private:
 	
 public:
 	
+	///@{
 	HubbardSU2xSU2() : Mpo(){};
+	
+	HubbardSU2xSU2(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,HubbardSU2xSU2::defaults),
+	 ParamReturner(HubbardSU2xSU2::sweep_defaults)
+	{
+		ParamHandler P(params,HubbardSU2xSU2::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HubbardSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
-
+	///@}
+	
 	/**
 	 * \describe_set_operators
 	 *
@@ -97,6 +111,7 @@ const map<string,any> HubbardSU2xSU2::sweep_defaults =
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
 	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",500ul},
 	{"tol_eigval",1e-6}, {"tol_state",1e-5},
+	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 

@@ -47,7 +47,7 @@ public:
 	static qarray<1> singlet (int N=0) {return qarray<1>{0};};
 	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
-private:
+public:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 	

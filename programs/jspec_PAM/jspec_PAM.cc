@@ -139,7 +139,7 @@ void FT_and_save (const VectorXd &tvals, double tmax, const VectorXcd &data, dou
 	InterpIm.kill_splines();
 }
 
-void push_term (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors)
+void push_term (int i, int j, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors)
 {
 	if (i>=0 and i<H.length() and j>=0 and j<H.length())
 	{
@@ -150,7 +150,7 @@ void push_term (int i, int j, int ilast, complex<double> lambda, double tol_OxV,
 	}
 }
 
-void push_corrhop (int i, int j, int ilast, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, 
+void push_corrhop (int i, int j, complex<double> lambda, double tol_OxV, DMRG::VERBOSITY::OPTION CVERB, const MODEL &H, 
                    const MODEL::StateXcd &target, vector<MODEL::StateXcd> &states, vector<complex<double>> &factors, bool DAG=false)
 {
 	if (i>=0 and i<H.length() and j>=0 and j<H.length())
@@ -190,7 +190,7 @@ int main (int argc, char* argv[])
 	
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
-	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
+	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nc*nf
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
@@ -200,7 +200,7 @@ int main (int argc, char* argv[])
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
-	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
+	double Ef = args.get<double>("Ef",-4.); // onsite-Energie fuer f
 	
 	bool SAVE_GS = args.get<bool>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
@@ -265,7 +265,7 @@ int main (int argc, char* argv[])
 		// Hopping
 		ArrayXXcd t1cell = hopping_PAM(L/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 //		ArrayXXd t1cell = hopping_PAM(L/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty).real(); // reell
-		lout << "hopping:" << endl << t1cell << endl;
+		if (L<=16) lout << "hopping:" << endl << t1cell << endl;
 		params.push_back({"tFull",t1cell});
 	}
 	
@@ -293,16 +293,14 @@ int main (int argc, char* argv[])
 	
 	lout << endl << "Applying J to ground state for all sites..." << endl;
 	
-	int ilast = L-2;
 	double tol_OxV = 2.; // val>1 = do not compress
 	
 	if (spec == "JJC")
 	{
 		#pragma omp parallel for
-		for (int i=0; i<=ilast; i+=2)
+		for (int i=0; i<L; i+=2)
 		{
 			int s = i/2;
-			int slast = L/2-1;
 			
 			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			JCxg[s] = g.state;
@@ -313,17 +311,17 @@ int main (int argc, char* argv[])
 			if (tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
-				push_term(i, i+2, ilast, +1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i+2, +1.i*(-tcc), tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-1)
-				push_term(i, i-2, ilast, -1.i*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i-2, -1.i*(-tcc), tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			if (tff != 0.)
 			{
 				// fdag(i)*f(i+1)
-				push_term(i+1, i+3, ilast, +1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i+3, +1.i*(-tff), tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)f(i-1)
-				push_term(i+1, i-1, ilast, -1.i*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i-1, -1.i*(-tff), tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			if (states.size() > 0)
@@ -340,10 +338,9 @@ int main (int argc, char* argv[])
 	else if (spec == "JJE")
 	{
 		#pragma omp parallel for
-		for (int i=0; i<=ilast; i+=2)
+		for (int i=0; i<L; i+=2)
 		{
 			int s = i/2;
-			int slast = L/2-1;
 			
 			DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			JCxg[s] = g.state;
@@ -355,61 +352,61 @@ int main (int argc, char* argv[])
 			if (tcc != 0.)
 			{
 				// cdag(i)*c(i+2)
-				push_term(i, i+4, ilast, +1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i+4, +1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-2)
-				push_term(i, i-4, ilast, -1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i-4, -1.i*tcc*tcc, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			if (tff != 0.)
 			{
 				// fdag(i)*f(i+2)
-				push_term(i+1, i+5, ilast, +1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i+5, +1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*f(i-2)
-				push_term(i+1, i-3, ilast, -1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i-3, -1.i*tff*tff, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term 0.5*tfc*(tcc+tff)
 			if (tfc != 0.)
 			{
 				// cdag(i)*f(i+1)
-				push_term(i,   i+3, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i,   i+3, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*c(i-1)
-				push_term(i+1, i-2, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i-2, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*c(i+1)
-				push_term(i+1, i+2, ilast, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i+2, +0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*f(i-1)
-				push_term(i,   i-1, ilast, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i,   i-1, -0.5i*(tcc+tff)*tfc, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term Ec*tcc
 			if (Ec != 0. and tcc != 0.)
 			{
 				// cdag(i)*c(i+1)
-				push_term(i, i+2, ilast, +1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i+2, +1.i*(-tcc)*Ec, tol_OxV, CVERB, H, g.state, states, factors);
 				// cdag(i)*c(i-1)
-				push_term(i, i-2, ilast, -1.i*tcc*Ec, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i, i-2, -1.i*(-tcc)*Ec, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term Ef*tff
 			if (Ef != 0. and tff != 0.)
 			{
 				// fdag(i)*f(i+1)
-				push_term(i+1, i+3, ilast, +1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i+3, +1.i*(-tff)*Ef, tol_OxV, CVERB, H, g.state, states, factors);
 				// fdag(i)*f(i-1)
-				push_term(i+1, i-1, ilast, -1.i*tff*Ef, tol_OxV, CVERB, H, g.state, states, factors);
+				push_term(i+1, i-1, -1.i*(-tff)*Ef, tol_OxV, CVERB, H, g.state, states, factors);
 			}
 			
 			// term U*tff
 			if (tff != 0. and U != 0.)
 			{
 				// fdag(i)*nf(i)*f(i+1)
-				push_corrhop(i+1, i+3, ilast, +0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false); // false=cdagn_c
+				push_corrhop(i+1, i+3, +0.5i*U*(-tff), tol_OxV, CVERB, H, g.state, states, factors, false); // false=cdagn_c
 				// fdag(i)*nf(i)*f(i-1)
-				push_corrhop(i+1, i-1, ilast, -0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, false);
+				push_corrhop(i+1, i-1, -0.5i*U*(-tff), tol_OxV, CVERB, H, g.state, states, factors, false);
 				// fdag(i+1)*nf(i)*f(i)
-				push_corrhop(i+3, i+1, ilast, -0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true); // true=cdag_nc
+				push_corrhop(i+3, i+1, -0.5i*U*(-tff), tol_OxV, CVERB, H, g.state, states, factors, true); // true=cdag_nc
 				// fdag(i-1)*nf(i)*f(i)
-				push_corrhop(i-1, i+1, ilast, +0.5i*U*tff, tol_OxV, CVERB, H, g.state, states, factors, true);
+				push_corrhop(i-1, i+1, +0.5i*U*(-tff), tol_OxV, CVERB, H, g.state, states, factors, true);
 			}
 			
 			if (states.size() > 0)
@@ -447,11 +444,13 @@ int main (int argc, char* argv[])
 		TDVP[i] = TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>(H,Psi[i]);
 	}
 	
+	int iVERB = L/4;
+	
 	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L/2);
 	vector<vector<bool>> TWO_SITE(L);
 	for (int i=0; i<L/2; ++i)
 	{
-		DMRG::VERBOSITY::OPTION SOBSVERB = (i==L/4)? VERB : DMRG::VERBOSITY::SILENT;
+		DMRG::VERBOSITY::OPTION SOBSVERB = (i==iVERB)? VERB : DMRG::VERBOSITY::SILENT;
 		Sobs[i] = EntropyObserver<MODEL::StateXcd>(H.length(), Nt, SOBSVERB, tol_DeltaS);
 		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.);
 	}
@@ -491,14 +490,14 @@ int main (int argc, char* argv[])
 				if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 				{
 					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
-					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/4)
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 					{
 						lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
 					}
 				}
 				else
 				{
-					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==L/2)
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 					{
 						lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
 					}

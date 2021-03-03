@@ -82,6 +82,7 @@ const map<string,any> PeierlsHubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -93,7 +94,7 @@ const map<string,any> PeierlsHubbardSU2xU1::sweep_defaults =
 	{"max_halfsweeps",24ul}, {"min_halfsweeps",1ul},
 	{"Minit",2ul}, {"Qinit",2ul}, {"Mlimit",1000ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
-	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST",DMRG::CONVTEST::VAR_2SITE}
 };
 
 PeierlsHubbardSU2xU1::

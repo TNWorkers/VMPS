@@ -58,7 +58,7 @@ public:
 	
 	Mpo() : MpoTerms<Symmetry, Scalar>(){};
 	
-	Mpo(MpoTerms<Symmetry,Scalar>& Terms)
+	Mpo (MpoTerms<Symmetry,Scalar>& Terms)
 	:MpoTerms<Symmetry,Scalar>(Terms)
 	{};
 	

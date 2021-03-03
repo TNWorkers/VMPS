@@ -21,7 +21,7 @@ class FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	FermionSite() {};
-	FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -56,9 +56,11 @@ protected:
 };
 
 FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 {
-
+	bool UPH_IS_INFINITE = false;
+	bool U_IS_INFINITE = false;
+	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q={1,0}; //empty occupied state
 	Eigen::Index inner_dim = 1;
@@ -85,7 +87,7 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 		basis_1s_.push_back(Q,inner_dim,ident);
 		ident.clear();
 	}
-
+	
 	Id_1s_ = OperatorType({1,0},basis_1s_,"id");
 	F_1s_ = OperatorType({1,0},basis_1s_,"F");
 	c_1s_ = OperatorType({2,-1},basis_1s_,"c");

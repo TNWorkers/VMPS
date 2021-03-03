@@ -59,6 +59,7 @@ public:
 	
 public:
 	
+	///@{
 	HubbardSU2xU1() : Mpo(){};
 	
 	HubbardSU2xU1(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
@@ -73,6 +74,7 @@ public:
 	};
 	
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	///@}
 	
 	/**
 	 * \describe_set_operators
@@ -107,6 +109,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 

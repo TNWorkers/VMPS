@@ -21,7 +21,7 @@ class FermionSite<Sym::SU2<Sym::ChargeSU2> >
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	FermionSite() {};
-	FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -68,9 +68,11 @@ protected:
 };
 
 FermionSite<Sym::SU2<Sym::ChargeSU2> >::
-FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 {
-
+	bool UPH_IS_INFINITE = false;
+	bool U_IS_INFINITE = false;
+	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q; //empty occupied state
 	Eigen::Index inner_dim;

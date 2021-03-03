@@ -15,7 +15,9 @@
 
 #ifndef DMRG_POLYCOMPRESS_INCREMENT
 #define DMRG_POLYCOMPRESS_INCREMENT 50
-#endif 
+#endif
+
+#define MPSQCOMPRESSOR_DONT_USE_OPENMP
 
 /// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor

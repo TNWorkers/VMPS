@@ -218,7 +218,7 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 	
 	for (size_t l=0; l<L; ++l)
 	{
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<bool>("REMOVE_DOUBLE",l%Lcell), P.get<bool>("REMOVE_EMPTY",l%Lcell), P.get<bool>("REMOVE_SINGLE",l%Lcell));
 	}
 }
 
@@ -235,7 +235,7 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	ss << ")";
 	
 	Mpo<Symmetry,Scalar> Mout(F.size(), Op.Q(), ss.str(), HERMITIAN);
-	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	for (size_t l=0; l<F.size(); ++l) Mout.setLocBasis(F[l].get_basis().qloc(),l);
 	
 	if (FERMIONIC)
 	{
@@ -940,6 +940,7 @@ template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
 n (size_t locx, size_t locy) const
 {
+//	cout << "n=" << F[locx].n(locy) << endl;
 	return make_local(locx,locy, F[locx].n(locy), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 

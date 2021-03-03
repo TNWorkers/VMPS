@@ -53,6 +53,7 @@ const std::map<string,std::any> HubbardU1::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
+	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
