@@ -5,6 +5,10 @@
 #define DEBUG_VERBOSITY 0
 #endif
 
+#ifndef MAX_SUMPROD_STRINGLENGTH
+#define MAX_SUMPROD_STRINGLENGTH 700
+#endif
+
 /// \cond
 #include <vector>
 #include <string>
@@ -3515,17 +3519,29 @@ prod(const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bott
     out.reconstruct(O, qAux, qPhys, true, boundary_condition, qTot);
 	auto [name_top, power_top] = detect_and_remove_power(top.get_name());
 	auto [name_bot, power_bot] = detect_and_remove_power(bottom.get_name());
-	if(name_top == name_bot)
-    {
-        out.set_name(name_top + power_to_string(power_top+power_bot));
-    }
-    else
-    {
-        out.set_name(top.get_name()+"*"+bottom.get_name());
-    }
-    out.compress(tolerance);
-    out.calc(1);
-    return out;
+	
+	if ((top.get_name()+"\n+"+bottom.get_name()).length() < MAX_SUMPROD_STRINGLENGTH)
+	{
+		if(name_top == name_bot)
+		{
+			out.set_name(name_top + power_to_string(power_top+power_bot));
+		}
+		else
+		{
+			out.set_name(top.get_name()+"*"+bottom.get_name());
+		}
+	}
+	else if ((top.get_name()+"\n+"+bottom.get_name()).length() >= MAX_SUMPROD_STRINGLENGTH and top.get_name().substr(top.get_name().length()-5) != "[...]")
+	{
+		out.set_name(top.get_name()+"\n+[...]");
+	}
+	else
+	{
+		out.set_name(top.get_name());
+	}
+	out.compress(tolerance);
+	out.calc(1);
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> std::pair<std::string, std::size_t> MpoTerms<Symmetry,Scalar>::
@@ -3790,10 +3806,21 @@ sum(const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &botto
             out.decrement_auxdim(loc, Symmetry::qvacuum());
         }
 	}
-    out.set_name(top.get_name()+"\n+"+bottom.get_name());
-    out.compress(tolerance);
-    out.calc(1);
-    return out;
+	if ((top.get_name()+"\n+"+bottom.get_name()).length() < MAX_SUMPROD_STRINGLENGTH)
+	{
+		out.set_name(top.get_name()+"\n+"+bottom.get_name());
+	}
+	else if ((top.get_name()+"\n+"+bottom.get_name()).length() >= MAX_SUMPROD_STRINGLENGTH and top.get_name().substr(top.get_name().length()-5) != "[...]")
+	{
+		out.set_name(top.get_name()+"\n+[...]");
+	}
+	else
+	{
+		out.set_name(top.get_name());
+	}
+	out.compress(tolerance);
+	out.calc(1);
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::

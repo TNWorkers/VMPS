@@ -19,13 +19,13 @@ class FermionSite
 public:
 	
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input=1);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
 	
 	OperatorType c_1s(SPIN_INDEX sigma) const { if (sigma == UP) {return cup_1s_;} return cdn_1s_;}
-	OperatorType cdag_1s(SPIN_INDEX sigma) const { if (sigma == UP) {return cup_1s_.adjoint();} return cdn_1s_.adjoint();}
+	OperatorType cdag_1s(SPIN_INDEX sigma) const { if (sigma == UP) {return cdagup_1s_;} return cdagdn_1s_;}
 	
 	OperatorType n_1s() const {return n_1s_;}
 	OperatorType n_1s(SPIN_INDEX sigma) const { if (sigma == UP) {return nup_1s_;} return ndn_1s_;}
@@ -45,6 +45,8 @@ public:
 	
 protected:
 	
+	int mfactor = 1;
+	
 	void fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
 	void fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
 	
@@ -58,6 +60,9 @@ protected:
 	
 	OperatorType cup_1s_; //annihilation
 	OperatorType cdn_1s_; //annihilation
+	
+	OperatorType cdagup_1s_; //creation
+	OperatorType cdagdn_1s_; //creation
 	
 	OperatorType n_1s_; //particle number
 	OperatorType nup_1s_; //particle number
@@ -75,7 +80,8 @@ protected:
 
 template<typename Symmetry_>
 FermionSite<Symmetry_>::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input)
+:mfactor(mfactor_input)
 {
 	//create basis for one Fermionic Site
 	fill_basis(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_SINGLE);
@@ -95,6 +101,9 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	
 	cup_1s_      = OperatorType(getQ(UP,-1),basis_1s_);
 	cdn_1s_      = OperatorType(getQ(DN,-1),basis_1s_);
+	
+	cdagup_1s_      = OperatorType(getQ(UP,+1),basis_1s_);
+	cdagdn_1s_      = OperatorType(getQ(DN,+1),basis_1s_);
 	
 	n_1s_        = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	nup_1s_      = OperatorType(Symmetry::qvacuum(),basis_1s_);
@@ -124,11 +133,27 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 		F_1s_("dn","dn") = -1.;
 	}
 	
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE)  cup_1s_("empty","up")  = 1.;
-	if (!REMOVE_DOUBLE and !REMOVE_SINGLE) cup_1s_("dn","double") = 1.;
+	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	{
+		cup_1s_("empty","up")  = 1.;
+		cdagup_1s_("up","empty")  = 1.;
+	}
+	if (!REMOVE_DOUBLE and !REMOVE_SINGLE)
+	{
+		cup_1s_("dn","double") = 1.;
+		cdagup_1s_("double","dn") = 1.;
+	}
 	
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE) cdn_1s_("empty","dn")  = 1.;
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE) cdn_1s_("up","double") = -1.;
+	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	{
+		cdn_1s_("empty","dn")  = 1.;
+		cdagdn_1s_("dn","empty")  = 1.;
+	}
+	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	{
+		cdn_1s_("up","double") = -1.;
+		cdagdn_1s_("double","up") = -1.;
+	}
 	
 	//nup_1s_ = cup_1s_.adjoint() * cup_1s_;
 	//ndn_1s_ = cdn_1s_.adjoint() * cdn_1s_;
@@ -179,26 +204,29 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 		Eigen::Index inner_dim = 1;
 		std::vector<std::string> ident;
 		
-		if (!UPH_IS_INFINITE)
+		if (!REMOVE_EMPTY)
 		{
 			ident.push_back("empty");
 			this->basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
 		
-		Q={+1,1}; //up spin state
-		inner_dim = 1;
-		ident.push_back("up");
-		this->basis_1s_.push_back(Q,inner_dim,ident);
-		ident.clear();
+		if (!REMOVE_SINGLE)
+		{
+			Q={+mfactor,1}; //up spin state
+			inner_dim = 1;
+			ident.push_back("up");
+			this->basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+			
+			Q={-mfactor,1}; //down spin state
+			inner_dim = 1;
+			ident.push_back("dn");
+			this->basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
 		
-		Q={-1,1}; //down spin state
-		inner_dim = 1;
-		ident.push_back("dn");
-		this->basis_1s_.push_back(Q,inner_dim,ident);
-		ident.clear();
-		
-		if (!U_IS_INFINITE and !UPH_IS_INFINITE)
+		if (!REMOVE_DOUBLE)
 		{
 			Q={0,2}; //doubly occupied state
 			inner_dim = 1;
@@ -238,7 +266,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			ident.push_back("dn");
 			inner_dim = 2;
 			basis_1s_.push_back(Q,inner_dim,ident);
-			ident.clear();		
+			ident.clear();
 		}
 	}
 	else if constexpr (std::is_same<Symmetry, Sym::U1<Sym::SpinU1> >::value) //spin U1
@@ -247,7 +275,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 		Eigen::Index inner_dim;
 		std::vector<std::string> ident;
 		
-		if (!UPH_IS_INFINITE and U_IS_INFINITE)
+		if (!REMOVE_EMPTY)
 		{
 			ident.push_back("empty");
 			inner_dim = 1;
@@ -255,7 +283,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
-		else if (!U_IS_INFINITE and !UPH_IS_INFINITE)
+		if (!REMOVE_DOUBLE)
 		{
 			Q={0}; //doubly occupied state
 			inner_dim = 2;
@@ -265,17 +293,20 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			ident.clear();
 		}
 		
-		Q={+1}; //up spin state
-		inner_dim = 1;
-		ident.push_back("up");
-		basis_1s_.push_back(Q,inner_dim,ident);
-		ident.clear();
-		
-		Q={-1}; //down spin state
-		inner_dim = 1;
-		ident.push_back("dn");
-		basis_1s_.push_back(Q,inner_dim,ident);
-		ident.clear();
+		if (!REMOVE_SINGLE)
+		{
+			Q={+mfactor}; //up spin state
+			inner_dim = 1;
+			ident.push_back("up");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+			
+			Q={-mfactor}; //down spin state
+			inner_dim = 1;
+			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
 	}
 	else if constexpr (std::is_same<Symmetry, Sym::U1<Sym::ChargeU1> >::value) //charge U1
 	{
@@ -332,8 +363,8 @@ getQ (SPIN_INDEX sigma, int Delta) const
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
 			typename Symmetry::qType out;
-			if      (sigma==UP)     {out = {Delta};}
-			else if (sigma==DN)     {out = {-Delta};}
+			if      (sigma==UP)     {out = {mfactor*Delta};}
+			else if (sigma==DN)     {out = {-mfactor*Delta};}
 			else if (sigma==UPDN)   {out = Symmetry::qvacuum();}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
@@ -354,18 +385,19 @@ getQ (SPIN_INDEX sigma, int Delta) const
 		typename Symmetry::qType out;
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
 		{
-			if      (sigma==UP)     {out = {Delta,Delta};}
-			else if (sigma==DN)     {out = {Delta,-Delta};}
+			if      (sigma==UP)     {out = {Delta,mfactor*Delta};}
+			else if (sigma==DN)     {out = {Delta,-mfactor*Delta};}
 			else if (sigma==UPDN)   {out = {2*Delta,0};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
 		{
-			if      (sigma==UP)     {out = {Delta,Delta};}
-			else if (sigma==DN)     {out = {-Delta,Delta};}
+			if      (sigma==UP)     {out = {mfactor*Delta,Delta};}
+			else if (sigma==DN)     {out = {-mfactor*Delta,Delta};}
 			else if (sigma==UPDN)   {out = {0,2*Delta};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
+		// Not possible to use mfactor with these?
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
 			if      (sigma==UP)     {out = {Delta,0};}

@@ -735,6 +735,8 @@ Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 	update_inbase();
 	update_outbase();
 	
+	graph("init");
+	
 	innerResize(Mmax);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -845,6 +847,11 @@ calc_Qlimits()
 		}
 	}
 	
+	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+	{
+		NEED_WORKAROUND = true;
+	}
+	
 	if (NEED_WORKAROUND)
 	{
 		set_Qlimits_to_inf();
@@ -881,7 +888,7 @@ calc_Qlimits()
 				if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
 			}
 		}
-	//	cout << "Smax=" << Smax << endl;
+//		cout << "Smax=" << Smax << endl;
 		
 		auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
 		{
@@ -892,12 +899,12 @@ calc_Qlimits()
 				return out;
 			}
 			
-	//		cout << "in:" << endl;
-	//		for (size_t i=0; i<qs.size(); ++i)
-	//		{
-	//			cout << qs[i] << ", ";
-	//		}
-	//		cout << endl;
+//			cout << "in:" << endl;
+//			for (size_t i=0; i<qs.size(); ++i)
+//			{
+//				cout << qs[i] << ", ";
+//			}
+//			cout << endl;
 			
 			// sort for every q and remove duplicates
 			array<vector<int>,Nq> tmp;
@@ -927,13 +934,14 @@ calc_Qlimits()
 				out[i][q] = tmp[q][i];
 			}
 			
-	//		cout << "out:" << endl;
-	//		for (size_t i=0; i<out.size(); ++i)
-	//		{
-	//			cout << out[i] << ", ";
-	//		}
-	//		cout << endl;
+//			cout << "out:" << endl;
+//			for (size_t i=0; i<out.size(); ++i)
+//			{
+//				cout << out[i] << ", ";
+//			}
+//			cout << endl;
 			
+//			cout << "returning lowest_qs, size=" << out.size() << endl;
 			return out;
 		};
 		
@@ -981,14 +989,19 @@ calc_Qlimits()
 			{
 				auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
 				auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
-		//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
+//				cout << "l=" << l << ", new_tops.size()=" << new_tops.size() << endl;
+//				cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 				
 				QinTop[l] = highest_q(new_tops);
+//				cout << "highest done!" << endl;
 				QinBot[l] = lowest_q(new_bots);
+//				cout << "lowest done!" << endl;
 				QinBotRange[l] = lowest_qs(new_bots);
-		//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
+//				cout << "a" << endl;
+//				cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
 			}
 			
+//			cout << "b" << endl;
 			QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
 			QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
 			QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
@@ -1101,9 +1114,12 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
 		assert(new_qs.size() > 0);
 		array<double,Nq> mean;
+		
 		for (size_t q=0; q<Nq; q++)
 		{
-			mean[q] = Qtot[q]*l*1./this->N_sites;
+			mean[q] = static_cast<double>(Qtot[q])*static_cast<double>(l)/static_cast<double>(this->N_sites);
+//			cout << "q=" << ", Qtot[q]=" << Qtot[q] << ", mean=" << mean[q] << endl;
+			// Cast carefully, otherwise strange implicit cast of Qtot[q] to size_t for negative numbers that makes everything crash
 		}
 		
 		// check if within ranges (QinBot,QinTop) for all q:
@@ -1245,6 +1261,7 @@ innerResize (size_t Mmax)
 		for (size_t l=1; l<this->N_sites+1; ++l)
 		{
 			assert(Mmax >= outbase[l-1].Nq() and "Choose a greater Minit to have at least one state per QN block.");
+			assert(outbase[l-1].Nq() != 0 and "Probably failed to build correct quantum number graph!");
 			size_t Dmax_in = Mmax / outbase[l-1].Nq();
 			size_t Dmax_in_remainder = Mmax%outbase[l-1].Nq();
 			for (size_t qout=0; qout<outbase[l-1].Nq(); ++qout)
@@ -1269,16 +1286,16 @@ innerResize (size_t Mmax)
 				}
 			}
 		}
-	//	cout << "LEFT: " << endl;
-	//	for (int l=0; l<this->N_sites+1; ++l)
-	//	{
-	//		cout << "l=" << l << endl;
-	//		for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
-	//		{
-	//			cout << "q=" << it->first << ": " << it->second << endl;
-	//		}
-	//	}
-	//	cout << endl;
+//		cout << "LEFT: " << endl;
+//		for (int l=0; l<this->N_sites+1; ++l)
+//		{
+//			cout << "l=" << l << endl;
+//			for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
+//			{
+//				cout << "q=" << it->first << ": " << it->second << endl;
+//			}
+//		}
+//		cout << endl;
 		
 		for (const auto &Qval:Qmulti)
 		{
@@ -1289,7 +1306,7 @@ innerResize (size_t Mmax)
 			assert(Mmax >= inbase[l].Nq() and "Choose a greater Minit to have at least one state per QN block.");
 			size_t Dmax_out = Mmax / inbase[l].Nq();
 			size_t Dmax_out_remainder = Mmax%inbase[l].Nq();
-
+			
 			for (size_t qin=0; qin<inbase[l].Nq(); ++qin)
 			{
 				fromR[l].insert({inbase[l][qin],0});
@@ -2611,10 +2628,12 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	qloc_l.pullData(locBasis(loc)); qloc_r.pullData(locBasis((loc+1)));
 	auto combined_basis = qloc_l.combine(qloc_r);
 	
+	//cout << "begin splitAA" << endl;
 	split_AA2(DIR, combined_basis, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 			  QoutTop[loc], QoutBot[loc],
 			  Cdump, false, truncWeight(loc), entropy, SV,
 			  this->eps_svd, this->min_Nsv, this->max_Nsv);
+	//cout << "end splitAA" << endl;
 	
 	// split_AA(DIR, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 	//          QoutTop[loc], QoutBot[loc],

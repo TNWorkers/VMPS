@@ -21,7 +21,7 @@ class FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -68,7 +68,7 @@ protected:
 };
 
 FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input)
 {
 	bool UPH_IS_INFINITE = false;
 	bool U_IS_INFINITE = false;

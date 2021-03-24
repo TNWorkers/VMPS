@@ -711,7 +711,10 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 		#endif
 		
+//		cout << "begin Jack.compute" << endl;
+//		cout << "block[q]=" << endl << block[q] << endl;
 		Jack.compute(block[q], ComputeThinU|ComputeThinV);
+//		cout << "end Jack.compute" << endl;
 //		cout << "Jack computation done!" << endl;
 		for (size_t i=0; i<Jack.singularValues().size(); i++) {allSV.push_back(make_pair(in[q],std::real(Jack.singularValues()(i))));}
 		// for (const auto& s:Jack.singularValues()) {allSV.push_back(make_pair(in[q],s));}

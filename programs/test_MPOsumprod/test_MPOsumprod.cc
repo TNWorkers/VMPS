@@ -33,7 +33,8 @@ Logger lout;
 
 #include "solvers/DmrgSolver.h"
 #include "models/HubbardSU2xU1.h"
-typedef VMPS::HubbardSU2xU1 MODEL;
+#include "models/HubbardU1.h"
+typedef VMPS::HubbardU1 MODEL;
 #include "DmrgLinearAlgebra.h"
 #include "VUMPS/VumpsSolver.h"
 
@@ -59,7 +60,7 @@ int main (int argc, char* argv[])
 	
 	Eigenstate<MODEL::StateXd> g;
 	
-	MODEL H(L,{{"U",8.}},BC::OPEN);
+	MODEL H(L,{{"U",U}});
 	lout << H.info() << endl;
 	
 	MODEL::Solver DMRG1(VERB);
