@@ -103,7 +103,7 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 	{"Bz",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -364,17 +364,17 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				if (tPrime(alfa,beta) != 0.)
 				{
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()),
-																									 F[lp1].sign(),
-																									 F[lp2].c(UP,beta)),    -tPrime(alfa,beta)));
+					                                                                                      F[lp1].sign(),
+					                                                                                      F[lp2].c(UP,beta)),    -tPrime(alfa,beta)));
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()),
-																									 F[lp1].sign(),
-																									 F[lp2].c(DN,beta)),    -tPrime(alfa,beta)));
+					                                                                                      F[lp1].sign(),
+					                                                                                      F[lp2].c(DN,beta)),    -tPrime(alfa,beta)));
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()),
-																									 F[lp1].sign(),
-																									 F[lp2].cdag(UP,beta)), +tPrime(alfa,beta)));
+					                                                                                      F[lp1].sign(),
+					                                                                                      F[lp2].cdag(UP,beta)), +tPrime(alfa,beta)));
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()),
-																									 F[lp1].sign(),
-																									 F[lp2].cdag(DN,beta)), +tPrime(alfa,beta)));
+					                                                                                      F[lp1].sign(),
+					                                                                                      F[lp2].cdag(DN,beta)), +tPrime(alfa,beta)));
 				}
 			}
 		}

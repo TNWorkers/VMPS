@@ -57,6 +57,7 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"J3site",0.},
 	{"Delta",0.},
 	{"X",0.}, {"Xperp",0.},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 

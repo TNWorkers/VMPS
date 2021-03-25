@@ -352,8 +352,9 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O2, 
             const Mps<Symmetry,Scalar> &Vket,
             typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
-			size_t usePower1=1,
-			size_t usePower2=1)
+            size_t usePower1=1,
+            size_t usePower2=1,
+            bool WARN=true)
 {
 	if constexpr (Symmetry::NON_ABELIAN)
 	{
@@ -387,12 +388,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		}
 		else
 		{
-			lout << endl;
-			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
-			lout << "MPS in question: " << Vket.info() << endl;
-			lout << "MPO1 in question: " << O1.info() << endl;
-			lout << "MPO2 in question: " << O2.info() << endl;
-			lout << endl;
+			if (WARN)
+			{
+				lout << endl;
+				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
+				lout << "MPS in question: " << Vket.info() << endl;
+				lout << "MPO1 in question: " << O1.info() << endl;
+				lout << "MPO2 in question: " << O2.info() << endl;
+				lout << endl;
+			}
 			return 0;
 		}
 	}
@@ -416,10 +420,13 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		}
 		else
 		{
-			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
-			lout << "MPS in question: " << Vket.info() << endl;
-			lout << "MPO1 in question: " << O1.info() << endl;
-			lout << "MPO2 in question: " << O2.info() << endl;
+			if (WARN)
+			{
+				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
+				lout << "MPS in question: " << Vket.info() << endl;
+				lout << "MPO1 in question: " << O1.info() << endl;
+				lout << "MPO2 in question: " << O2.info() << endl;
+			}
 			return 0;
 		}
 	}

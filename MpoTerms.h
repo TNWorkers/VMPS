@@ -5,6 +5,10 @@
 #define DEBUG_VERBOSITY 0
 #endif
 
+#ifndef MAX_SUMPROD_STRINGLENGTH
+#define MAX_SUMPROD_STRINGLENGTH 700
+#endif
+
 /// \cond
 #include <vector>
 #include <string>
@@ -3016,7 +3020,14 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
     {
         new_name << " + " << setprecision(3) << offset << setprecision(curr_prec);
     }
-    set_name(new_name.str());
+    if(new_name.str().length() < MAX_SUMPROD_STRINGLENGTH)
+    {
+        set_name(new_name.str());
+    }
+    else
+    {
+        set_name(label+"+[...]");
+    }
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
     {
     	calc(calc_to_power);
@@ -3531,17 +3542,29 @@ prod (const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bot
     out.reconstruct(O, qAux, qPhys, true, boundary_condition, qTot);
 	auto [name_top, power_top] = detect_and_remove_power(top.get_name());
 	auto [name_bot, power_bot] = detect_and_remove_power(bottom.get_name());
-	if(name_top == name_bot)
-    {
-        out.set_name(name_top + power_to_string(power_top+power_bot));
-    }
-    else
-    {
-        out.set_name(top.get_name()+"*"+bottom.get_name());
-    }
-    out.compress(tolerance);
-    out.calc(1);
-    return out;
+	
+	if ((top.get_name()+"\n+"+bottom.get_name()).length() < MAX_SUMPROD_STRINGLENGTH)
+	{
+		if(name_top == name_bot)
+		{
+			out.set_name(name_top + power_to_string(power_top+power_bot));
+		}
+		else
+		{
+			out.set_name(top.get_name()+"*"+bottom.get_name());
+		}
+	}
+	else if ((top.get_name()+"\n+"+bottom.get_name()).length() >= MAX_SUMPROD_STRINGLENGTH and top.get_name().substr(top.get_name().length()-5) != "[...]")
+	{
+		out.set_name(top.get_name()+"\n+[...]");
+	}
+	else
+	{
+		out.set_name(top.get_name());
+	}
+	out.compress(tolerance);
+	out.calc(1);
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> std::pair<std::string, std::size_t> MpoTerms<Symmetry,Scalar>::
@@ -3806,10 +3829,21 @@ sum (const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bott
             out.decrement_auxdim(loc, Symmetry::qvacuum());
         }
 	}
-    out.set_name(top.get_name()+"\n+"+bottom.get_name());
-    out.compress(tolerance);
-    out.calc(1);
-    return out;
+	if ((top.get_name()+"\n+"+bottom.get_name()).length() < MAX_SUMPROD_STRINGLENGTH)
+	{
+		out.set_name(top.get_name()+"\n+"+bottom.get_name());
+	}
+	else if ((top.get_name()+"\n+"+bottom.get_name()).length() >= MAX_SUMPROD_STRINGLENGTH and top.get_name().substr(top.get_name().length()-5) != "[...]")
+	{
+		out.set_name(top.get_name()+"\n+[...]");
+	}
+	else
+	{
+		out.set_name(top.get_name());
+	}
+	out.compress(tolerance);
+	out.calc(1);
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::

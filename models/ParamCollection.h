@@ -26,10 +26,10 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	if (!COMPRESSED)
 	{
 		ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
-	
+		
 		res(0,L-1) = lambda1;
 		res(L-1,0) = lambda1;
-	
+		
 		res(0,L-2) = lambda2;
 		res(L-2,0) = lambda2;
 		res(1,L-1) = lambda2;

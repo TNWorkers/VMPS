@@ -59,7 +59,7 @@ int main (int argc, char* argv[])
 	
 	Eigenstate<MODEL::StateXd> g;
 	
-	MODEL H(L,{{"U",8.}},BC::OPEN);
+	MODEL H(L,{{"U",U}},BC::OPEN);
 	lout << H.info() << endl;
 	
 	MODEL::Solver DMRG1(VERB);

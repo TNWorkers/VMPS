@@ -109,7 +109,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
-	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -167,7 +167,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	std::size_t N_sites = F.size();
 	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
-	for(std::size_t loc=0; loc<N_sites; ++loc)
+	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;

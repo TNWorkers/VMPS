@@ -100,6 +100,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 	{"V",0.}, {"Vrung",0.},
 	{"J",0.}, {"Jrung",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -111,7 +112,6 @@ const map<string,any> HubbardSU2xSU2::sweep_defaults =
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
 	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",500ul},
 	{"tol_eigval",1e-6}, {"tol_state",1e-5},
-	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 

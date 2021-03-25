@@ -447,7 +447,7 @@ int main (int argc, char* argv[])
 	int iVERB = L/4;
 	
 	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L/2);
-	vector<vector<bool>> TWO_SITE(L);
+	vector<vector<bool>> TWO_SITE(L/2);
 	for (int i=0; i<L/2; ++i)
 	{
 		DMRG::VERBOSITY::OPTION SOBSVERB = (i==iVERB)? VERB : DMRG::VERBOSITY::SILENT;

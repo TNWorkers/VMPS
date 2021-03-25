@@ -101,7 +101,7 @@ public:
 	
 	void precalc_TwoSiteData(bool FORCE=false);
 	
-	std::string info() const;
+	std::string info (bool REDUCED=false) const;
 	
 	//double memory(MEMUNIT memunit=GB) const;
 	
@@ -262,10 +262,19 @@ push_nextn(const std::size_t loc, const Scalar lambda, const OperatorType& op1, 
 
 template<typename Symmetry, typename Scalar>
 string Mpo<Symmetry,Scalar>::
-info() const
+info (bool REDUCED) const
 {
 	std::stringstream ss;
-	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
+	ss << termcolor::colorize << termcolor::bold;
+	if (!REDUCED)
+	{
+		ss << this->get_name();
+	}
+	else
+	{
+		ss << "Mpo";
+	}
+	ss << termcolor::reset << "→ L=" << this->size();
 	if (this->N_phys > this->size()) ss << ",V=" << this->N_phys;
 	ss << ", " << Symmetry::name() << ", ";
 	
@@ -421,10 +430,10 @@ generate_label(std::size_t Lcell)
 				 return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
 			 });
 		
-		ss << ":" << std::endl;
+		ss << ":";
 		for (auto c:cells_resort)
 		{
-			ss << " •l=";
+			ss << std::endl << " •l=";
 			//			for (auto s:c.second)
 			//			{
 			//				cout << s << ",";
@@ -493,8 +502,8 @@ generate_label(std::size_t Lcell)
 					}
 				}
 			}
-			//			ss.seekp(-1,ios_base::end); // delete last comma
-			ss << ": " << c.first << std::endl;
+			// ss.seekp(-1,ios_base::end); // delete last comma
+			ss << ": " << c.first;
 		}
 	}
 	

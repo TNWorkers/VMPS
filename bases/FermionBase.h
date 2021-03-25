@@ -40,7 +40,7 @@ public:
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
 	 */
-	FermionBase (std::size_t L_input, bool REMOVE_DOUBLE=false, bool REMVOVE_EMPTY=false, bool REMOVE_SINGLE=false);
+	FermionBase (std::size_t L_input, bool REMOVE_DOUBLE=false, bool REMVOVE_EMPTY=false, bool REMOVE_SINGLE=false, int mfactor=1);
 	
 	/**amount of states*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
@@ -354,8 +354,8 @@ private:
 
 template <typename Symmetry_>
 FermionBase<Symmetry_>::
-FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_SINGLE)
-:FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_SINGLE), N_orbitals(L_input)
+FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_SINGLE, int mfactor)
+:FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_SINGLE, mfactor), N_orbitals(L_input)
 {	
 	//create basis for zero orbitals
 	typename Symmetry::qType Q=Symmetry::qvacuum();
@@ -436,9 +436,7 @@ typename std::enable_if<!Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOp
 c (SPIN_INDEX sigma, std::size_t orbital) const
 {
 	stringstream ss;
-//	ss << "c" << sigma;
-//	cout << "this->c_1s(sigma)=" << this->c_1s(sigma) << endl;
-//	cout << "N_states=" << N_states Hodd[j].F[l].get_basis().qloc().size()<< endl;
+	ss << "c" << sigma;
 	return make_operator(this->c_1s(sigma),orbital,PROP::FERMIONIC, ss.str());
 }
 
@@ -447,7 +445,10 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdag (SPIN_INDEX sigma, std::size_t orbital) const
 {
-	return c(sigma,orbital).adjoint();
+//	return c(sigma,orbital).adjoint();
+	stringstream ss;
+	ss << "c†" << sigma;
+	return make_operator(this->cdag_1s(sigma),orbital,PROP::FERMIONIC, ss.str());
 }
 
 template <typename Symmetry_>
@@ -456,7 +457,6 @@ typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),SiteOpe
 c (SPIN_INDEX sigma, SUB_LATTICE G, std::size_t orbital) const
 {
 	stringstream ss;
-	ss << "c" << G << sigma;
 	return make_operator(this->c_1s(sigma,G),orbital,PROP::FERMIONIC, ss.str());
 }
 

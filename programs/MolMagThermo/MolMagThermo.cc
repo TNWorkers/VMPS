@@ -251,6 +251,7 @@ int main (int argc, char* argv[])
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
 	double J = args.get<double>("J",1.);
+	double Jprime = args.get<double>("Jprime",0.);
 	double Bz = args.get<double>("Bz",0.);
 	int S = args.get<int>("S",0);
 	int M = args.get<int>("M",0);
@@ -465,11 +466,11 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (MOL=="RING")
 	{
-		hopping = J*create_1D_PBC(L); // Heisenberg ring for testing
+		hopping = create_1D_PBC(L,J,Jprime); // Heisenberg ring for testing
 	}
 	else if (MOL=="CHAIN")
 	{
-		hopping = J*create_1D_OBC(L); // Heisenberg chain for testing
+		hopping = create_1D_OBC(L,J,Jprime); // Heisenberg chain for testing
 	}
 	else if (MOL.at(0) == 'P')
 	{
@@ -587,7 +588,7 @@ int main (int argc, char* argv[])
 		
 		if (LOAD_EXCITED.size()>0)
 		{
-			excited.resize(LOAD_EXCITED.size()-1);
+			excited.resize(LOAD_EXCITED.size());
 			for (int n=0; n<LOAD_EXCITED.size(); ++n)
 			{
 				excited[n].state.load(LOAD_EXCITED[n],excited[n].energy);
