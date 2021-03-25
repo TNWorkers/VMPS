@@ -1792,8 +1792,8 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					for (int r=0; r<W[s1][s2][k].block[qW].outerSize(); ++r)
 					for (typename MpoMatrixType::InnerIterator iW(W[s1][s2][k].block[qW],r); iW; ++iW)
 					{
-						size_t wr = iW.row();
-						size_t wc = iW.col();
+						size_t wr = iW.row() * Ain[s2].block[q].rows();
+						size_t wc = iW.col() * Ain[s2].block[q].cols();
 						Mtmp.block(wr+left_l,wc+left_r,Ain[s2].block[q].rows(),Ain[s2].block[q].cols()) += Ain[s2].block[q] * iW.value() * factor_cgc;
 					}
 					
