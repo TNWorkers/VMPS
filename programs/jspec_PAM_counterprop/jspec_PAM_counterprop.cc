@@ -174,12 +174,14 @@ void push_corrhop (int i, int j, complex<double> lambda, double tol_OxV, DMRG::V
 	}
 }
 
-MODEL make_h (int i, int L, double tcc, double tfc, double Ec, double Ef, double U, DMRG::VERBOSITY::OPTION CVERB)
+MODEL make_h (int i, int L, double tcc, double tfc, double tff, double Ec, double Ef, double U, DMRG::VERBOSITY::OPTION CVERB)
 {
 	vector<Param> params_h;
 	params_h.push_back({"maxPower",1ul});
 	params_h.push_back({"t",0.+0.i});
+	
 	ArrayXXcd tFull(L,L); tFull=0;
+	//tcc
 	if (i+2 <= L-1)
 	{
 		tFull(i,i+2) = 0.5*tcc;
@@ -190,12 +192,25 @@ MODEL make_h (int i, int L, double tcc, double tfc, double Ec, double Ef, double
 		tFull(i-2,i) = 0.5*tcc;
 		tFull(i,i-2) = tFull(i-2,i);
 	}
+	//tfc
 	if (i+1 <= L-1)
 	{
 		tFull(i,i+1) = tfc;
 		tFull(i+1,i) = tFull(i,i+1);
 	}
+	//tff
+	if (i+3 <=L-1)
+	{
+		tFull(i+1,i+3) = 0.5*tff;
+		tFull(i+3,i+1) = tFull(i+1,i+3);
+	}
+	if (i-1 >= 0 and i+1<=L-1)
+	{
+		tFull(i-1,i+1) = 0.5*tff;
+		tFull(i+1,i-1) = tFull(i-1,i+1);
+	}
 	params_h.push_back({"tFull",tFull});
+	
 	for (size_t i_=0; i_<L; i_+=2)
 	{
 		if (i_ == i)
@@ -566,161 +581,160 @@ int main (int argc, char* argv[])
 		}
 		else
 		{
-			assert(1!=1 and "Please use -ANALYTICAL=1 for JJE");
-//			MODEL Htot = make_h(0, L, tcc, tfc, Ec, Ef, U, DMRG::VERBOSITY::SILENT);
-////			#pragma omp parallel for
-//			for (int i=0; i<L; i+=2)
-//			{
-//				int s = i/2;
-//				
-//				DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-//				JCxg[s] = g.state;
-//				
-//				vector<MODEL::StateXcd> states(1);
-//				vector<complex<double>> factors(1);
-//				
-//				double index = static_cast<double>(s+1);
-//				
-//				MODEL h = make_h(i, L, tcc, tfc, Ec, Ef, U, CVERB);
-//				if (i!=0) Htot = sum<MODEL,complex<double>>(Htot,h);
-//				if (i==L/2) lout << h.info() << endl;
-//				
-//				MODEL Hxh = prod<MODEL,complex<double>>(H, h, MODEL::Symmetry::qvacuum(), CVERB);
-//				MODEL hxH = prod<MODEL,complex<double>>(h, H, MODEL::Symmetry::qvacuum(), CVERB); 
-//				hxH.scale(-1.);
-//				MODEL Commutator = sum<MODEL,complex<double>>(Hxh, hxH, CVERB);
-//				Commutator.scale(index);
-//				
-////				OxV_exact(Commutator, g.state, JCxg[s], tol_OxV, VERB);
-////				JCxg[s] *= 1.i;
-//				
-//				// reduces size:
-//				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB);
-//				factors[0] = 1.i;
-//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-//				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
-//				
-//				cout << "i=" << i << ", avg(Commutator)=" << -avg(g.state, Commutator, Commutator, g.state) << ", dot=" << dot(JCxg[s],JCxg[s]) << endl;
-//			}
-//			cout << "avg=" << avg(g.state, Htot, g.state) << "\t" << g.energy << endl;
+			MODEL Htot = make_h(0, L, tcc, tfc, tff, Ec, Ef, U, DMRG::VERBOSITY::SILENT);
+//			#pragma omp parallel for
+			for (int i=0; i<L; i+=2)
+			{
+				int s = i/2;
+				
+				DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
+				JCxg[s] = g.state;
+				
+				vector<MODEL::StateXcd> states(1);
+				vector<complex<double>> factors(1);
+				
+				double index = static_cast<double>(s+1);
+				
+				MODEL h = make_h(i, L, tcc, tfc, tff, Ec, Ef, U, CVERB);
+				if (i!=0) Htot = sum<MODEL,complex<double>>(Htot,h);
+				if (i==L/2) lout << h.info() << endl;
+				
+				MODEL Hxh = prod<MODEL,complex<double>>(H, h, MODEL::Symmetry::qvacuum(), CVERB);
+				MODEL hxH = prod<MODEL,complex<double>>(h, H, MODEL::Symmetry::qvacuum(), CVERB); 
+				hxH.scale(-1.);
+				MODEL Commutator = sum<MODEL,complex<double>>(Hxh, hxH, CVERB);
+				Commutator.scale(index);
+				
+//				OxV_exact(Commutator, g.state, JCxg[s], tol_OxV, VERB);
+//				JCxg[s] *= 1.i;
+				
+				// reduces size:
+				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB);
+				factors[0] = 1.i;
+				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);
+				
+				cout << "i=" << i << ", avg(Commutator)=" << -avg(g.state, Commutator, Commutator, g.state) << ", dot=" << dot(JCxg[s],JCxg[s]) << endl;
+			}
+			cout << "avg=" << avg(g.state, Htot, g.state) << "\t" << g.energy << endl;
 		}
 	}
 	
-//	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
-//	
-//	vector<MODEL::StateXcd> Psi = JCxg;
-//	for (int i=0; i<L/2; ++i)
-//	{
-//		Psi.push_back(JCxg[i]);
-//	}
-//	JCxg.resize(0);
-//	for (int i=0; i<L; ++i)
-//	{
-//		Psi[i].eps_svd = tol_compr;
-//		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
-//		lout << i << "\t" << Psi[i].info() << endl;
-//		if (i==L/2-1) lout << "----" << endl;
-//	}
-//	lout << endl;
-//	
-//	vector<TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>> TDVP(L);
-//	for (int i=0; i<L; ++i)
-//	{
-//		TDVP[i] = TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>(H,Psi[i]);
-//	}
-//	
-//	int iVERB = L/4;
-//	
-//	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L);
-//	vector<vector<bool>> TWO_SITE(L);
-//	for (int i=0; i<L; ++i)
-//	{
-//		DMRG::VERBOSITY::OPTION SOBSVERB = (i==iVERB)? VERB : DMRG::VERBOSITY::SILENT;
-//		Sobs[i] = EntropyObserver<MODEL::StateXcd>(H.length(), Nt, SOBSVERB, tol_DeltaS);
-//		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.);
-//	}
-//	
-////	vector<MatrixXcd> Joverlap(Nt);
-//	VectorXcd JoverlapSum(Nt);
-//	
-//	Stopwatch<> TpropTimer;
-//	IntervalIterator t(0.,tmax/2,Nt);
-//	IntervalIterator tfull(0.,tmax,Nt); //tfull=tfull.begin(2);
-//	
-//	for (t=t.begin(2), tfull=tfull.begin(2); t!=t.end(); ++t, ++tfull)
-//	{
-//		Stopwatch<> StepTimer;
-//		
-//		JoverlapSum(t.index()) = calc_Joverlap(Psi, exp(+1.i*g.energy*(*tfull)))/(0.5*L);
-//		tfull << JoverlapSum(t.index());
-//		lout << "save results at tfull=" << *tfull << ", res=" << JoverlapSum(t.index()) << endl;
-//		tfull.save(make_string(spec+"t_",base,"_",tbase,".dat"));
-//		
-//		if (t.index() != t.end()-1)
-//		{
-//			#pragma omp parallel for
-//			for (int i=0; i<L; ++i)
-//			{
-//				//-----------------------------------------------------------
-//				if (i<L/2)
-//				{
-//					TDVP[i].t_step_adaptive(H, Psi[i], -1.i*0.5*dt, TWO_SITE[i], 1); // forwards
-//				}
-//				else
-//				{
-//					TDVP[i].t_step_adaptive(H, Psi[i], +1.i*0.5*dt, TWO_SITE[i], 1); // backwards
-//				}
-//				//-----------------------------------------------------------
-//				
-//				if (i==L/2)
-//				{
-//					lout << "propagated to t=±" << *t+0.5*dt << ", tfull=±" << *tfull+dt << endl;
-//					lout << TDVP[i].info() << endl;
-//					lout << Psi[i].info() << endl;
-//				}
-//				
-//				if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
-//				{
-//					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
-//					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
-//					{
-//						lout << termcolor::yellow << "i=" << i << ", setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
-//					}
-//				}
-//				else
-//				{
-//					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
-//					{
-//						lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
-//					}
-//				}
-//			}
-//			lout << StepTimer.info("time step") << endl;
-//			
-//			#pragma omp parallel for
-//			for (int i=0; i<L; ++i)
-//			{
-//				auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
-//				TWO_SITE[i] = Sobs[i].TWO_SITE(tfull.index(), PsiTmp);
-//			}
-//			
-//			if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
-//		}
-//		
-//		lout << TpropTimer.info("total running time",false) << endl;
-//		lout << endl;
-//	}
-//	
-//	lout << "saved to: " << make_string(spec+"t_",base,"_",tbase,".dat") << endl << endl;
-//	
-//	VectorXd tvals = tfull.get_abscissa();
-//	for (int i=0; i<tvals.rows(); ++i)
-//	{
-//		lout << "t=" << tvals(i) << "\t" << JoverlapSum(i) << endl;
-//	}
-//	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=GAUSS",".dat"), GAUSS);
-//	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=LORENTZ",".dat"), LORENTZ);
-//	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=NO",".dat"), NODAMPING);
-//	
-//	lout << endl << "saved to: " << make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=[...].dat") << endl;
+	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
+	
+	vector<MODEL::StateXcd> Psi = JCxg;
+	for (int i=0; i<L/2; ++i)
+	{
+		Psi.push_back(JCxg[i]);
+	}
+	JCxg.resize(0);
+	for (int i=0; i<L; ++i)
+	{
+		Psi[i].eps_svd = tol_compr;
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
+		lout << i << "\t" << Psi[i].info() << endl;
+		if (i==L/2-1) lout << "----" << endl;
+	}
+	lout << endl;
+	
+	vector<TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>> TDVP(L);
+	for (int i=0; i<L; ++i)
+	{
+		TDVP[i] = TDVPPropagator<MODEL,MODEL::Symmetry,complex<double>,complex<double>,MODEL::StateXcd>(H,Psi[i]);
+	}
+	
+	int iVERB = L/4;
+	
+	vector<EntropyObserver<MODEL::StateXcd>> Sobs(L);
+	vector<vector<bool>> TWO_SITE(L);
+	for (int i=0; i<L; ++i)
+	{
+		DMRG::VERBOSITY::OPTION SOBSVERB = (i==iVERB)? VERB : DMRG::VERBOSITY::SILENT;
+		Sobs[i] = EntropyObserver<MODEL::StateXcd>(H.length(), Nt, SOBSVERB, tol_DeltaS);
+		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.);
+	}
+	
+//	vector<MatrixXcd> Joverlap(Nt);
+	VectorXcd JoverlapSum(Nt);
+	
+	Stopwatch<> TpropTimer;
+	IntervalIterator t(0.,tmax/2,Nt);
+	IntervalIterator tfull(0.,tmax,Nt); //tfull=tfull.begin(2);
+	
+	for (t=t.begin(2), tfull=tfull.begin(2); t!=t.end(); ++t, ++tfull)
+	{
+		Stopwatch<> StepTimer;
+		
+		JoverlapSum(t.index()) = calc_Joverlap(Psi, exp(+1.i*g.energy*(*tfull)))/(0.5*L);
+		tfull << JoverlapSum(t.index());
+		lout << "save results at tfull=" << *tfull << ", res=" << JoverlapSum(t.index()) << endl;
+		tfull.save(make_string(spec+"t_",base,"_",tbase,".dat"));
+		
+		if (t.index() != t.end()-1)
+		{
+			#pragma omp parallel for
+			for (int i=0; i<L; ++i)
+			{
+				//-----------------------------------------------------------
+				if (i<L/2)
+				{
+					TDVP[i].t_step_adaptive(H, Psi[i], -1.i*0.5*dt, TWO_SITE[i], 1); // forwards
+				}
+				else
+				{
+					TDVP[i].t_step_adaptive(H, Psi[i], +1.i*0.5*dt, TWO_SITE[i], 1); // backwards
+				}
+				//-----------------------------------------------------------
+				
+				if (i==L/2)
+				{
+					lout << "propagated to t=±" << *t+0.5*dt << ", tfull=±" << *tfull+dt << endl;
+					lout << TDVP[i].info() << endl;
+					lout << Psi[i].info() << endl;
+				}
+				
+				if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
+				{
+					Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
+					{
+						lout << termcolor::yellow << "i=" << i << ", setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+					}
+				}
+				else
+				{
+					if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
+					{
+						lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
+					}
+				}
+			}
+			lout << StepTimer.info("time step") << endl;
+			
+			#pragma omp parallel for
+			for (int i=0; i<L; ++i)
+			{
+				auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
+				TWO_SITE[i] = Sobs[i].TWO_SITE(tfull.index(), PsiTmp);
+			}
+			
+			if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
+		}
+		
+		lout << TpropTimer.info("total running time",false) << endl;
+		lout << endl;
+	}
+	
+	lout << "saved to: " << make_string(spec+"t_",base,"_",tbase,".dat") << endl << endl;
+	
+	VectorXd tvals = tfull.get_abscissa();
+	for (int i=0; i<tvals.rows(); ++i)
+	{
+		lout << "t=" << tvals(i) << "\t" << JoverlapSum(i) << endl;
+	}
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=GAUSS",".dat"), GAUSS);
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=LORENTZ",".dat"), LORENTZ);
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=NO",".dat"), NODAMPING);
+	
+	lout << endl << "saved to: " << make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=[...].dat") << endl;
 }

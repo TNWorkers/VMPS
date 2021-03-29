@@ -34,7 +34,7 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 		res(L-2,0) = lambda2;
 		res(1,L-1) = lambda2;
 		res(L-1,1) = lambda2;
-	
+		
 		return res;
 	}
 	else

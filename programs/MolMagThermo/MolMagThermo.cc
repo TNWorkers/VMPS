@@ -294,6 +294,7 @@ int main (int argc, char* argv[])
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_VAR = args.get<bool>("CALC_VAR",true);
 	bool CALC_VAR_EXCITED = args.get<bool>("CALC_VAR_EXCITED",true);
+	bool INIT_EXCITED_RANDOM = args.get<bool>("INIT_EXCITED_RANDOM",true);
 	
 	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);
@@ -466,7 +467,8 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (MOL=="RING")
 	{
-		hopping = create_1D_PBC(L,J,Jprime); // Heisenberg ring for testing
+		bool COMPRESSED = args.get<bool>("COMPRESSED",false);
+		hopping = create_1D_PBC(L,J,Jprime,COMPRESSED); // Heisenberg ring for testing
 	}
 	else if (MOL=="CHAIN")
 	{
@@ -620,7 +622,7 @@ int main (int argc, char* argv[])
 				if (LOAD_EXCITED.size() <= n)
 				{
 					excited[n].state = g.state;
-//					excited[n].state.setRandom();
+					if (INIT_EXCITED_RANDOM) excited[n].state.setRandom();
 					excited[n].state.sweep(0,DMRG::BROOM::QR);
 					excited[n].state /= sqrt(dot(excited[n].state,excited[n].state));
 				}
