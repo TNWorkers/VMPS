@@ -23,23 +23,23 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 // If COMPRESSED=true, the ring is flattened so that adjacent sites are as close together as possible
 ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COMPRESSED=false)
 {
-	if (!COMPRESSED)
+	ArrayXXd res(L,L);
+	res.setZero();
+	
+	res = create_1D_OBC(L,lambda1,lambda2);
+	
+	res(0,L-1) = lambda1;
+	res(L-1,0) = lambda1;
+	
+	res(0,L-2) = lambda2;
+	res(L-2,0) = lambda2;
+	res(1,L-1) = lambda2;
+	res(L-1,1) = lambda2;
+	
+	if (COMPRESSED and lambda2 == 0.)
 	{
-		ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
+		res.setZero();
 		
-		res(0,L-1) = lambda1;
-		res(L-1,0) = lambda1;
-		
-		res(0,L-2) = lambda2;
-		res(L-2,0) = lambda2;
-		res(1,L-1) = lambda2;
-		res(L-1,1) = lambda2;
-		
-		return res;
-	}
-	else
-	{
-		ArrayXXd res(L,L); res.setZero();
 		res(0,1) = lambda1; res(1,0) = lambda1;
 		res(L-2,L-1) = lambda1; res(L-1,L-2) = lambda1;
 		for (size_t l=0; l<L-2; l++)
@@ -47,8 +47,13 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 			res(l,l+2) = lambda1;
 			res(l+2,l) = lambda1;
 		}
-		return res;
 	}
+	else if (COMPRESSED and lambda2 != 0.)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	return res;
 }
 
 ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
@@ -457,7 +462,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 	
 	res += res.transpose().eval();
 	
-	if (VARIANT==0 and vertex_conf != "3.6^2")
+	if (VARIANT==0 and vertex_conf != "3.6^2" and vertex_conf != "3.4.3.4")
 	{
 		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
@@ -864,8 +869,17 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	
+	if (L ==4 )
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		res(0,3) = lambda1;
+		res(1,3) = lambda1;
+		res(2,3) = lambda1;
+	}
 	// reference: Phys. Rev. B 72, 064453 (2005)
-	if (L == 12)
+	else if (L == 12)
 	{
 //		res(0,1) = lambda1;
 //		res(1,2) = lambda1;
@@ -972,6 +986,45 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 //		res = res_;
 //	}
 	
+	return res;
+}
+
+ArrayXXd hopping_triangular (int L, int VARIANT=0, double lambda1=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+	}
+	else if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+	}
+	else if (L==6)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(1,4) = lambda1;
+		res(1,5) = lambda1;
+		res(4,5) = lambda1;
+	}
+	
+	res += res.transpose().eval();
 	return res;
 }
 

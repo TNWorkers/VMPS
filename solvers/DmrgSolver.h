@@ -286,7 +286,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		// resize Vout
 		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Minit, Qtot_input, GlobParam.Qinit);
-//		Vout.state.graph("init");
+		Vout.state.graph("init");
 		// reset stuff after constructor:
 		Vout.state.max_Nsv = GlobParam.Minit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
@@ -999,7 +999,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
@@ -1366,6 +1366,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
+//		cout << "j=" << j << ", Vout.state.eps_svd=" << Vout.state.eps_svd << endl;
 		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
@@ -1427,7 +1428,7 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 		for (int n=0; n<Psi0.size(); ++n)
 		for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);

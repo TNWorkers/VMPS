@@ -164,7 +164,6 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 	VarFiler << "#" << Psi.state.info() << endl;
 	
 	Stopwatch<> Timer;
-	lout << endl;
 	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
 	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 	VarFiler << setprecision(16) << "E=" << E << setprecision(6) << endl;
@@ -184,6 +183,7 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	lout << Timer.info("varE") << endl;
+	lout << endl;
 	VarFiler.close();
 	
 //	auto HmE = H;
@@ -205,6 +205,10 @@ map<string,int> make_Lmap()
 	m["P08"] = 8; // cube
 	m["P12"] = 12; // icosahedron
 	m["P20"] = 20; // dodecahedron
+	// Traingles:
+	m["T03"] = 3;
+	m["T05"] = 5;
+	m["T06"] = 6;
 	// Fullerenes:
 	m["C12"] = 12; // =truncated tetrahedron ATT
 	m["C20"] = 20; // =dodecahedron P20
@@ -310,6 +314,8 @@ int main (int argc, char* argv[])
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
+	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
+	
 	// overwrite beta params in case of LOAD
 	if (LOAD!="" and BETAPROP==true)
 	{
@@ -374,6 +380,11 @@ int main (int argc, char* argv[])
 					U = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: U=" << U << endl;
 				}
+				if (parsed_vals[j] == "Mlimit")
+				{
+					Mlimit_default = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: Mlimit_default=" << Mlimit_default << endl;
+				}
 			}
 		}
 	}
@@ -425,7 +436,7 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",200ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",300ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
@@ -437,7 +448,7 @@ int main (int argc, char* argv[])
 	
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.Mlimit = args.get<size_t>("Mlimit",500ul); // for groundstate
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",Mlimit_default); // for groundstate
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+Mincr_per);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
 	GlobParam.Minit = args.get<size_t>("Minit",2ul);
@@ -489,6 +500,10 @@ int main (int argc, char* argv[])
 	else if (MOL.at(0)=='C')
 	{
 		hopping = J*hopping_fullerene(L,VARIANT);
+	}
+	else if (MOL.at(0)=='T')
+	{
+		hopping = J*hopping_triangular(L,VARIANT);
 	}
 	else
 	{

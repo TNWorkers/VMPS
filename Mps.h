@@ -847,10 +847,10 @@ calc_Qlimits()
 		}
 	}
 	
-	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
-	{
-		NEED_WORKAROUND = true;
-	}
+//	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+//	{
+//		NEED_WORKAROUND = true;
+//	}
 	
 	if (NEED_WORKAROUND)
 	{
@@ -978,33 +978,47 @@ calc_Qlimits()
 		}
 		else
 		{
-			vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
-			vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
-			
 			QinTop[0] = Symmetry::qvacuum();
 			QinBot[0] = Symmetry::qvacuum();
-			QinBotRange[0] = {Symmetry::qvacuum()};
+			
+//			vector<vector<qarray<Symmetry::Nq> > > QinBotRange;
+//			QinBotRange.resize(this->N_sites);
+//			QinBotRange[0] = {Symmetry::qvacuum()};
+			
+//			for (int l=0; l<this->N_sites; ++l)
+//			{
+//				for (int m=0; m<qloc[l].size(); ++m)
+//				{
+//					cout << "l=" << l << ", qloc=" << qloc[l][m] << endl;
+//				}
+//			}
 			
 			for (size_t l=1; l<this->N_sites; ++l)
 			{
 				auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
-				auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
+				auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBot[l-1]);
 //				cout << "l=" << l << ", new_tops.size()=" << new_tops.size() << endl;
 //				cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 				
 				QinTop[l] = highest_q(new_tops);
-//				cout << "highest done!" << endl;
 				QinBot[l] = lowest_q(new_bots);
-//				cout << "lowest done!" << endl;
-				QinBotRange[l] = lowest_qs(new_bots);
-//				cout << "a" << endl;
-//				cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
+//				auto tmp = lowest_qs(new_bots);
+//				QinBotRange[l].resize(tmp.size());
+//				QinBotRange[l] = tmp;
+//				cout << "l=" << l << ", QinBotRange[l].size()=" << QinBotRange[l].size() << endl;
 			}
+//			for (int i=0; i<QinBotRange.size(); ++i)
+//			for (int j=0; j<QinBotRange[i].size(); ++j)
+//			{
+//				cout << "i=" << i << ", j=" << j << ", QinBotRange[i][j]=" << QinBotRange[i][j] << endl;
+//			}
 			
-//			cout << "b" << endl;
 			QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
 			QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
-			QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
+			
+//			vector<vector<qarray<Symmetry::Nq> > > QoutBotRange;
+//			QoutBotRange.resize(this->N_sites);
+//			QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
 			
 			for (int l=this->N_sites-2; l>=0; --l)
 			{
@@ -1014,11 +1028,11 @@ calc_Qlimits()
 					qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
 				}
 				auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-				auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
+				auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
 				
 				QoutTop[l] = highest_q(new_tops);
 				QoutBot[l] = lowest_q(new_bots);
-				QoutBotRange[l] = lowest_qs(new_bots);
+//				QoutBotRange[l] = lowest_qs(new_bots);
 			}
 			
 			for (size_t l=0; l<this->N_sites; ++l)
