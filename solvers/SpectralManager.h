@@ -254,6 +254,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		GlobParam.Qinit = 100ul;
 		fDMRG.userSetGlobParam();
 		fDMRG.GlobParam = GlobParam;
+		fDMRG.GlobParam.CALC_S_ON_EXIT = false;
 		fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
 		
 		lout << th.state.entropy().transpose() << endl;
