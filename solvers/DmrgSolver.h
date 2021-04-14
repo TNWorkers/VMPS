@@ -1136,7 +1136,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap2 PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
+			PivotOverlap2<Symmetry,Scalar> PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);

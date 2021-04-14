@@ -91,6 +91,7 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
 {
 	lout << "correlations for following state:" << endl;
+	lout << "will save to: " << make_string(wd,"SdagS_",base,"_d=[...]",".dat") << endl;
 	lout << Psi.info() << endl;
 	
 	if (S>0)
@@ -160,6 +161,7 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 {
 	ofstream VarFiler(make_string(wd,"var_",base,".dat"));
 	lout << label << ":" << endl;
+	lout << "will save to: " << make_string(wd,"var_",base,".dat") << endl;
 	VarFiler << "#" << label << endl;
 	VarFiler << "#" << Psi.state.info() << endl;
 	
