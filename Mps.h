@@ -735,8 +735,6 @@ Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 	update_inbase();
 	update_outbase();
 	
-	graph("init");
-	
 	innerResize(Mmax);
 	
 	for (size_t l=0; l<this->N_sites; ++l)

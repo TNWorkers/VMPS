@@ -28,8 +28,8 @@ public:
 	template<typename HamiltonianThermal>
 	void beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
 	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q,
-	                       string gs_label, bool LOAD_GS, bool SAVE_GS,
-	                       DMRG::VERBOSITY::OPTION VERB);
+	                       string gs_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
+	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
 	
 	void apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK=true);
 	
@@ -125,7 +125,7 @@ private:
 	Mps<Symmetry,Scalar> PhiT;
 	Mps<Symmetry,complex<double>> PhiTt;
 	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiTt;
-	vector<vector<Mpo<typename Hamiltonian::Symmetry,complex<double>>>> Odag;
+	vector<vector<Mpo<typename Hamiltonian::Symmetry,Scalar>>> Odag;
 };
 
 // non-thermal IBC
@@ -229,7 +229,7 @@ template<typename HamiltonianThermal>
 void SpectralManager<Hamiltonian>::
 beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
                   double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
-                  string th_label, bool LOAD_GS, bool SAVE_GS,
+                  string th_label, bool LOAD_BETA, bool SAVE_BETA,
                   DMRG::VERBOSITY::OPTION VERB)
 {
 	for (const auto &spec:specs)
@@ -239,164 +239,172 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 	L = Hprop.length()/dLphys;
 	Nspec = specs.size();
 	
-	typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::SILENT);
-	Eigenstate<Mps<Symmetry,double>> th;
-	
-//	if (LOAD_GS)
-//	{
-//		g.state.load(th_label, g.energy);
-//		lout << "loaded: " << g.state.info() << endl;
-//	}
-//	else
+	if (LOAD_BETA)
 	{
-		DMRG::CONTROL::GLOB GlobParam;
-		GlobParam.Minit = 100ul;
-		GlobParam.Qinit = 100ul;
-		fDMRG.userSetGlobParam();
-		fDMRG.GlobParam = GlobParam;
-		fDMRG.GlobParam.CALC_S_ON_EXIT = false;
-		fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
+		lout << "loading beta result from: " << make_string("betaRes_",th_label) << endl;
+		PhiT.load(make_string("betaRes_",th_label));
+	}
+	else
+	{
+		typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::SILENT);
+		Eigenstate<Mps<Symmetry,double>> th;
 		
-		lout << th.state.entropy().transpose() << endl;
-		
-		vector<bool> ENTROPY_CHECK1;
-		for (int l=0; l<2*L; l+=2) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
-		
-		vector<bool> ENTROPY_CHECK2;
-		for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
-		
-		bool ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
-		           all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
-		
-		while (ALL == false)
+	//	if (LOAD_GS)
+	//	{
+	//		g.state.load(th_label, g.energy);
+	//		lout << "loaded: " << g.state.info() << endl;
+	//	}
+	//	else
 		{
-			lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
+			DMRG::CONTROL::GLOB GlobParam;
+			GlobParam.Minit = 100ul;
+			GlobParam.Qinit = 100ul;
+			fDMRG.userSetGlobParam();
+			fDMRG.GlobParam = GlobParam;
+			fDMRG.GlobParam.CALC_S_ON_EXIT = false;
 			fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
+			
 			lout << th.state.entropy().transpose() << endl;
 			
-			ENTROPY_CHECK1.clear();
-			ENTROPY_CHECK2.clear();
-			for (int l=0; l<2*L; l+=2)   ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+			vector<bool> ENTROPY_CHECK1;
+			for (int l=0; l<2*L; l+=2) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+			
+			vector<bool> ENTROPY_CHECK2;
 			for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
 			
-			for (int l=1; l<2*L-1; l+=2)
+			bool ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
+				       all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+			
+			while (ALL == false)
 			{
-				bool TEST = abs(th.state.entropy()(l))<1e-10;
+				lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
+				fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND);
+				lout << th.state.entropy().transpose() << endl;
+				
+				ENTROPY_CHECK1.clear();
+				ENTROPY_CHECK2.clear();
+				for (int l=0; l<2*L; l+=2)   ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+				for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
+				
+				for (int l=1; l<2*L-1; l+=2)
+				{
+					bool TEST = abs(th.state.entropy()(l))<1e-10;
+				}
+				ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
+					  all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
 			}
-			ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
-			      all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
 		}
 		
-//		if (SAVE_GS)
-//		{
-//			lout << "saving groundstate..." << endl;
-//			g.state.save(th_label, "groundstate", g.energy);
-//		}
-	}
-	
-	PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
-	PhiT.eps_svd = tol_compr_beta;
-	PhiT.min_Nsv = 0ul;
-	PhiT.max_Nsv = Mlim;
-	TDVPPropagator<Hamiltonian,
-	               typename Hamiltonian::Symmetry,
-	               typename Hamiltonian::Mpo::Scalar_,
-	               typename Hamiltonian::Mpo::Scalar_,
-	               Mps<Symmetry,typename Hamiltonian::Mpo::Scalar_>
-	               > TDVPT(Hprop,PhiT);
-	
-	int Nbeta = static_cast<int>(betamax/dbeta);
-	
-	vector<double> betavals;
-	vector<double> betasteps;
-	betavals.push_back(0.01);
-	betasteps.push_back(0.01);
-	
-	for (int i=1; i<20; ++i)
-	{
-		double beta_last = betavals[betavals.size()-1];
-		if (beta_last > betamax) break;
+		PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
+		PhiT.eps_svd = tol_compr_beta;
+		PhiT.min_Nsv = 0ul;
+		PhiT.max_Nsv = Mlim;
+		TDVPPropagator<Hamiltonian,
+			           typename Hamiltonian::Symmetry,
+			           typename Hamiltonian::Mpo::Scalar_,
+			           typename Hamiltonian::Mpo::Scalar_,
+			           Mps<Symmetry,typename Hamiltonian::Mpo::Scalar_>
+			           > TDVPT(Hprop,PhiT);
+		
+		int Nbeta = static_cast<int>(betamax/dbeta);
+		
+		vector<double> betavals;
+		vector<double> betasteps;
+		betavals.push_back(0.01);
 		betasteps.push_back(0.01);
-		betavals.push_back(beta_last+0.01);
-	}
-	
-	while (betavals[betavals.size()-1] < betamax)
-	{
-		betasteps.push_back(dbeta);
-		double beta_last = betavals[betavals.size()-1];
-		betavals.push_back(beta_last+dbeta);
 		
-	}
-	if (betavals[betavals.size()-1] > betamax+0.005) // needs offset, otherwise random behaviour results from comparing floating point numbers
-	{
-//		lout << "popping last value " << betavals[betavals.size()-1] << "\t" << betamax << endl;
-		betavals.pop_back();
-		betasteps.pop_back();
-	}
-//	for (int i=0; i<betavals.size(); ++i)
-//	{
-//		lout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
-//	}
-	lout << endl;
-	
-	ofstream BetaFiler(make_string("thermodyn_",th_label,".dat"));
-	BetaFiler << "#T\tβ\tc\te\tchi";
-	if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
-	BetaFiler << endl;
-	
-	for (int i=0; i<betasteps.size(); ++i)
-	{
-		Stopwatch<> betaStepper;
-		double beta = betavals[i];
-		if (beta>10.)
+		for (int i=1; i<20; ++i)
 		{
-			TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
-		}
-		else
-		{
-			TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
-		}
-		PhiT /= sqrt(dot(PhiT,PhiT));
-		lout << TDVPT.info() << endl;
-		lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
-		double e = isReal(avg(PhiT,Hprop,PhiT))/L;
-		double c = isReal(beta*beta*(avg(PhiT,Hprop,PhiT,2)-pow(avg(PhiT,Hprop,PhiT),2)))/L;
-		double chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
-		
-		auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
-		lout << "S=" << PhiTtmp.entropy().transpose() << endl;
-		
-		VectorXd nphys(Lcell); for (int j=0; j<Lcell; ++j) nphys(j) = 0.;
-		double nancl = 0.;
-		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
-		{
-			for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
-			{
-				nphys(icell%Lcell) += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
-			}
-			for (int j=dLphys-1; j<dLphys*L; j+=dLphys)
-			{
-				nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
-			}
+			double beta_last = betavals[betavals.size()-1];
+			if (beta_last > betamax) break;
+			betasteps.push_back(0.01);
+			betavals.push_back(beta_last+0.01);
 		}
 		
-		nphys /= L;
-		double nphystot = nphys.sum();
-		nancl /= L;
-		
-		lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi;
-		BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi;
-		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
+		while (betavals[betavals.size()-1] < betamax)
 		{
-			lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
-			BetaFiler << "\t" << nphystot;
+			betasteps.push_back(dbeta);
+			double beta_last = betavals[betavals.size()-1];
+			betavals.push_back(beta_last+dbeta);
+			
 		}
-		lout << termcolor::reset << endl;
-		BetaFiler << endl;
-		lout << betaStepper.info("βstep") << endl;
+		if (betavals[betavals.size()-1] > betamax+0.005) // needs offset, otherwise random behaviour results from comparing floating point numbers
+		{
+	//		lout << "popping last value " << betavals[betavals.size()-1] << "\t" << betamax << endl;
+			betavals.pop_back();
+			betasteps.pop_back();
+		}
+	//	for (int i=0; i<betavals.size(); ++i)
+	//	{
+	//		lout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
+	//	}
 		lout << endl;
+		
+		ofstream BetaFiler(make_string("thermodyn_",th_label,".dat"));
+		BetaFiler << "#T\tβ\tc\te\tchi";
+		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
+		BetaFiler << endl;
+		
+		for (int i=0; i<betasteps.size(); ++i)
+		{
+			Stopwatch<> betaStepper;
+			double beta = betavals[i];
+			if (beta>10.)
+			{
+				TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
+			}
+			else
+			{
+				TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
+			}
+			PhiT /= sqrt(dot(PhiT,PhiT));
+			lout << TDVPT.info() << endl;
+			lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
+			double e = isReal(avg(PhiT,Hprop,PhiT))/L;
+			double c = isReal(beta*beta*(avg(PhiT,Hprop,PhiT,2)-pow(avg(PhiT,Hprop,PhiT),2)))/L;
+			double chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
+			
+			auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
+			lout << "S=" << PhiTtmp.entropy().transpose() << endl;
+			
+			VectorXd nphys(Lcell); for (int j=0; j<Lcell; ++j) nphys(j) = 0.;
+			double nancl = 0.;
+			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
+			{
+				for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
+				{
+					nphys(icell%Lcell) += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
+				}
+				for (int j=dLphys-1; j<dLphys*L; j+=dLphys)
+				{
+					nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
+				}
+			}
+			
+			nphys /= L;
+			double nphystot = nphys.sum();
+			nancl /= L;
+			
+			lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi;
+			BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi;
+			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
+			{
+				lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
+				BetaFiler << "\t" << nphystot;
+			}
+			lout << termcolor::reset << endl;
+			BetaFiler << endl;
+			lout << betaStepper.info("βstep") << endl;
+			lout << endl;
+		}
+		BetaFiler.close();
 	}
-	BetaFiler.close();
+	
+	if (SAVE_BETA and !LOAD_BETA)
+	{
+		lout << "saving the beta result to: " << th_label << endl;
+		PhiT.save(make_string("betaRes_",th_label));
+	}
 }
 
 template<typename Hamiltonian>
@@ -409,7 +417,7 @@ apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK)
 //	PhiTt.max_Nsv = Mlim;
 	
 	// OxV for time propagation
-	vector<vector<Mpo<typename Hamiltonian::Symmetry,complex<double>>>> O(Nspec);
+	vector<vector<Mpo<typename Hamiltonian::Symmetry,Scalar>>> O(Nspec);
 	Odag.resize(Nspec);
 	for (int z=0; z<Nspec; ++z) O[z].resize(L);
 	for (int z=0; z<Nspec; ++z) Odag[z].resize(L);
@@ -447,8 +455,8 @@ apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK)
 		Odagshift[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
-			Oshift[z][l] = avg(PhiTt, O[z][l], PhiTt);
-			Odagshift[z][l] = avg(PhiTt, Odag[z][l], PhiTt);
+			Oshift[z][l] = avg(PhiT, O[z][l], PhiT);
+			Odagshift[z][l] = avg(PhiT, Odag[z][l], PhiT);
 //			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
 		}
 	}
@@ -676,233 +684,236 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			throw;
 		}
 	}
-	// photemission
-	else if (spec == "PES" or spec == "PESUP")
+	if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 	{
-		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
+		// photemission
+		if (spec == "PES" or spec == "PESUP")
 		{
-			Res = H.c(loc,locy,factor);
-		}
-		else
-		{
-			Res = H.template c<UP>(loc,locy);
-		}
-	}
-	else if (spec == "PESDN")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
-		{
-			Res = H.c(loc,locy,factor);
-		}
-		else
-		{
-			Res = H.template c<DN>(loc,locy);
-		}
-	}
-	// inverse photoemission
-	else if (spec == "IPE" or spec == "IPEUP")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
-		{
-			Res = H.cdag(loc,locy,factor);
-		}
-		else
-		{
-			Res = H.template cdag<UP>(loc,locy,factor);
-		}
-	}
-	else if (spec == "IPEDN")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
-		{
-			Res = H.cdag(loc,locy,factor);
-		}
-		else
-		{
-			Res = H.template cdag<DN>(loc,locy,factor);
-		}
-	}
-	// charge structure factor
-	else if (spec == "CSF" or spec == "ICSF")
-	{
-		if constexpr (!Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.n(loc,locy);
-		}
-		else
-		{
-			throw;
-		}
-	}
-	// Auger electron spectroscopy
-	else if (spec == "AES")
-	{
-		if constexpr (!Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.cc(loc,locy);
-		}
-		else
-		{
-			throw;
-		}
-	}
-	// Appearance potential spectroscopy
-	else if (spec == "APS")
-	{
-		if constexpr (!Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.cdagcdag(loc,locy);
-		}
-		else
-		{
-			throw;
-		}
-	}
-	// pseudospin structure factor
-	else if (spec == "PSF")
-	{
-		if constexpr (Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.T(loc,locy);
-		}
-		else
-		{
-			Res = H.Tp(loc,locy);
-		}
-	}
-	// pseudospin structure factor
-	else if (spec == "PDAGSF")
-	{
-		if constexpr (Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.Tdag(loc,locy);
-		}
-		else
-		{
-			Res = H.Tm(loc,locy);
-		}
-	}
-	// pseudospin structure factor: z-component
-	else if (spec == "PSZ" or spec == "IPSZ")
-	{
-		if constexpr (!Symmetry::IS_CHARGE_SU2())
-		{
-			Res = H.Tz(loc,locy);
-		}
-		else
-		{
-			throw;
-		}
-	}
-	// hybridization structure factor
-	else if (spec == "HSF")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2())
-		{
-			if (loc<H.length()-dLphys)
+			if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 			{
-				Res = H.cdagc(loc,loc+dLphys,0,0);
+				Res = H.c(loc,locy,factor);
 			}
 			else
 			{
-				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				Res = H.template c<UP>(loc,locy);
 			}
 		}
-		else
+		else if (spec == "PESDN")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 			{
-				Res = H.cdagc<UP,UP>(loc,loc+dLphys,0,0);
+				Res = H.c(loc,locy,factor);
 			}
 			else
 			{
-				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				Res = H.template c<DN>(loc,locy);
 			}
 		}
-	}
-	// inverse hybridization structure factor
-	else if (spec == "IHSF")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2())
+		// inverse photoemission
+		else if (spec == "IPE" or spec == "IPEUP")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 			{
-				Res = H.cdagc(loc+dLphys,loc,0,0);
+				Res = H.cdag(loc,locy,factor);
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				Res = H.template cdag<UP>(loc,locy,factor);
 			}
 		}
-		else
+		else if (spec == "IPEDN")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 			{
-				Res = H.cdagc<UP,UP>(loc+dLphys,loc,0,0);
+				Res = H.cdag(loc,locy,factor);
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				Res = H.template cdag<DN>(loc,locy,factor);
 			}
 		}
-	}
-	// hybridization triplet structure factor
-	else if (spec == "HTS")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2())
+		// charge structure factor
+		else if (spec == "CSF" or spec == "ICSF")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (!Symmetry::IS_CHARGE_SU2())
 			{
-				Res = H.cdagc3(loc,loc+dLphys,0,0);
+				Res = H.n(loc,locy);
 			}
 			else
 			{
-				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				throw;
 			}
 		}
-		else
+		// Auger electron spectroscopy
+		else if (spec == "AES")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (!Symmetry::IS_CHARGE_SU2())
 			{
-				Res = H.cdagc<UP,DN>(loc,loc+dLphys,0,0);
+				Res = H.cc(loc,locy);
 			}
 			else
 			{
-				lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				throw;
 			}
 		}
-	}
-	// inverse hybridization triplet structure factor
-	else if (spec == "IHTS")
-	{
-		if constexpr (Symmetry::IS_SPIN_SU2())
+		// Appearance potential spectroscopy
+		else if (spec == "APS")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (!Symmetry::IS_CHARGE_SU2())
 			{
-				Res = H.cdagc3(loc+dLphys,loc,0,0);
+				Res = H.cdagcdag(loc,locy);
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				throw;
 			}
 		}
-		else
+		// pseudospin structure factor
+		else if (spec == "PSF")
 		{
-			if (loc<H.length()-dLphys)
+			if constexpr (Symmetry::IS_CHARGE_SU2())
 			{
-				Res = H.cdagc<DN,UP>(loc+dLphys,loc,0,0);
+				Res = H.T(loc,locy);
 			}
 			else
 			{
-				lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
-				Res = Hamiltonian::Zero(H.qPhys);
+				Res = H.Tp(loc,locy);
+			}
+		}
+		// pseudospin structure factor
+		else if (spec == "PDAGSF")
+		{
+			if constexpr (Symmetry::IS_CHARGE_SU2())
+			{
+				Res = H.Tdag(loc,locy);
+			}
+			else
+			{
+				Res = H.Tm(loc,locy);
+			}
+		}
+		// pseudospin structure factor: z-component
+		else if (spec == "PSZ" or spec == "IPSZ")
+		{
+			if constexpr (!Symmetry::IS_CHARGE_SU2())
+			{
+				Res = H.Tz(loc,locy);
+			}
+			else
+			{
+				throw;
+			}
+		}
+		// hybridization structure factor
+		else if (spec == "HSF")
+		{
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc(loc,loc+dLphys,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+			else
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc<UP,UP>(loc,loc+dLphys,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+		}
+		// inverse hybridization structure factor
+		else if (spec == "IHSF")
+		{
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc(loc+dLphys,loc,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+			else
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc<UP,UP>(loc+dLphys,loc,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+		}
+		// hybridization triplet structure factor
+		else if (spec == "HTS")
+		{
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc3(loc,loc+dLphys,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+			else
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc<UP,DN>(loc,loc+dLphys,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "HTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+		}
+		// inverse hybridization triplet structure factor
+		else if (spec == "IHTS")
+		{
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc3(loc+dLphys,loc,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
+			}
+			else
+			{
+				if (loc<H.length()-dLphys)
+				{
+					Res = H.cdagc<DN,UP>(loc+dLphys,loc,0,0);
+				}
+				else
+				{
+					lout << termcolor::yellow << "IHTS operator hit right edge! Returning zero." << termcolor::reset << endl;
+					Res = Hamiltonian::Zero(H.qPhys);
+				}
 			}
 		}
 	}

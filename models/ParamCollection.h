@@ -1413,6 +1413,25 @@ vector<Param> Tinf_params_fermions (size_t Ly)
 	return res;
 }
 
+vector<Param> Tinf_params_spins (size_t Ly)
+{
+	vector<Param> res;
+	res.push_back({"Ly",Ly});
+	res.push_back({"CALC_SQUARE",true});
+	res.push_back({"OPEN_BC",true});
+	if (Ly == 2ul)
+	{
+		res.push_back({"J",0.});
+		res.push_back({"Jrung",1.});
+	}
+	else
+	{
+		res.push_back({"J",1.,0});
+		res.push_back({"J",0.,1});
+	}
+	return res;
+}
+
 inline double conjIfImag (double x) {return x;}
 inline std::complex<double> conjIfImag (std::complex<double> x) {return conj(x);}
 
@@ -1496,6 +1515,30 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 //	cout << res.real() << endl;
 //	cout << endl;
 //	cout << res.imag() << endl;
+	return res;
+}
+
+ArrayXXd hopping_MG_T (int L, double J, double Jprime, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+{
+	ArrayXXd res_tmp = create_1D_OBC(L,J,Jprime);
+	ArrayXXd res(2*L,2*L); res = 0;
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res(2*i,2*j) = res_tmp(i,j);
+		if (ANCILLA_HOPPING)
+		{
+			res(2*i+1,2*j+1) = res_tmp(i,j);
+		}
+	}
+	
+	for (int i=0; i<2*L-1; ++i)
+	{
+		res(i,i+1) += bugfix;
+		res(i+1,i) += bugfix;
+	}
+	
 	return res;
 }
 

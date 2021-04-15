@@ -68,7 +68,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
 	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
-	{"nu",0.}, // couples to Sz_i+1/2
+	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -155,7 +155,7 @@ add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
 		ArrayXXd Jperp_array = B[loc].ZeroHopping();
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(
-		            B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, nu_array, Kz_array, Kx.a, Dyperp.a, nu.a));
+		            B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, nu_array, Kz_array, Kx.a, Dyperp.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya

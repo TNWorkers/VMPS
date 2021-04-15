@@ -533,6 +533,8 @@ int main (int argc, char* argv[])
 	double dbeta = args.get<double>("dbeta",0.1);
 	double beta = args.get<double>("beta",1.);
 	double tol_compr_beta = args.get<double>("tol_compr_beta",1e-5);
+	bool SAVE_BETA = args.get<bool>("SAVE_BETA",true);
+	bool LOAD_BETA = args.get<bool>("LOAD_BETA",false);
 	
 	string spec = args.get<string>("spec","JJC"); // JJC, JJE
 	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
@@ -603,7 +605,7 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, base, false, false, VERB);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, base, LOAD_BETA, SAVE_BETA, VERB);
 	
 	lout << endl << "Applying J to ground state for j0 sites..." << endl;
 	double tol_OxV = 2.; // val>1 = do not compress
