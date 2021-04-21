@@ -209,53 +209,64 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = B[i].S(0);}
 			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
-			continue;
 		}
 		
-		// Nearest-neighbour terms: J
-		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next1_orbitals}, loc%Lcell);
-		param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next1_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jpara.label);
-		labellist[loc].push_back(Rpara.label);
-		
-		if (loc < N_sites-1 or !static_cast<bool>(boundary))
+		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
+		if (P.HAS("Rfull"))
 		{
-			for(std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for(std::size_t beta=0; beta<next1_orbitals; ++beta)
-			{
-				auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa), B[lp1].Q(beta));
-				auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].S(beta));
-				pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
-			}
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {B[loc].Qdag(0)};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > Q_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Q_ranges[i] = B[i].Q(0);}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {Q_ranges};
+			push_full("Rfull", "Rᵢⱼ", first, last, {std::sqrt(5.)});
 		}
 		
-		// Next-nearest-neighbour terms: J'
-		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, next2_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jprime.label);
-		
-		if (loc < N_sites-2 or !static_cast<bool>(boundary))
+		if (!P.HAS("Jfull"))
 		{
-			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for (std::size_t beta=0; beta<next2_orbitals; ++beta)
-			{
-				auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].S(beta));
-				pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprime(alfa,beta)));
-			}
-		}
-		
-		// 3rd-neighbour terms: J''
-		param2d Jprimeprime = P.fill_array2d<double>("Jprimeprime", "Jprimeprime_array", {orbitals, next3_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jprimeprime.label);
-		
-		if (loc < N_sites-3 or !static_cast<bool>(boundary))
-		{
+			// Nearest-neighbour terms: J
+			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next1_orbitals}, loc%Lcell);
+			param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next1_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jpara.label);
+			labellist[loc].push_back(Rpara.label);
 			
-			for(std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for(std::size_t beta=0; beta<next3_orbitals; ++beta)
+			if (loc < N_sites-1 or !static_cast<bool>(boundary))
 			{
-				auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].Id(), B[lp3].S(beta));
-				pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprimeprime(alfa,beta)));
+				for(std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for(std::size_t beta=0; beta<next1_orbitals; ++beta)
+				{
+					auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa), B[lp1].Q(beta));
+					auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].S(beta));
+					pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
+				}
+			}
+			
+			// Next-nearest-neighbour terms: J'
+			param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, next2_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jprime.label);
+			
+			if (loc < N_sites-2 or !static_cast<bool>(boundary))
+			{
+				for (std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for (std::size_t beta=0; beta<next2_orbitals; ++beta)
+				{
+					auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].S(beta));
+					pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprime(alfa,beta)));
+				}
+			}
+			
+			// 3rd-neighbour terms: J''
+			param2d Jprimeprime = P.fill_array2d<double>("Jprimeprime", "Jprimeprime_array", {orbitals, next3_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jprimeprime.label);
+			
+			if (loc < N_sites-3 or !static_cast<bool>(boundary))
+			{
+				
+				for(std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for(std::size_t beta=0; beta<next3_orbitals; ++beta)
+				{
+					auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].Id(), B[lp3].S(beta));
+					pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprimeprime(alfa,beta)));
+				}
 			}
 		}
 	}

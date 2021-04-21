@@ -1542,4 +1542,14 @@ ArrayXXd hopping_MG_T (int L, double J, double Jprime, bool ANCILLA_HOPPING=fals
 	return res;
 }
 
+// returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
+tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_input = boost::rational<int>(1,3))
+{
+	double beta = boost::rational_cast<double>(beta_input);
+	double J = 1.+0.5*beta;
+	double R = -0.5*beta;
+	double offset = -4./3.*beta;
+	return make_tuple(J,R,offset);
+}
+
 #endif
