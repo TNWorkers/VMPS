@@ -799,7 +799,7 @@ std::string Qbasis<Symmetry>::
 print() const
 {
 	std::stringstream out;
-#ifdef HELPERS_IO_TABLE
+#ifdef TOOLS_IO_TABLE
 	TextTable t( '-', '|', '+' );
 	t.add("Q");
 	t.add("Dim(Q)");
