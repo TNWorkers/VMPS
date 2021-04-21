@@ -184,9 +184,6 @@ int main (int argc, char* argv[])
 	H.transform_base(Q,false); // PRINT=false
 	lout << H.info() << endl;
 	
-	MODEL Haux(5*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
-	Haux.transform_base(Q,false); // PRINT=false
-	
 //	//-----<Test von komplexem Hopping>-----
 //	// Referenz:
 //	// "Persistent current of a Hubbard ring threaded with a magnetic flux", Yu & Fowler (1991)
@@ -236,25 +233,19 @@ int main (int argc, char* argv[])
 			lout << "hopping matrix diagonalization: " << e0free << ", VUMPS (should be slightly lower): " << SpecMan.energy() << endl;
 		}
 		
-		for (int l=0; l<L; ++l)
-		{
-			lout << "l=" << l << ", n=" << isReal(avg(SpecMan.ground(), H.n(l), SpecMan.ground())) << endl;
-			lout << "l=" << l << ", d=" << isReal(avg(SpecMan.ground(), H.d(l), SpecMan.ground())) << endl;
-		}
-		lout << "SdagS(cf)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,1), SpecMan.ground())) << endl;
-		lout << "SdagS(cc)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(0,2), SpecMan.ground())) << endl;
-		lout << "SdagS(ff)=" << isReal(avg(SpecMan.ground(), Haux.SdagS(1,3), SpecMan.ground())) << endl;
+//		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
 		
-		lout << "cdagc3=" << isReal(avg(SpecMan.ground(), Haux.cdagc3(0,1), Haux.cdagc3(0,1), SpecMan.ground())) << endl;
-		
-		auto itSSF = find(specs.begin(), specs.end(), "SSF");
-		if (itSSF != specs.end())
+		if (specs.size() != 0)
 		{
-			int iz = distance(specs.begin(), itSSF);
-			SpecMan.resize_Green(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
-			SpecMan.set_measurement(iz, "SSF",1.,1, Q, L, 1,"S","wavepacket",true); // TRANSFORM=true
+			auto itSSF = find(specs.begin(), specs.end(), "SSF");
+			if (itSSF != specs.end())
+			{
+				int iz = distance(specs.begin(), itSSF);
+				SpecMan.resize_Green(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT);
+				SpecMan.set_measurement(iz, "SSF",1.,1, Q, L, 1,"S","wavepacket",true); // TRANSFORM=true
+			}
+			SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 		}
-		SpecMan.compute(wd, param_base, Ns, tmax, dt, wmin, wmax, wpoints, QR, qpoints, INT, Mlim, tol_DeltaS, tol_compr);
 	}
 	else
 	{

@@ -47,7 +47,7 @@ public:
 	static qarray<1> singlet (int N=0) {return qarray<1>{0};};
 	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
-private:
+public:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 	
@@ -55,7 +55,20 @@ public:
 	
 	///@{
 	HeisenbergU1() : Mpo<Symmetry>(), ParamReturner(HeisenbergU1::sweep_defaults) {};
+	
+	HeisenbergU1(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HeisenbergObservables(this->N_sites,params,HeisenbergU1::defaults),
+	 ParamReturner(HeisenbergU1::sweep_defaults)
+	{
+		ParamHandler P(params,HeisenbergU1::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HeisenbergU1 (const size_t &L, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	
 	HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
@@ -88,6 +101,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
+	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -224,15 +238,18 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jzperp  = P.fill_array2d<double>("Jzrung",  "Jz",  "Jzperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
+		param1d nu = P.fill_array1d<double>("nu", "nuorb", orbitals, loc%Lcell);
 		
 		labellist[loc].push_back(Bz.label);
 		labellist[loc].push_back(Kz.label);
 		labellist[loc].push_back(Jperp.label);
 		labellist[loc].push_back(Jxyperp.label);
 		labellist[loc].push_back(Jzperp.label);
+		labellist[loc].push_back(mu.label);
+		labellist[loc].push_back(nu.label);
 		
 		Eigen::ArrayXd Bx_array = B[loc].ZeroField();
-		Eigen::ArrayXd mu_array = B[loc].ZeroField();
 		Eigen::ArrayXd Kx_array = B[loc].ZeroField();
 		Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
 		
@@ -248,7 +265,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		};
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(
-		            B[loc].HeisenbergHamiltonian(sum_array(Jperp.a,Jxyperp.a), sum_array(Jperp.a,Jzperp.a), Bz.a, mu_array, Kz.a));
+		            B[loc].HeisenbergHamiltonian(sum_array(Jperp.a,Jxyperp.a), sum_array(Jperp.a,Jzperp.a), Bz.a, mu.a, nu.a, Kz.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Full J-matrices

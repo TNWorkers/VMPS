@@ -55,12 +55,14 @@ parser.add_argument('-tolDeltaS', action='store', type=float, default=0.01)
 parser.add_argument('-dt', action='store', type=float, default=0.025)
 parser.add_argument('-tmax', action='store', type=int, default=4)
 parser.add_argument('-index', action='store', type=int, default=0)
+parser.add_argument('-band', action='store', type=int, default=0)
 args = parser.parse_args()
 
 set = args.set
 spec = args.spec
 plot = args.plot
 index = args.index
+band = args.band
 
 U = args.U
 V = args.V
@@ -125,12 +127,12 @@ if args.plot == 'cell':
 	last = -1
 	if index==1:
 		last = -2
-	im = ax.imshow(data[:,0:last:2], origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,2*pi,0,tmax])
+	im = ax.imshow(data[:,band:last:2], origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,Lcell*Ncells/2,0,tmax])
 	fig.colorbar(im)
 	
 	axis_shenanigans(ax)
 	
-	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)+'_index='+str(index)
+	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)+'_index='+str(index)+'_band='+str(band)
 
 if args.save:
 	

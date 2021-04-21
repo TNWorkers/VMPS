@@ -99,7 +99,7 @@ block_right()
 			for (size_t i=0; i<svec.size(); ++i)
 			{
 				Mtmp.block(0,stitch, Nrows,Ncolsvec[i]) = A[svec[i]].block[qvec[i]]* Symmetry::coeff_leftSweep(A[svec[i]].out[qvec[i]],
-																											   A[svec[i]].in[qvec[i]]);
+				                                                                                               A[svec[i]].in[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			Aclump_.push_back(inbase[qin], inbase[qin], Mtmp);

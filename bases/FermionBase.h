@@ -40,14 +40,14 @@ public:
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
 	 */
-	FermionBase (std::size_t L_input, bool U_IS_INFINITE=false, bool UPH_IS_INFINITE=false);
+	FermionBase (std::size_t L_input, bool REMOVE_DOUBLE=false, bool REMVOVE_EMPTY=false, bool REMOVE_SINGLE=false, int mfactor=1);
 	
 	/**amount of states*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
 	
 	/**amount of orbitals*/
-	inline std::size_t orbitals() const  {return N_orbitals;}
-
+	inline std::size_t orbitals() const {return N_orbitals;}
+	
 	///\{
 	/**
 	 * Annihilation operator
@@ -63,13 +63,13 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),OperatorType>::type c (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),OperatorType>::type c (SPIN_INDEX sigma, size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),OperatorType>::type c (SPIN_INDEX sigma, SUB_LATTICE G, size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),OperatorType>::type c (SUB_LATTICE G, size_t orbital=0) const;
 	
@@ -88,23 +88,23 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),OperatorType>::type cdag (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),OperatorType>::type cdag (SPIN_INDEX sigma, size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),OperatorType>::type cdag (SPIN_INDEX sigma, SUB_LATTICE G, size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),OperatorType>::type cdag (SUB_LATTICE G, size_t orbital=0) const;
-
+	
 	/**
 	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
 	 * \param orb1 : orbital on supersite i
 	 * \param orb2 : orbital on supersite i+1
 	 */
 	OperatorType sign (std::size_t orb1=0, std::size_t orb2=0) const;
-
+	
 	/**
 	 * Fermionic sign for one orbital of a supersite.
 	 * \param orbital : orbital index
@@ -117,7 +117,7 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<true,OperatorType>::type n (std::size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type n (SPIN_INDEX sigma, size_t orbital=0) const;
 	
@@ -155,48 +155,48 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type Sdag (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sz (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sp (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sm (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),OperatorType>::type Sx (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),OperatorType>::type iSy (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Scomp (SPINOP_LABEL Sa, int orbital) const
+	{
+		assert(Sa != SY);
+		OperatorType out;
+		if constexpr (Dummy::NO_SPIN_SYM())
 		{
-			assert(Sa != SY);
-			OperatorType out;
-			if constexpr (Dummy::NO_SPIN_SYM())
-			{						 
-				if      (Sa==SX)  { out = Sx(orbital); }
-				else if (Sa==iSY) { out = iSy(orbital); }
-				else if (Sa==SZ)  { out = Sz(orbital); }
-				else if (Sa==SP)  { out = Sp(orbital); }
-				else if (Sa==SM)  { out = Sm(orbital); }
-			}
-			else
-			{
-				if (Sa==SZ)  { out = Sz(orbital); }
-				else if (Sa==SP)  { out = Sp(orbital); }
-				else if (Sa==SM)  { out = Sm(orbital); }
-			}
-			return out;
-		};
+			if      (Sa==SX)  {out = Sx(orbital);}
+			else if (Sa==iSY) {out = iSy(orbital);}
+			else if (Sa==SZ)  {out = Sz(orbital);}
+			else if (Sa==SP)  {out = Sp(orbital);}
+			else if (Sa==SM)  {out = Sm(orbital);}
+		}
+		else
+		{
+			if (Sa==SZ)  {out = Sz(orbital);}
+			else if (Sa==SP)  {out = Sp(orbital);}
+			else if (Sa==SM)  {out = Sm(orbital);}
+		}
+		return out;
+	};
 	///\}
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry,Eigen::MatrixXcd> >::type Rcomp (SPINOP_LABEL Sa, int orbital) const;
-
+	
 	///\{
 	/**
 	 * Orbital Isospin
@@ -211,21 +211,21 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_CHARGE_SU2(),OperatorType>::type Tdag (size_t orbital=0) const;
-
+	
 	/**
 	 * Isospin z-component
 	 * \param orbital : orbital index
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type Tz (size_t orbital=0) const;
-
+	
 	/**
 	 * Isospin x-component
 	 * \param orbital : orbital index
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_CHARGE_SYM(),OperatorType>::type Tx (size_t orbital=0, SUB_LATTICE G=A) const;
-
+	
 	/**
 	 * Isospin y-component
 	 * \param orbital : orbital index
@@ -235,18 +235,18 @@ public:
 	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type Tp (size_t orbital=0, SUB_LATTICE G=A) const
-		{
-			double factor = static_cast<double>(static_cast<int>(G));
-			return factor*cc(orbital);
-		};
+	{
+		double factor = static_cast<double>(static_cast<int>(G));
+		return factor*cc(orbital);
+	};
 	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type Tm (size_t orbital=0, SUB_LATTICE G=A) const
-		{
-			double factor = static_cast<double>(static_cast<int>(G));
-			return factor*cdagcdag(orbital);
-		};
-
+	{
+		double factor = static_cast<double>(static_cast<int>(G));
+		return factor*cdagcdag(orbital);
+	};
+	
 	///\{
 	/**
 	 * Orbital pairing η
@@ -262,10 +262,10 @@ public:
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type cdagcdag (size_t orbital=0) const;
 	///\}
-
+	
 	/**Identity*/
 	OperatorType Id (std::size_t orbital=0) const;
-
+	
 	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
 	
@@ -285,83 +285,84 @@ public:
 	 */
 	template<typename Scalar_>
 	SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph,
-																			   const Array<Scalar_,Dynamic,Dynamic> &t,
-																			   const Array<Scalar_,Dynamic,Dynamic> &V,
-																			   const Array<Scalar_,Dynamic,Dynamic> &J) const;
-
+	                                                                           const Array<Scalar_,Dynamic,Dynamic> &t,
+	                                                                           const Array<Scalar_,Dynamic,Dynamic> &V,
+	                                                                           const Array<Scalar_,Dynamic,Dynamic> &J) const;
+	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::ABELIAN,SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type
 	HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U, 
-						const Array<Scalar_,Dynamic,1> &Uph, 
-						const Array<Scalar_,Dynamic,1> &Eorb, 
-						const Array<Scalar_,Dynamic,1> &Bz, 
-						const Array<Scalar_,Dynamic,Dynamic> &t, 
-						const Array<Scalar_,Dynamic,Dynamic> &V,
-						const Array<Scalar_,Dynamic,Dynamic> &Vz,
-						const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
-						const Array<Scalar_,Dynamic,Dynamic> &Jz,
-						const Array<Scalar_,Dynamic,Dynamic> &Jxy) const;
-
+	                    const Array<Scalar_,Dynamic,1> &Uph, 
+	                    const Array<Scalar_,Dynamic,1> &Eorb, 
+	                    const Array<Scalar_,Dynamic,1> &Bz, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &t, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &V,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Vz,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &Jz,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Jxy) const;
+	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type
 	HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U, 
-						const Array<Scalar_,Dynamic,1> &Uph, 
-						const Array<Scalar_,Dynamic,1> &Eorb, 
-						const Array<Scalar_,Dynamic,Dynamic> &t, 
-						const Array<Scalar_,Dynamic,Dynamic> &V,
-						const Array<Scalar_,Dynamic,Dynamic> &Vz,
-						const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
-						const Array<Scalar_,Dynamic,Dynamic> &J) const;
-
+	                    const Array<Scalar_,Dynamic,1> &Uph, 
+	                    const Array<Scalar_,Dynamic,1> &Eorb, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &t, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &V,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Vz,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &J) const;
+	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM() and Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type
 	HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, 
-						const Array<Scalar_,Dynamic,Dynamic> &t, 
-						const Array<Scalar_,Dynamic,Dynamic> &V,
-						const Array<Scalar_,Dynamic,Dynamic> &Jz,
-						const Array<Scalar_,Dynamic,Dynamic> &Jxy, 
-						const Array<Scalar_,Dynamic,1> &Bz,
-						const Array<Scalar_,Dynamic,1> &Bx) const;
+	                    const Array<Scalar_,Dynamic,Dynamic> &t, 
+	                    const Array<Scalar_,Dynamic,Dynamic> &V,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Jz,
+	                    const Array<Scalar_,Dynamic,Dynamic> &Jxy, 
+	                    const Array<Scalar_,Dynamic,1> &Bz,
+	                    const Array<Scalar_,Dynamic,1> &Bx) const;
 	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> >>::type coupling_Bx (const Array<double,Dynamic,1> &Bx) const;
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,-1,-1> >>::type coupling_By (const Array<double,Dynamic,1> &By) const;
-
+	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_TRIVIAL,SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> >>::type coupling_singleFermion (const Array<double,Dynamic,1> &Fp) const;
 	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> >>::type coupling_XYZspin (const Array<double,Dynamic,Dynamic> &Jx,
-																																 const Array<double,Dynamic,Dynamic> &Jy,
-																																 const Array<double,Dynamic,Dynamic> &Jz) const;
+	                                                                                                                             const Array<double,Dynamic,Dynamic> &Jy,
+	                                                                                                                             const Array<double,Dynamic,Dynamic> &Jz) const;
 	
 	/**Returns the basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 	
-private:	
+private:
+	
 	OperatorType make_operator(const OperatorType &Op_1s, size_t orbital=0, bool FERMIONIC = false, string label="") const;
 	std::size_t N_orbitals;
 	std::size_t N_states;
 	
 	Qbasis<Symmetry> TensorBasis; //Final basis for N_orbital sites
-
-	//operators defined on zero orbital
+	
+	//operators defined on zero orbitals
 	OperatorType Id_vac, Zero_vac;
 };
 
 template <typename Symmetry_>
 FermionBase<Symmetry_>::
-FermionBase (std::size_t L_input, bool U_IS_INFINITE, bool UPH_IS_INFINITE)
-:FermionSite<Symmetry>(U_IS_INFINITE, UPH_IS_INFINITE), N_orbitals(L_input)
+FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_SINGLE, int mfactor)
+:FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_SINGLE, mfactor), N_orbitals(L_input)
 {	
 	//create basis for zero orbitals
 	typename Symmetry::qType Q=Symmetry::qvacuum();
 	Eigen::Index inner_dim = 1;
 	Qbasis<Symmetry_> vacuum;
 	vacuum.push_back(Q, inner_dim);
-
+	
 	// create operators for zero orbitals
 	Zero_vac = OperatorType(Symmetry::qvacuum(), vacuum);
 	Zero_vac.setZero();
@@ -374,12 +375,12 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	else
 	{
 		TensorBasis = this->basis_1s().combine(this->basis_1s());
-		for(std::size_t o=2; o<N_orbitals; o++)
+		for (std::size_t o=2; o<N_orbitals; o++)
 		{
 			TensorBasis = TensorBasis.combine(this->basis_1s());
 		}
 	}
-
+	
 	N_states = TensorBasis.size();
 }
 
@@ -444,7 +445,10 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdag (SPIN_INDEX sigma, std::size_t orbital) const
 {
-	return c(sigma,orbital).adjoint();
+//	return c(sigma,orbital).adjoint();
+	stringstream ss;
+	ss << "c†" << sigma;
+	return make_operator(this->cdag_1s(sigma),orbital,PROP::FERMIONIC, ss.str());
 }
 
 template <typename Symmetry_>
@@ -453,8 +457,7 @@ typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),SiteOpe
 c (SPIN_INDEX sigma, SUB_LATTICE G, std::size_t orbital) const
 {
 	stringstream ss;
-	ss << "c" << G << sigma;
-	return make_operator(this->c_1s(sigma, G),orbital,PROP::FERMIONIC, ss.str());
+	return make_operator(this->c_1s(sigma,G),orbital,PROP::FERMIONIC, ss.str());
 }
 
 template <typename Symmetry_>
@@ -660,7 +663,7 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cc (std::size_t orbital) const
 {
-	return make_operator(this->cc_1s(), orbital, PROP::NON_FERMIONIC,"cc");
+	return make_operator(this->cc_1s(), orbital, PROP::NON_FERMIONIC, "cc");
 }
 
 template <typename Symmetry_>
@@ -668,7 +671,8 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdagcdag (std::size_t orbital) const
 {
-	return cc(orbital).adjoint();
+//	return cc(orbital).adjoint();
+	return make_operator(this->cdagcdag_1s(), orbital, PROP::NON_FERMIONIC, "c†c†");
 }
 
 //SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
@@ -724,7 +728,7 @@ template<typename Symmetry_>
 template<typename Scalar_>
 SiteOperatorQ<Symmetry_, Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Symmetry_>::
 HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, const Array<Scalar_,Dynamic,Dynamic> &t,
-					const Array<Scalar_,Dynamic,Dynamic> &V, const Array<Scalar_,Dynamic,Dynamic> &J) const
+                    const Array<Scalar_,Dynamic,Dynamic> &V, const Array<Scalar_,Dynamic,Dynamic> &J) const
 {
 	SiteOperatorQ<Symmetry_, Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > Oout(Symmetry::qvacuum(),TensorBasis);
 	
@@ -735,28 +739,24 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, const Array<Scalar_,Dyn
 		auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,j)));
 		if (t(i,j) != 0.)
 		{
-			if
-				constexpr (Symmetry_::IS_SPIN_SU2() and Symmetry::IS_CHARGE_SU2())
-						  {
-							  Oout += -t(i,j) * std::sqrt(2.)*std::sqrt(2.) * OperatorType::prod(cdag(G1,i),c(G2,j),Symmetry::qvacuum()).template cast<Scalar_>();
-						  }
-			else if
-				constexpr (Symmetry_::IS_SPIN_SU2() and !Symmetry_::IS_CHARGE_SU2())
-						  {
-							  Oout += -t(i,j)*std::sqrt(2.) * (OperatorType::prod(cdag(i),c(j),Symmetry::qvacuum())).template cast<Scalar_>();
-							  Oout += -t(j,i)*std::sqrt(2.) * (OperatorType::prod(c(i),cdag(j),Symmetry::qvacuum())).template cast<Scalar_>();
-						  }
-			else if
-				constexpr (!Symmetry_::IS_SPIN_SU2() and Symmetry_::IS_CHARGE_SU2())
-						  {
-							  Oout += -t(i,j) * std::sqrt(2.) * (OperatorType::prod(cdag(UP,G1,i),c(UP,G2,j),Symmetry::qvacuum()) + OperatorType::prod(cdag(DN,G1,i),c(DN,G2,j),Symmetry::qvacuum())).template cast<Scalar_>();
-						  }
-			else if
-				constexpr (!Symmetry_::IS_SPIN_SU2() and !Symmetry_::IS_CHARGE_SU2())
-						  {
-							  Oout += -t(i,j)*(cdag(UP,i) * c(UP,j) + cdag(DN,i) * c(DN,j)).template cast<Scalar_>();
-							  Oout += -t(j,i)*(cdag(UP,j) * c(UP,i) + cdag(DN,j) * c(DN,i)).template cast<Scalar_>();
-						  }
+			if constexpr (Symmetry_::IS_SPIN_SU2() and Symmetry::IS_CHARGE_SU2())
+			{
+				Oout += -t(i,j) * std::sqrt(2.)*std::sqrt(2.) * OperatorType::prod(cdag(G1,i),c(G2,j),Symmetry::qvacuum()).template cast<Scalar_>();
+			}
+			else if constexpr (Symmetry_::IS_SPIN_SU2() and !Symmetry_::IS_CHARGE_SU2())
+			{
+				Oout += -t(i,j)*std::sqrt(2.) * (OperatorType::prod(cdag(i),c(j),Symmetry::qvacuum())).template cast<Scalar_>();
+				Oout += -t(j,i)*std::sqrt(2.) * (OperatorType::prod(c(i),cdag(j),Symmetry::qvacuum())).template cast<Scalar_>();
+			}
+			else if constexpr (!Symmetry_::IS_SPIN_SU2() and Symmetry_::IS_CHARGE_SU2())
+			{
+				Oout += -t(i,j) * std::sqrt(2.) * (OperatorType::prod(cdag(UP,G1,i),c(UP,G2,j),Symmetry::qvacuum()) + OperatorType::prod(cdag(DN,G1,i),c(DN,G2,j),Symmetry::qvacuum())).template cast<Scalar_>();
+			}
+			else if constexpr (!Symmetry_::IS_SPIN_SU2() and !Symmetry_::IS_CHARGE_SU2())
+			{
+				Oout += -t(i,j)*(cdag(UP,i) * c(UP,j) + cdag(DN,i) * c(DN,j)).template cast<Scalar_>();
+				Oout += -t(j,i)*(cdag(UP,j) * c(UP,i) + cdag(DN,j) * c(DN,i)).template cast<Scalar_>();
+			}
 			else
 			{
 				// static_assert(false, "You use a symmetry combination for which there is no implementation of the hopping part in FermionBase::HubbardHamiltonian()");
@@ -764,28 +764,28 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, const Array<Scalar_,Dyn
 		}
 		if (V(i,j) != 0.)
 		{
-			if
-				constexpr (Symmetry::IS_CHARGE_SU2())
-						  {
-							  Oout += V(i,j)*std::sqrt(3.) * (OperatorType::prod(Tdag(i),T(j),Symmetry::qvacuum())).template cast<Scalar_>();
-						  }
+			if constexpr (Symmetry::IS_CHARGE_SU2())
+			{
+				Oout += V(i,j)*std::sqrt(3.) * (OperatorType::prod(Tdag(i),T(j),Symmetry::qvacuum())).template cast<Scalar_>();
+			}
 			else
 			{
 				Oout += V(i,j) * (OperatorType::prod(Tz(i),Tz(j),Symmetry::qvacuum())).template cast<Scalar_>();
-				Oout += 0.5*V(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
+				Oout += 0.5*V(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + 
+				                      OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
 			}
 		}
 		if (J(i,j) != 0.)
 		{
-			if
-				constexpr (Symmetry::IS_SPIN_SU2())
-						  {
-							  Oout += J(i,j)*std::sqrt(3.) * (OperatorType::prod(Sdag(i),S(j),Symmetry::qvacuum())).template cast<Scalar_>();
-						  }
+			if constexpr (Symmetry::IS_SPIN_SU2())
+			{
+				Oout += J(i,j)*std::sqrt(3.) * (OperatorType::prod(Sdag(i),S(j),Symmetry::qvacuum())).template cast<Scalar_>();
+			}
 			else
 			{
 				Oout += J(i,j) * (OperatorType::prod(Sz(i),Sz(j),Symmetry::qvacuum())).template cast<Scalar_>();
-				Oout += 0.5*J(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
+				Oout += 0.5*J(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + 
+				                      OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
 			}
 		}
 	}
@@ -810,10 +810,10 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
                     const Array<Scalar_,Dynamic,1> &Bz, 
                     const Array<Scalar_,Dynamic,Dynamic> &t, 
                     const Array<Scalar_,Dynamic,Dynamic> &V,
-					const Array<Scalar_,Dynamic,Dynamic> &Vz,
-					const Array<Scalar_,Dynamic,Dynamic> &Vxy,
+                    const Array<Scalar_,Dynamic,Dynamic> &Vz,
+                    const Array<Scalar_,Dynamic,Dynamic> &Vxy,
                     const Array<Scalar_,Dynamic,Dynamic> &Jz,
-					const Array<Scalar_,Dynamic,Dynamic> &Jxy) const
+                    const Array<Scalar_,Dynamic,Dynamic> &Jxy) const
 {
 	auto Oout = HubbardHamiltonian<Scalar_>(Uph, t, ZeroHopping(), ZeroHopping());
 	
@@ -822,6 +822,7 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 	{
 		auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
 		auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,j)));
+		
 		if (V(i,j) != 0.)
 		{
 			Oout += V(i,j) * (n(i)*n(j)).template cast<Scalar_>();
@@ -832,7 +833,8 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		}
 		if (Vxy(i,j) != 0.)
 		{
-			Oout += 0.5*Vxy(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
+			Oout += 0.5*Vxy(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + 
+			                        OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
 		}
 		if (Jz(i,j) != 0.)
 		{
@@ -871,8 +873,8 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
                     const Array<Scalar_,Dynamic,1> &Eorb, 
                     const Array<Scalar_,Dynamic,Dynamic> &t, 
                     const Array<Scalar_,Dynamic,Dynamic> &V,
-					const Array<Scalar_,Dynamic,Dynamic> &Vz,
-					const Array<Scalar_,Dynamic,Dynamic> &Vxy,
+                    const Array<Scalar_,Dynamic,Dynamic> &Vz,
+                    const Array<Scalar_,Dynamic,Dynamic> &Vxy,
                     const Array<Scalar_,Dynamic,Dynamic> &J) const
 {
 	auto Oout = HubbardHamiltonian<Scalar_>(Uph, t, ZeroHopping(), J);
@@ -892,7 +894,8 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		}
 		if (Vxy(i,j) != 0.)
 		{
-			Oout += 0.5*Vxy(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
+			Oout += 0.5*Vxy(i,j) * (OperatorType::prod(Tp(i,G1),Tm(j,G2),Symmetry::qvacuum()) + 
+			                        OperatorType::prod(Tm(i,G1),Tp(j,G2),Symmetry::qvacuum())).template cast<Scalar_>();
 		}
 	}
 	
@@ -933,7 +936,8 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph,
 		}
 		if (Jxy(i,j) != 0.)
 		{
-			Oout += 0.5*Jxy(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
+			Oout += 0.5*Jxy(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + 
+			                        OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
 		}
 	}
 	

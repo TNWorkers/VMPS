@@ -2,6 +2,7 @@
 #define INTERACTIONPARAMS
 
 #include <limits>
+#include <functional>
 #include <gsl/gsl_math.h>
 #include <Eigen/Dense>
 
@@ -34,7 +35,11 @@ struct InteractionParams
 	{
 		U = std::numeric_limits<double>::quiet_NaN();
 		Uvec = Uvec_input;
-		transform(Uvec.begin(), Uvec.end(), Uvec.begin(), bind2nd(std::plus<double>(), Uoffset));
+		//transform(Uvec.begin(), Uvec.end(), Uvec.begin(), bind2nd(std::plus<double>(), Uoffset));
+		for (int i=0; i<Uvec.size(); ++i)
+		{
+			Uvec[i] += Uoffset;
+		}
 		COULOMB_CHECK = true;
 	}
 	

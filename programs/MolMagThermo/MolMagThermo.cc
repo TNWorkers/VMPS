@@ -40,27 +40,22 @@ Logger lout;
 #include "models/ParamCollection.h"
 #include "EigenFiles.h"
 #include "solvers/TDVPPropagator.h"
+// for DOS:
 //#include "solvers/GreenPropagator.h"
-#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
-#include "InterpolGSL.h"
-#include "IntervalIterator.h"
-using boost::math::quadrature::ooura_fourier_sin;
-using boost::math::quadrature::ooura_fourier_cos;
+//using boost::math::quadrature::ooura_fourier_sin;
+//using boost::math::quadrature::ooura_fourier_cos;
+//#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
+//#include "InterpolGSL.h"
+//#include "IntervalIterator.h"
 
 #include "models/HeisenbergSU2.h"
 typedef VMPS::HeisenbergSU2 MODEL;
-// L=12 exact E0/L=-0.51566, SdagS=-0.20626
-// L=20 exact E0/L=-0.48611, SdagS=-0.32407
+#define USING_SU2
+//#include "models/HeisenbergU1.h"
+//typedef VMPS::HeisenbergU1 MODEL;
+//#define USING_U1
 
-//#include "models/DoubleHeisenbergSU2xU0.h"
-//typedef VMPS::DoubleHeisenbergSU2xU0 MODELC;
-
-//#include "models/DoubleHeisenbergU1.h"
-//typedef VMPS::DoubleHeisenbergU1 MODELC;
-
-//#include "models/DoubleHeisenbergSU2.h"
-//typedef VMPS::DoubleHeisenbergSU2 MODELC;
-
+/* 
 ArrayXXd permute_random (const ArrayXXd &A)
 {
 	PermutationMatrix<Dynamic,Dynamic> P(A.rows());
@@ -71,6 +66,7 @@ ArrayXXd permute_random (const ArrayXXd &A)
 //	cout << "(A-A_p).norm()=" << (A.matrix()-A_p).norm() << endl;
 	return A_p.array();
 }
+ */
 
 // returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
@@ -95,16 +91,27 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
 {
 	lout << "correlations for following state:" << endl;
+	lout << "will save to: " << make_string(wd,"SdagS_",base,"_d=[...]",".dat") << endl;
 	lout << Psi.info() << endl;
 	
 	if (S>0)
 	{
 		ofstream SFiler(make_string(wd,"S_",base,".dat"));
-//		#pragma omp parallel for
+		SFiler << "#" << Psi.info() << endl;
+		#pragma omp parallel for
 		for (int l=0; l<L; ++l)
 		{
-			double res = avg(Psi, H.S(l), Psi) / sqrt(S*(S+1.));
-//			#pragma omp critical
+			double res = 0;
+			#ifdef USING_SU2
+			{
+				res = avg(Psi, H.S(l), Psi) / sqrt(S*(S+1.));
+			}
+			#elif defined(USING_U1)
+			{
+				res = avg(Psi, H.Sz(l), Psi) / sqrt(S*(S+1.));
+			}
+			#endif
+			#pragma omp critical
 			{
 				SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
 				lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
@@ -114,6 +121,7 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	}
 	
 	ofstream CorrFilerAll(make_string(wd,"SdagS_",base,"_d=all",".dat"));
+	CorrFilerAll << "#" << Psi.info() << endl;
 	CorrFilerAll << "#i\tj\tSdagS" << endl;
 	
 	Stopwatch<> Timer;
@@ -121,18 +129,19 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	{
 		lout << "correlations at distance d=" << d << endl;
 		ofstream CorrFiler(make_string(wd,"SdagS_",base,"_d=",d,".dat"));
+		CorrFiler << "#" << Psi.info() << endl;
 		CorrFiler << "#i\tj\td\tSdagS" << endl;
 		
 		vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
 		
-//		#pragma omp parallel for
+		#pragma omp parallel for
 		for (int k=0; k<indices.size(); ++k)
 		{
 			int i = indices[k].first;
 			int j = indices[k].second;
 			double val = avg(Psi, H.SdagS(i,j), Psi);
 			
-//			#pragma omp critical
+			#pragma omp critical
 			{
 				lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
 				CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
@@ -148,23 +157,36 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	CorrFilerAll.close();
 }
 
-void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L)
+void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L, string base, string wd, string label)
 {
+	ofstream VarFiler(make_string(wd,"var_",base,".dat"));
+	lout << label << ":" << endl;
+	lout << "will save to: " << make_string(wd,"var_",base,".dat") << endl;
+	VarFiler << "#" << label << endl;
+	VarFiler << "#" << Psi.state.info() << endl;
+	
 	Stopwatch<> Timer;
-	lout << endl;
 	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
 	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
+	VarFiler << setprecision(16) << "E=" << E << setprecision(6) << endl;
 	lout << Timer.info("E") << endl;
+	VarFiler << Timer.info("E") << endl;
 	
 	if (maxPower == 1)
 	{
-		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L << setprecision(6) << endl;
+		double var = abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L;
+		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	else
 	{
-		lout << setprecision(16) << "varE=" << abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L << setprecision(6) << endl;
+		double var = abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L;
+		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	lout << Timer.info("varE") << endl;
+	lout << endl;
+	VarFiler.close();
 	
 //	auto HmE = H;
 //	double factor = args.get<double>("factor",1.);
@@ -173,24 +195,88 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 //	lout << "scale test: " << avg(Psi.state,HmE,Psi.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
 }
 
+map<string,int> make_Lmap()
+{
+	map<string,int> m;
+	//
+	m["CHAIN"] = 0; // chain
+	m["RING"] = 0; // ring
+	// Platonic solids:
+	m["P04"] = 4; // tetrahedron
+	m["P06"] = 6; // octahedron
+	m["P08"] = 8; // cube
+	m["P12"] = 12; // icosahedron
+	m["P20"] = 20; // dodecahedron
+	// Traingles:
+	m["T03"] = 3;
+	m["T05"] = 5;
+	m["T06"] = 6;
+	// Fullerenes:
+	m["C12"] = 12; // =truncated tetrahedron ATT
+	m["C20"] = 20; // =dodecahedron P20
+	m["C24"] = 24;
+	m["C26"] = 26;
+	m["C30"] = 30;
+	m["C40"] = 40;
+	m["C60"] = 60;
+	// Archimedean solids:
+	m["ATT"] = 12; // truncated tetrahedron
+	m["ACO"] = 12; // cuboctahedron
+	m["ATO"] = 24; // truncated octahedron
+	m["AID"] = 30; // icosidodecahedron
+	m["ASD"] = 60; // snub dodecahedron
+	// sodalite cages:
+	m["SOD15"] = 15; // NOT IMPLEMENTED
+	m["SOD20"] = 20; // cuboctahedron decorated with P04
+	m["SOD32"] = 32; // NOT IMPLEMENTED
+	m["SOD50"] = 50; // icosidodecahedron decorated with P04
+	m["SOD60"] = 60; // rectified truncated octahedron decorated with P04
+	return m;
+}
+
+map<string,string> make_vertexMap()
+{
+	map<string,string> m;
+	
+	m["ATT"] = "3.6^2";
+	m["ACO"] = "3.4.3.4";
+	m["ATO"] = "4.6^2";
+	m["AID"] = "3.5.3.5";
+	m["ASD"] = "3^4.5";
+	
+	return m;
+}
+
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
+	Eigen::initParallel();
+	
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
 	double J = args.get<double>("J",1.);
-	int N = args.get<int>("N",L);
+	double Jprime = args.get<double>("Jprime",0.);
+	double Bz = args.get<double>("Bz",0.);
 	int S = args.get<int>("S",0);
+	int M = args.get<int>("M",0);
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
+	bool PRINT_FREE = args.get<bool>("PRINT_FREE",false);
+	if constexpr (MODEL::FAMILY == HUBBARD) PRINT_FREE = true;
+	string MOL = args.get<string>("MOL","C60");
+	int VARIANT = args.get<int>("VARIANT",0); // to try different enumeration variants
+	map<string,int> Lmap = make_Lmap();
+	map<string,string> Vmap = make_vertexMap();
+	if (MOL!="CHAIN" and MOL!="RING") L = Lmap[MOL]; // for linear chain, include chain length using -L
+	int N = args.get<int>("N",L);
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
-	bool CANONICAL = args.get<bool>("CANONICAL",false);
+//	bool CANONICAL = args.get<bool>("CANONICAL",false);
 	bool CALC_C = args.get<bool>("CALC_C",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
@@ -205,14 +291,17 @@ int main (int argc, char* argv[])
 	int N_stages = args.get<int>("N_stages",1);
 	
 	string LOAD = args.get<string>("LOAD","");
-	string LOAD2 = args.get<string>("LOAD2","");
-	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
-	bool CALC_CORR2 = args.get<bool>("CALC_CORR2",false);
-	bool CALC_GS = args.get<int>("CALC_GS",true);
-	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
+	int Nexc = args.get<int>("Nexc",0);
+	int ninit = args.get<int>("ninit",0); // ninit=0: start with 1st excited state, ninit=1: start with 2nd excited state etc.
+	vector<string> LOAD_EXCITED = args.get_list<string>("LOAD_EXCITED",{});
 	double Epenalty = args.get<double>("Epenalty",1e4);
-	bool CALC_VAR = args.get<int>("CALC_VAR",true);
-	bool CALC_VAR2 = args.get<int>("CALC_VAR2",false);
+	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
+	bool CALC_CORR_EXCITED = args.get<bool>("CALC_CORR_EXCITED",false);
+	bool CALC_GS = args.get<int>("CALC_GS",true);
+	bool CALC_VAR = args.get<bool>("CALC_VAR",true);
+	bool CALC_VAR_EXCITED = args.get<bool>("CALC_VAR_EXCITED",true);
+	bool INIT_EXCITED_RANDOM = args.get<bool>("INIT_EXCITED_RANDOM",true);
+	
 	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);
 	
@@ -226,6 +315,8 @@ int main (int argc, char* argv[])
 	
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
+	
+	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
 	
 	// overwrite beta params in case of LOAD
 	if (LOAD!="" and BETAPROP==true)
@@ -241,25 +332,64 @@ int main (int argc, char* argv[])
 				if (parsed_vals[j] == "β")
 				{
 					betainit = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: betainit=" << betainit << endl;
 				}
 				else if (parsed_vals[j] == "dβ")
 				{
 					dbeta = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: dbeta=" << dbeta << endl;
 				}
 				else if (parsed_vals[j] == "Mlim")
 				{
 					Mlim = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: Mlim=" << Mlim << endl;
 				}
 				else if (parsed_vals[j] == "tol")
 				{
 					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
+					lout << "extracted: tol_beta_compr=" << tol_beta_compr << endl;
 				}
 			}
 		}
 	}
-	
-	bool ICOSIDODECA = args.get<int>("ICOSIDODECA",false);
-	int VARIANT = args.get<int>("VARIANT",0);
+	else if (LOAD!="" and BETAPROP==false)
+	{
+		vector<string> parsed_params;
+		boost::split(parsed_params, LOAD, [](char c){return c == '_';});
+		for (int i=0; i<parsed_params.size(); ++i)
+		{
+			vector<string> parsed_vals;
+			boost::split(parsed_vals, parsed_params[i], [](char c){return c == '=';});
+			for (int j=0; j<parsed_vals.size(); ++j)
+			{
+				if (parsed_vals[j] == "L")
+				{
+					L = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: L=" << L << endl;
+				}
+				else if (parsed_vals[j] == "S")
+				{
+					S = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: S=" << S << endl;
+				}
+				else if (parsed_vals[j] == "M")
+				{
+					M = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: M=" << M << endl;
+				}
+				else if (parsed_vals[j] == "U")
+				{
+					U = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: U=" << U << endl;
+				}
+				if (parsed_vals[j] == "Mlimit")
+				{
+					Mlimit_default = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: Mlimit_default=" << Mlimit_default << endl;
+				}
+			}
+		}
+	}
 	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
@@ -268,37 +398,37 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		base = make_string("L=",L,"_D=",D,"_S=",S);
+		base = make_string("L=",L,"_D=",D);
+		#ifdef USING_SU2
+		{
+			base += make_string("_S=",S);
+		}
+		#elif defined(#ifdef USING_U1)
+		{
+			base += make_string("_M=",M);
+		}
+		#endif
 	}
-	if (ICOSIDODECA)
+	if (MOL=="C60" and VARIANT==0)
 	{
-		base += make_string("_molecule=3.5.3.5");
+		base += make_string("_MOL=","C60CMK");
 	}
-	if (CALC_DOS)
+	else
 	{
-		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
+		base += make_string("_MOL=",MOL);
 	}
+//	if (CALC_DOS)
+//	{
+//		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
+//	}
 	if (BETAPROP)
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Mlim=",Mlim);
 	}
-	string base_excited = base;
-	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
+//	string base_excited = base;
+//	if (CALC_NEUTRAL_GAP) base_excited += make_string("_Epenalty=",Epenalty);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
-	
-	// glob. params
-	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
-	GlobParam.Minit = args.get<size_t>("Minit",2ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
-	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
-	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Mlimit = args.get<size_t>("Mlimit",10000ul); // for groundstate
-	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
-	
-	lout.set(base+".log",wd+"log");
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
@@ -306,25 +436,38 @@ int main (int argc, char* argv[])
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
-	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
+	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",50ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",300ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",30ul);
-	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
-	
-	size_t start_alpha = args.get<size_t>("start_alpha",0);
-	size_t end_alpha = args.get<size_t>("end_alpha",0.8*GlobParam.max_halfsweeps);
-	double alpha = args.get<double>("alpha",100.);
-	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	size_t end_2site = args.get<size_t>("end_2site",20ul);
+	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%2==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	double eps_svd = args.get<double>("eps_svd",1e-10);
 	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
 	
-	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
+	// glob. params
+	DMRG::CONTROL::GLOB GlobParam;
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",Mlimit_default); // for groundstate
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+Mincr_per);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
+	GlobParam.Minit = args.get<size_t>("Minit",2ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
+	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
+	GlobParam.CALC_S_ON_EXIT = false;
+	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",2);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
+	
+	// alpha
+	size_t start_alpha = args.get<size_t>("start_alpha",0);
+	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per+1ul);
+	double alpha = args.get<double>("alpha",100.);
+	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	
+	lout.set(make_string(base,"_Mlimit=",GlobParam.Mlimit,".log"), wd+"log", true);
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
@@ -335,27 +478,59 @@ int main (int argc, char* argv[])
 	#endif
 	
 	ArrayXXd hopping;
-	if (L!=12 and L!=20 and L!=24 and L!=26 and L!=30 and L!=40 and L!=60)
+	if (MOL=="RING")
 	{
-		hopping = J*create_1D_PBC(L); // Heisenberg ring for testing
+		bool COMPRESSED = args.get<bool>("COMPRESSED",false);
+		hopping = create_1D_PBC(L,J,Jprime,COMPRESSED); // Heisenberg ring for testing
+	}
+	else if (MOL=="CHAIN")
+	{
+		hopping = create_1D_OBC(L,J,Jprime); // Heisenberg chain for testing
+	}
+	else if (MOL.at(0) == 'P')
+	{
+		hopping = J*hopping_Platonic(L,VARIANT);
+	}
+	else if (MOL.at(0) == 'A')
+	{
+		hopping = J*hopping_Archimedean(Vmap[MOL],VARIANT);
+	}
+	else if (MOL.substr(0,3) == "SOD")
+	{
+		hopping = J*hopping_sodaliteCage(L,VARIANT);
+	}
+	else if (MOL.at(0)=='C')
+	{
+		hopping = J*hopping_fullerene(L,VARIANT);
+	}
+	else if (MOL.at(0)=='T')
+	{
+		hopping = J*hopping_triangular(L,VARIANT);
 	}
 	else
 	{
-		if (ICOSIDODECA)
+		lout << "Unknown molecule!" << endl;
+		throw;
+	}
+	
+	// change hopping along the ring for C60
+	bool RING = args.get<bool>("RING",false);
+	double J2 = args.get<double>("J2",0.9);
+	if (RING and VARIANT==0 and MOL=="C60")
+	{
+		vector<int> ringsites = {16,17,27,30,20, 21,31,38,28,29, 39,42,32,33,43, 35,25,24,34,26};
+		for (int i=0; i<ringsites.size(); ++i)
 		{
-			hopping = J*hopping_Archimedean("3.5.3.5",VARIANT);
-		}
-		else
-		{
-			hopping = J*hopping_fullerene(L,VARIANT);
+			hopping(ringsites[i],ringsites[(i+1)%20]) = J2;
+			hopping(ringsites[(i+1)%20],ringsites[i]) = J2;
 		}
 	}
 	
-	bool PERMUTE = args.get<int>("PERMUTE",false);
+	/*bool PERMUTE = args.get<int>("PERMUTE",false);
 	if (PERMUTE)
 	{
 		hopping = permute_random(hopping);
-	}
+	}*/
 	
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)
@@ -370,9 +545,10 @@ int main (int argc, char* argv[])
 	}
 	
 	// free fermions
-	if constexpr (MODEL::FAMILY == HUBBARD)
+	if (PRINT_FREE)
 	{
 		SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
+		lout << Eugen.eigenvalues().transpose() << endl;
 		VectorXd occ = Eugen.eigenvalues().head(N/2);
 		VectorXd unocc = Eugen.eigenvalues().tail(L-N/2);
 		lout << "orbital energies occupied:" << endl << occ.transpose()  << endl;
@@ -396,7 +572,16 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"Jfull",hopping});
 			params.push_back({"D",D});
-			Q = {2*S+1};
+			#ifdef USING_SU2
+			{
+				Q = {2*S+1};
+			}
+			#elif defined(USING_U1)
+			{
+				Q = {M};
+				params.push_bacl({"Bz",Bz})
+			}
+			#endif
 		}
 		lout << "Q=" << Q << endl;
 		params.push_back({"maxPower",maxPower});
@@ -405,7 +590,7 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		
 		Eigenstate<MODEL::StateXd> g;
-		Eigenstate<MODEL::StateXd> excited1;
+		vector<Eigenstate<MODEL::StateXd>> excited(Nexc);
 		MODEL::Solver DMRG(VERB);
 		DMRG.userSetGlobParam();
 		DMRG.userSetDynParam();
@@ -415,83 +600,65 @@ int main (int argc, char* argv[])
 		if (LOAD!="")
 		{
 			g.state.load(LOAD,g.energy);
-			lout << "loaded: " << g.state.info() << endl;
-			
-//			if (LOAD2!="")
-//			{
-//				Eigenstate<MODEL::StateXd> g2;
-//				g2.state.load(LOAD2,g2.energy);
-//				lout << "overlap=" << g.state.dot(g2.state) << endl;
-//				
-//				MatrixXd Hlow(2,2);
-//				Hlow(0,0) = avg(g.state, H, g.state);
-//				Hlow(1,1) = avg(g2.state, H, g2.state);
-//				Hlow(0,1) = avg(g.state, H, g2.state);
-//				Hlow(1,0) = avg(g2.state, H, g.state);
-//				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
-//				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
-//			}
-			
-			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
-		}
-		else
-		{
-			if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+			lout << termcolor::blue << "loaded: " << g.state.info() << termcolor::reset << endl;
 		}
 		
-		if (LOAD2!="")
-		{
-			excited1.state.load(LOAD2,excited1.energy);
-			lout << "loaded2: " << excited1.state.info() << endl;
-		}
+		if (CALC_GS) DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, (LOAD!="")?true:false);
 		
-		if (CALC_NEUTRAL_GAP)
+		if (LOAD_EXCITED.size()>0)
 		{
-			lout << "CALC_NEUTRAL_GAP" << endl;
-			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base_excited);
-			MODEL::Solver DMRG2(VERB);
-			DMRG2.Epenalty = Epenalty;
-			lout << "Epenalty=" << DMRG2.Epenalty << endl;
-			DMRG2.userSetGlobParam();
-			DMRG2.userSetDynParam();
-			DMRG2.GlobParam = GlobParam;
-			DMRG2.DynParam = DynParam;
-			DMRG2.push_back(g.state);
-			
-//			g.state.sweep(0,DMRG::BROOM::QR);
-//			Eigenstate<MODEL::StateXd> init;
-//			init.state = g.state;
-//			init.state.setRandom();
-//			init.state.sweep(0,DMRG::BROOM::QR);
-//			init.state /= sqrt(dot(init.state,init.state));
-//			MpsCompressor<MODEL::Symmetry,double,double> Compi(VERB);
-//			double overlap = dot(g.state,init.state);
-//			lout << "initial overlap=" << overlap << endl;
-//			if (abs(overlap) > 1e-8)
-//			{
-//				Compi.lincomboCompress({init.state, g.state}, {1.,-overlap}, excited1.state, g.state, g.state.calc_Mmax(), 1e-15);
-//				lout << "overlap after compression=" << dot(g.state,excited1.state);
-//			}
-//			else
-//			{
-//				excited1 = init;
-//			}
-			
-			if (LOAD2=="")
+			excited.resize(LOAD_EXCITED.size());
+			for (int n=0; n<LOAD_EXCITED.size(); ++n)
 			{
-				excited1.state = g.state;
-				excited1.state.setRandom();
-				excited1.state.sweep(0,DMRG::BROOM::QR);
-				excited1.state /= sqrt(dot(excited1.state,excited1.state));
+				excited[n].state.load(LOAD_EXCITED[n],excited[n].energy);
+				lout << "loaded excited: " << excited[n].state.info() << endl;
 			}
-			excited1.state.eps_svd = eps_svd;
-			double overlap = dot(g.state,excited1.state);
-			lout << "initial overlap=" << overlap << endl;
-			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
-			lout << endl;
-			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
-			overlap = dot(g.state,excited1.state);
-			lout << "overlap=" << overlap << endl;
+		}
+		
+		if (Nexc>0)
+		{
+			lout << termcolor::blue << "CALC_GAP" << termcolor::reset << endl;
+			lout << "ninit=" << ninit << ", Nexc=" << Nexc << endl;
+			for (int n=ninit; n<Nexc; ++n)
+			{
+				lout << "------ n=" << n << " ------" << endl;
+				GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_n=",n,"_",base);
+				MODEL::Solver DMRGe(VERB);
+				DMRGe.Epenalty = Epenalty;
+				lout << "Epenalty=" << DMRGe.Epenalty << endl;
+				DMRGe.userSetGlobParam();
+				DMRGe.userSetDynParam();
+				DMRGe.GlobParam = GlobParam;
+				DMRGe.DynParam = DynParam;
+				DMRGe.push_back(g.state);
+				for (int m=0; m<n; ++m)
+				{
+					DMRGe.push_back(excited[m].state);
+				}
+				
+				if (LOAD_EXCITED.size() <= n)
+				{
+					excited[n].state = g.state;
+					if (INIT_EXCITED_RANDOM) excited[n].state.setRandom();
+					excited[n].state.sweep(0,DMRG::BROOM::QR);
+					excited[n].state /= sqrt(dot(excited[n].state,excited[n].state));
+				}
+				excited[n].state.eps_svd = eps_svd;
+				
+				VectorXd overlaps(n+1);
+				
+				overlaps(0) = dot(g.state,excited[n].state);
+				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
+				
+				DMRGe.edgeState(H, excited[n], Q, LANCZOS::EDGE::GROUND, true);
+				
+				lout << endl;
+				lout << "excited[" << n << "].energy=" << setprecision(16) << excited[n].energy << endl;
+				
+				overlaps(0) = dot(g.state,excited[n].state);
+				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
+				lout << "final overlap=" << overlaps.transpose() << endl;
+			}
 		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
@@ -500,167 +667,173 @@ int main (int argc, char* argv[])
 				calc_corr(H, g.state, S, base, wd, L, dmin, dmax, distanceMatrix);
 			}
 			
-			if (CALC_CORR2 and (CALC_NEUTRAL_GAP or LOAD2!=""))
+			if (CALC_CORR_EXCITED and (Nexc>0 or LOAD_EXCITED.size()>0))
 			{
-				calc_corr(H, excited1.state, S, base_excited+"_excited", wd, L, dmin, dmax, distanceMatrix);
+				for (int n=0; n<excited.size(); ++n)
+				{
+					calc_corr(H, excited[n].state, S, make_string(base,"_n=",n), wd, L, dmin, dmax, distanceMatrix);
+				}
+				// --- implement average over all degenerate manifold here ---
 			}
 			
 			if (CALC_VAR)
 			{
-				calc_var(H, g, LOAD, maxPower, L);
+				calc_var(H, g, LOAD, maxPower, L, base, wd, "ground state variance");
 			}
 			
-			if (CALC_VAR2 and (CALC_NEUTRAL_GAP or LOAD2!=""))
+			if (CALC_VAR_EXCITED and (Nexc>0 or LOAD_EXCITED.size()>0))
 			{
-				lout << endl << "excited state variance:" << endl;
-				calc_var(H, excited1, LOAD2, maxPower, L);
+				for (int n=0; n<excited.size(); ++n)
+				{
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, base, wd, make_string("excited state n=",n," variance:"));
+				}
 			}
 			
 			//----density of states----
-			if (CALC_DOS)
-			{
-				std::array<double,2> tsign = {1.,-1.};
-				std::array<string,2> tlabel = {"forwards","back"};
-				
-				MODEL::StateXd Tmp;
-				Stopwatch<> Stepper;
-				OxV_exact(H.S(x0), g.state, Tmp, 2., DMRG::VERBOSITY::ON_EXIT);
-				lout << Stepper.info("OxV") << endl;
-				std::array<MODEL::StateXcd,2> Psi;
-				for (int t=0; t<2; ++t) Psi[t] = Tmp.cast<complex<double> >();
-				auto Phi = g.state.cast<complex<double> >();
-				
-				for (int t=0; t<2; ++t)
-				{
-					Psi[t].eps_svd = tol_t_compr;
-					Psi[t].max_Nsv = Tmp.calc_Mmax();
-				}
-				
-				std::array<TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>,2> TDVPt;
-				for (int t=0; t<2; ++t)
-				{
-					TDVPt[t] = TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>(H,Psi[t]);
-				}
-				MatrixXd Gloct(Nt+1,3); Gloct.setZero();
-				complex<double> res = -1.i * dot(Psi[1],Psi[0]);
-				Gloct(0,0) = 0;
-				Gloct(0,1) = res.real();
-				Gloct(0,2) = res.imag();
-				string filet = wd+"Gloct_"+base+".dat";
-				string filew = wd+"DOS_"+base+".dat";
-				
-				for (int i=0; i<Nt; ++i)
-				{
-					Stopwatch<> Stepper;
-					
-//					#pragma omp parallel for
-					for (int t=0; t<2; ++t)
-					{
-						TDVPt[t].t_step(H, Psi[t], -0.5*1.i*tsign[t]*dt);
-						
-						if (Psi[t].get_truncWeight().sum() > 0.5*tol_t_compr)
-						{
-							Psi[t].max_Nsv = min(static_cast<size_t>(max(Psi[t].max_Nsv*1.1, Psi[t].max_Nsv+1.)),Dtlimit);
-//							#pragma omp critical
-							{
-								lout << termcolor::yellow << "Setting Psi["<<t<<"].max_Nsv to " << Psi[t].max_Nsv << termcolor::reset << endl;
-							}
-						}
-						
-//						#pragma omp critical
-						{
-							lout << tlabel[t] << ":" << endl;
-							lout << "\t" << TDVPt[t].info() << endl;
-							lout << "\t" << Psi[t].info() << endl;
-						}
-					}
-					
-					lout << Stepper.info("t-step") << endl;
-					
-					double tval = (i+1)*dt;
-					complex<double> phase = -1.i*exp(1.i*g.energy*tval);
-					complex<double> res = phase * dot(Psi[1],Psi[0]);
-					Gloct(i+1,0) = tval;
-					Gloct(i+1,1) = res.real();
-					Gloct(i+1,2) = res.imag();
-					saveMatrix(Gloct,filet,false);
-					lout << "propagated to t=" << tval << endl;
-					lout << endl;
-				}
-				
-				for (int t=0; t<2; ++t)
-				{
-					lout << "t=" << t << endl;
-					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base);
-					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
-					Psi[t].save(filename);
-				}
-				
-				// test for save:
+//			if (CALC_DOS)
+//			{
+//				std::array<double,2> tsign = {1.,-1.};
+//				std::array<string,2> tlabel = {"forwards","back"};
+//				
+//				MODEL::StateXd Tmp;
+//				Stopwatch<> Stepper;
+//				OxV_exact(H.S(x0), g.state, Tmp, 2., DMRG::VERBOSITY::ON_EXIT);
+//				lout << Stepper.info("OxV") << endl;
+//				std::array<MODEL::StateXcd,2> Psi;
+//				for (int t=0; t<2; ++t) Psi[t] = Tmp.cast<complex<double> >();
+//				auto Phi = g.state.cast<complex<double> >();
+//				
 //				for (int t=0; t<2; ++t)
 //				{
-//					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base,".dat");
-//					cout << "loading: " << filename << endl;
-//					MODEL::StateXcd test;
-//					test.load(filename);
-//					cout << test.info() << endl;
+//					Psi[t].eps_svd = tol_t_compr;
+//					Psi[t].max_Nsv = Tmp.calc_Mmax();
 //				}
-				
-//				GreenPropagatorGlobal::tmax = tmax;
-//				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
-//				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
-//				IntervalIterator w(-5.,10.,501);
-//				ArrayXd wvals = w.get_abscissa();
-//				ArrayXcd DOS = Green.FTloc_tw(VectorXcd(Gloct.col(1)+1.i*Gloct.col(2)), wvals);
+//				
+//				std::array<TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>,2> TDVPt;
+//				for (int t=0; t<2; ++t)
+//				{
+//					TDVPt[t] = TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>(H,Psi[t]);
+//				}
+//				MatrixXd Gloct(Nt+1,3); Gloct.setZero();
+//				complex<double> res = -1.i * dot(Psi[1],Psi[0]);
+//				Gloct(0,0) = 0;
+//				Gloct(0,1) = res.real();
+//				Gloct(0,2) = res.imag();
+//				string filet = wd+"Gloct_"+base+".dat";
+//				string filew = wd+"DOS_"+base+".dat";
+//				
+//				for (int i=0; i<Nt; ++i)
+//				{
+//					Stopwatch<> Stepper;
+//					
+////					#pragma omp parallel for
+//					for (int t=0; t<2; ++t)
+//					{
+//						TDVPt[t].t_step(H, Psi[t], -0.5*1.i*tsign[t]*dt);
+//						
+//						if (Psi[t].get_truncWeight().sum() > 0.5*tol_t_compr)
+//						{
+//							Psi[t].max_Nsv = min(static_cast<size_t>(max(Psi[t].max_Nsv*1.1, Psi[t].max_Nsv+1.)),Dtlimit);
+////							#pragma omp critical
+//							{
+//								lout << termcolor::yellow << "Setting Psi["<<t<<"].max_Nsv to " << Psi[t].max_Nsv << termcolor::reset << endl;
+//							}
+//						}
+//						
+////						#pragma omp critical
+//						{
+//							lout << tlabel[t] << ":" << endl;
+//							lout << "\t" << TDVPt[t].info() << endl;
+//							lout << "\t" << Psi[t].info() << endl;
+//						}
+//					}
+//					
+//					lout << Stepper.info("t-step") << endl;
+//					
+//					double tval = (i+1)*dt;
+//					complex<double> phase = -1.i*exp(1.i*g.energy*tval);
+//					complex<double> res = phase * dot(Psi[1],Psi[0]);
+//					Gloct(i+1,0) = tval;
+//					Gloct(i+1,1) = res.real();
+//					Gloct(i+1,2) = res.imag();
+//					saveMatrix(Gloct,filet,false);
+//					lout << "propagated to t=" << tval << endl;
+//					lout << endl;
+//				}
+//				
+//				for (int t=0; t<2; ++t)
+//				{
+//					lout << "t=" << t << endl;
+//					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base);
+//					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
+//					Psi[t].save(filename);
+//				}
+//				
+//				// test for save:
+////				for (int t=0; t<2; ++t)
+////				{
+////					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base,".dat");
+////					cout << "loading: " << filename << endl;
+////					MODEL::StateXcd test;
+////					test.load(filename);
+////					cout << test.info() << endl;
+////				}
+//				
+////				GreenPropagatorGlobal::tmax = tmax;
+////				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
+////				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
+////				IntervalIterator w(-5.,10.,501);
+////				ArrayXd wvals = w.get_abscissa();
+////				ArrayXcd DOS = Green.FTloc_tw(VectorXcd(Gloct.col(1)+1.i*Gloct.col(2)), wvals);
+////				for (w=w.begin(); w!=w.end(); ++w)
+////				{
+////					w << -M_1_PI * DOS(w.index()).imag();
+////				}
+////				w.save(filew);
+//				
+//				VectorXd tvals(Nt+1); for (int i=0; i<Nt+1; ++i) tvals(i) = i*dt;
+////				cout << tvals.transpose() << endl;
+//				ooura_fourier_sin<double> OouraSin = ooura_fourier_sin<double>();
+//				ooura_fourier_cos<double> OouraCos = ooura_fourier_cos<double>();
+//				Interpol<GSL> Gloct_interpRe(tvals);
+//				Interpol<GSL> Gloct_interpIm(tvals);
+//				for (int it=0; it<tvals.rows(); ++it)
+//				{
+//					Gloct_interpRe.insert(it,Gloct(it,1));
+//					Gloct_interpIm.insert(it,Gloct(it,2));
+//				}
+//				Gloct_interpRe.set_splines();
+//				Gloct_interpIm.set_splines();
+//				auto fRe = [&Gloct_interpRe, &tmax](double t) {return (t<=tmax)? Gloct_interpRe(t)*exp(-pow(2.*t/tmax,2)):0.;};
+//				auto fIm = [&Gloct_interpIm, &tmax](double t) {return (t<=tmax)? Gloct_interpIm(t)*exp(-pow(2.*t/tmax,2)):0.;};
+//				
+//				double resReSin, resImCos;
+//				IntervalIterator w(-5.,10.,1001);
 //				for (w=w.begin(); w!=w.end(); ++w)
 //				{
-//					w << -M_1_PI * DOS(w.index()).imag();
+//					double wval = *w;
+//					double Glocw;
+//					if (wval == 0.)
+//					{
+//						Glocw = Gloct_interpIm.integrate();
+//					}
+//					else
+//					{
+//						resReSin = OouraSin.integrate(fRe,wval).first;
+//						resImCos = OouraCos.integrate(fIm,wval).first;
+//						Glocw = -M_1_PI * (resReSin+resImCos);
+//					}
+//					w << Glocw;
 //				}
 //				w.save(filew);
-				
-				VectorXd tvals(Nt+1); for (int i=0; i<Nt+1; ++i) tvals(i) = i*dt;
-//				cout << tvals.transpose() << endl;
-				ooura_fourier_sin<double> OouraSin = ooura_fourier_sin<double>();
-				ooura_fourier_cos<double> OouraCos = ooura_fourier_cos<double>();
-				Interpol<GSL> Gloct_interpRe(tvals);
-				Interpol<GSL> Gloct_interpIm(tvals);
-				for (int it=0; it<tvals.rows(); ++it)
-				{
-					Gloct_interpRe.insert(it,Gloct(it,1));
-					Gloct_interpIm.insert(it,Gloct(it,2));
-				}
-				Gloct_interpRe.set_splines();
-				Gloct_interpIm.set_splines();
-				auto fRe = [&Gloct_interpRe, &tmax](double t) {return (t<=tmax)? Gloct_interpRe(t)*exp(-pow(2.*t/tmax,2)):0.;};
-				auto fIm = [&Gloct_interpIm, &tmax](double t) {return (t<=tmax)? Gloct_interpIm(t)*exp(-pow(2.*t/tmax,2)):0.;};
-				
-				double resReSin, resImCos;
-				IntervalIterator w(-5.,10.,1001);
-				for (w=w.begin(); w!=w.end(); ++w)
-				{
-					double wval = *w;
-					double Glocw;
-					if (wval == 0.)
-					{
-						Glocw = Gloct_interpIm.integrate();
-					}
-					else
-					{
-						resReSin = OouraSin.integrate(fRe,wval).first;
-						resImCos = OouraCos.integrate(fIm,wval).first;
-						Glocw = -M_1_PI * (resReSin+resImCos);
-					}
-					w << Glocw;
-				}
-				w.save(filew);
-				Gloct_interpRe.kill_splines();
-				Gloct_interpIm.kill_splines();
-			}
+//				Gloct_interpRe.kill_splines();
+//				Gloct_interpIm.kill_splines();
+//			}
 		}
 	}
 	//-------canonical-------
-	else if (BETAPROP and CANONICAL)
-	{
+//	else if (BETAPROP and CANONICAL)
+//	{
 //		assert(MODEL::FAMILY == HEISENBERG);
 //		
 //		vector<Param> beta0_params;
@@ -807,7 +980,7 @@ int main (int argc, char* argv[])
 //		}
 //		
 //		Filer.close();
-	}
+//	}
 	//-------grand canonical-------
 	else
 	{
@@ -1062,7 +1235,16 @@ int main (int argc, char* argv[])
 	//				chi = beta*(2.*avg(PsiTprev,Hchi,PsiTprev)/L+0.75); // S(S+1)=0.75: diagonal contribution
 	//			}
 				// best way:
-				chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
+				#ifdef USING_SU2
+				{
+					chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
+				}
+				#elif defined(#ifdef USING_U1)
+				{
+					//chi = beta*avg(PsiTprev,H.Sztot(0,1.,dLphys),H.Sztot(0,1.,dLphys),PsiTprev)/L;
+					// Sztot NOT IMPLEMENTED
+				}
+				#endif
 				chivec.push_back(chi);
 				lout << Stepper.info("chi") << endl;
 				

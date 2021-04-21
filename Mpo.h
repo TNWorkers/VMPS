@@ -38,6 +38,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar> class Vumps
 template<typename Symmetry, typename Scalar=double>
 class Mpo : public MpoTerms<Symmetry,Scalar>
 {
+public:
 	typedef SparseMatrixXd SparseMatrixType;
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	static constexpr size_t Nq = Symmetry::Nq;
@@ -57,9 +58,13 @@ public:
 	
 	Mpo() : MpoTerms<Symmetry, Scalar>(){};
 	
-	Mpo(size_t L_input);
+	Mpo (MpoTerms<Symmetry,Scalar>& Terms)
+	:MpoTerms<Symmetry,Scalar>(Terms)
+	{};
 	
-	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
+	Mpo (size_t L_input);
+	
+	Mpo (std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
 	
 	template<typename CouplScalar>
 	void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
@@ -96,7 +101,7 @@ public:
 	
 	void precalc_TwoSiteData(bool FORCE=false);
 	
-	std::string info() const;
+	std::string info (bool REDUCED=false) const;
 	
 	//double memory(MEMUNIT memunit=GB) const;
 	
@@ -218,7 +223,10 @@ Mpo(std::size_t L_input)
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
 Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, BC BC_input, DMRG::VERBOSITY::OPTION VERB_input)
-: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input, VERB_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input) {this->set_name(label_input);}
+: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input, VERB_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input)
+{
+	this->set_name(label_input);
+}
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 push_width(const std::size_t width, const std::size_t loc, const Scalar lambda, const OperatorType& outOp, const std::vector<OperatorType>& trans, const OperatorType& inOp)
@@ -254,10 +262,19 @@ push_nextn(const std::size_t loc, const Scalar lambda, const OperatorType& op1, 
 
 template<typename Symmetry, typename Scalar>
 string Mpo<Symmetry,Scalar>::
-info() const
+info (bool REDUCED) const
 {
 	std::stringstream ss;
-	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
+	ss << termcolor::colorize << termcolor::bold;
+	if (!REDUCED)
+	{
+		ss << this->get_name();
+	}
+	else
+	{
+		ss << "Mpo";
+	}
+	ss << termcolor::reset << "→ L=" << this->size();
 	if (this->N_phys > this->size()) ss << ",V=" << this->N_phys;
 	ss << ", " << Symmetry::name() << ", ";
 	
@@ -413,10 +430,10 @@ generate_label(std::size_t Lcell)
 				 return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
 			 });
 		
-		ss << ":" << std::endl;
+		ss << ":";
 		for (auto c:cells_resort)
 		{
-			ss << " •l=";
+			ss << std::endl << " •l=";
 			//			for (auto s:c.second)
 			//			{
 			//				cout << s << ",";
@@ -485,8 +502,8 @@ generate_label(std::size_t Lcell)
 					}
 				}
 			}
-			//			ss.seekp(-1,ios_base::end); // delete last comma
-			ss << ": " << c.first << std::endl;
+			// ss.seekp(-1,ios_base::end); // delete last comma
+			ss << ": " << c.first;
 		}
 	}
 	

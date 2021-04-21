@@ -15,7 +15,9 @@
 
 #ifndef DMRG_POLYCOMPRESS_INCREMENT
 #define DMRG_POLYCOMPRESS_INCREMENT 50
-#endif 
+#endif
+
+#define MPSQCOMPRESSOR_DONT_USE_OPENMP
 
 /// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
@@ -650,12 +652,11 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		overlapsVin(i,j) = conjIfcomplex(factors[i]) * factors[j] * dot(Vin[i],Vin[j]);
 //		#pragma omp critical
 //		{
-//			lout << "i=" << i << ", j=" << j << ", overlapsVin=" << overlapsVin(i,j) << endl;
+//			cout << "i=" << i << ", j=" << j << ", overlapsVin=" << overlapsVin(i,j) << endl;
 //		}
 	}
 	overlapsVin.template triangularView<Upper>() = overlapsVin.adjoint();
 	double overlapsVinSum = isReal(overlapsVin.sum());
-//	cout << endl << overlapsVin << endl << endl;
 	
 	// set L&R edges
 	Envs.resize(N_vecs);
@@ -670,7 +671,6 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 			Envs[i][l].qloc = Vin[i].locBasis(l);
 		}
 	}
-	
 	// set initial guess
 //	Vout = Vin[0];
 	Vout = Vguess;
@@ -701,42 +701,53 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		// A 2-site sweep is necessary! Move pivot back to edge.
 		if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 		{
+//			cout << "sweep_to_edge" << endl;
 			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
 		}
 		
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
+//			cout << "j=" << j << endl;
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				vector<PivotVector<Symmetry,Scalar> > Apair(N_vecs);
+//				cout << "begin stateOptimize2" << endl;
 				stateOptimize2(Vin,Vout,Apair);
+//				cout << "end stateOptimize2" << endl;
 				
 				PivotVector<Symmetry,Scalar> Asum;
 				Asum.outerResize(Apair[0]);
+//				cout << "outer resize done!" << endl;
 				
 				for (int i=0; i<N_vecs; ++i)
 				for (size_t s=0; s<Asum.size(); ++s)
 				{
 					Asum[s].addScale(factors[i], Apair[i][s]);
 				}
+//				cout << "addScale done!" << endl;
 				
 				for (size_t s=0; s<Asum.size(); ++s)
 				{
 					Asum[s] = Asum[s].cleaned();
 				}
+//				cout << "cleaned done!" << endl;
 				
 				Stopwatch<> SweepTimer;
+//				cout << "begin sweepStep2" << endl;
 				Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Asum.data);
+//				cout << "end sweepStep2" << endl;
 				t_sweep += SweepTimer.time();
 				pivot = Vout.get_pivot();
 			}
 			else
 			{
 				vector<PivotVector<Symmetry,Scalar> > Ares(N_vecs);
+//				cout << "begin stateOptimize1" << endl;
 				stateOptimize1(Vin,Vout,Ares);
+//				cout << "end stateOptimize1" << endl;
 				
 				if (Vout.squaredNorm() < 1e-7)
 				{
@@ -775,9 +786,9 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "sqnormVin=" << overlapsVin.sum() << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+		//cout << "sqnormVin=" << overlapsVin.sum() << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(overlapsVinSum-Vout.squaredNorm());
-		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -1228,11 +1239,15 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 {
 	Stopwatch<> Chronos;
 	
+	Stopwatch<> OptTimer;
 	PivotVector<Symmetry,Scalar> Apair;
 	prodOptimize2(H,Vin,Vout,Apair);
+	t_opt += OptTimer.time();
+	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Apair.data);
 	t_sweep += SweepTimer.time();
+	
 	pivot = Vout.get_pivot();
 	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);

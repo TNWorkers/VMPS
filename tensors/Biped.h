@@ -166,21 +166,21 @@ public:
 	 * \param number_cells : \f$N_{cells}\f$
 	 */
 	Biped<Symmetry,MatrixType_> adjustQN (const size_t number_cells);
-
-	void cholesky(Biped<Symmetry,MatrixType> &res) const;
-
+	
+	void cholesky (Biped<Symmetry,MatrixType> &res) const;
+	
 	template<typename EpsScalar>
 	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
 	truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
-
+	
 	template<typename EpsScalar>
 	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const
-		{
-			double S_dumb;
-			map<qarray<Symmetry::Nq>,Eigen::ArrayXd> SVspec_dumb;
-			return truncateSVD(maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
-		}
-
+	{
+		double S_dumb;
+		map<qarray<Symmetry::Nq>,Eigen::ArrayXd> SVspec_dumb;
+		return truncateSVD(maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
+	}
+	
 	pair<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
 	QR(bool RETURN_LQ=false, bool MAKE_UNIQUE=false) const;
 	
@@ -695,23 +695,30 @@ template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
 truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
 {
-	entropy=0.;
-	truncWeight=0;
+	entropy = 0.;
+	truncWeight = 0;
 	Biped<Symmetry,MatrixType_> U,Vdag,Sigma;
 	Biped<Symmetry,MatrixType_> trunc_U,trunc_Vdag,trunc_Sigma;
 	vector<pair<typename Symmetry::qType, double> > allSV;
+	
 	for (size_t q=0; q<dim; ++q)
 	{
 		#ifdef DONT_USE_BDCSVD
+//		cout << "JacobiSVD" << endl;
 		JacobiSVD<MatrixType> Jack; // standard SVD
 		#else
+//		cout << "BDCSVD" << endl;
 		BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 		#endif
 		
+//		cout << "begin Jack.compute" << endl;
+//		cout << "block[q]=" << endl << block[q] << endl;
 		Jack.compute(block[q], ComputeThinU|ComputeThinV);
+//		cout << "end Jack.compute" << endl;
+//		cout << "Jack computation done!" << endl;
 		for (size_t i=0; i<Jack.singularValues().size(); i++) {allSV.push_back(make_pair(in[q],std::real(Jack.singularValues()(i))));}
 		// for (const auto& s:Jack.singularValues()) {allSV.push_back(make_pair(in[q],s));}
-
+		
 		U.push_back(in[q], out[q], Jack.matrixU());
 		Sigma.push_back(in[q], out[q], Jack.singularValues().asDiagonal());
 		Vdag.push_back(in[q], out[q], Jack.matrixV().adjoint());
@@ -720,12 +727,12 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, double> &sv1, const pair<typename Symmetry::qType, double> &sv2) {return sv1.second > sv2.second;});
 	for (size_t i=maxKeep; i<allSV.size(); i++)
 	{
-			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
 	}
 	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
 	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, double> &sv) { return (sv.second < eps_svd); }), allSV.end());
-
+	
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
 	// ofstream Filer("sv_expand");
 	// size_t index=0;
@@ -735,7 +742,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 	// 	index++;
 	// }
 	// Filer.close();
-		
+	
 	if (PRESERVE_MULTIPLETS)
 	{
 		//cutLastMultiplet(allSV);
@@ -754,7 +761,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 	
 	//cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
 	map<typename Symmetry::qType, vector<Scalar> > qn_orderedSV;
-	for (const auto &[q,s]:allSV )
+	for (const auto &[q,s] : allSV)
 	{
 		qn_orderedSV[q].push_back(s);
 		entropy += -Symmetry::degeneracy(q) * s*s * std::log(s*s);

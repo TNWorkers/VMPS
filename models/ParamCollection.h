@@ -1,7 +1,10 @@
 #ifndef PARAMCOLLECTION
 #define PARAMCOLLECTION
 
+#include <set>
+
 #include "ParamHandler.h"
+#include "CuthillMcKeeCompressor.h" // from ALGS
 
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {
@@ -20,23 +23,23 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 // If COMPRESSED=true, the ring is flattened so that adjacent sites are as close together as possible
 ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COMPRESSED=false)
 {
-	if (!COMPRESSED)
+	ArrayXXd res(L,L);
+	res.setZero();
+	
+	res = create_1D_OBC(L,lambda1,lambda2);
+	
+	res(0,L-1) = lambda1;
+	res(L-1,0) = lambda1;
+	
+	res(0,L-2) = lambda2;
+	res(L-2,0) = lambda2;
+	res(1,L-1) = lambda2;
+	res(L-1,1) = lambda2;
+	
+	if (COMPRESSED and lambda2 == 0.)
 	{
-		ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
-	
-		res(0,L-1) = lambda1;
-		res(L-1,0) = lambda1;
-	
-		res(0,L-2) = lambda2;
-		res(L-2,0) = lambda2;
-		res(1,L-1) = lambda2;
-		res(L-1,1) = lambda2;
-	
-		return res;
-	}
-	else
-	{
-		ArrayXXd res(L,L); res.setZero();
+		res.setZero();
+		
 		res(0,1) = lambda1; res(1,0) = lambda1;
 		res(L-2,L-1) = lambda1; res(L-1,L-2) = lambda1;
 		for (size_t l=0; l<L-2; l++)
@@ -44,163 +47,16 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 			res(l,l+2) = lambda1;
 			res(l+2,l) = lambda1;
 		}
-		return res;
 	}
+	else if (COMPRESSED and lambda2 != 0.)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	return res;
 }
 
-ArrayXXd hopping_snub (int L=60, double lambda1=1., double lambda2=0.)
-{
-        ArrayXXd res(L,L); res.setZero();
-        double l1 = lambda1;
-        if (L==60)
-        {
-                for (int i=0; i<=58; ++i) res(i,i+1) = l1;
-                res( 0, 4) = l1;
-                res( 0, 6) = l1;
-                res( 0, 7) = l1;
-                res( 0, 8) = l1;
-                
-                res( 1, 8) = l1;
-                res( 1, 9) = l1;
-                res( 1,10) = l1;
-                
-                res( 2,10) = l1;
-                res( 2,11) = l1;
-                res( 2,12) = l1;
-                
-                res( 3,12) = l1;
-                res( 3,13) = l1;
-                res( 3,14) = l1;
-                
-                res( 4, 6) = l1;
-                res( 4,14) = l1;
-                
-                res( 5,14) = l1;
-                res( 5,15) = l1;
-                res( 5,16) = l1;
-                
-                res( 6,18) = l1;
-                
-                res( 7,18) = l1;
-                res( 7,19) = l1;
-                
-                res( 8,21) = l1;
-                
-                res( 9,21) = l1;
-                res( 9,22) = l1;
-                
-                res(10,24) = l1;
-                
-                res(11,24) = l1;
-                res(11,25) = l1;
-                
-                res(12,27) = l1;
-
-                res(13,27) = l1;
-                res(13,28) = l1;
-                
-                res(15,29) = l1;
-                res(15,30) = l1;
-                
-                res(16,30) = l1;
-                res(16,31) = l1;
-
-                res(17,31) = l1;
-                res(17,32) = l1;
-                res(17,33) = l1;
-
-                res(18,33) = l1;
-
-                res(19,33) = l1;
-                res(19,34) = l1;
-
-                res(20,34) = l1;
-                res(20,35) = l1;
-                res(20,36) = l1;
-
-                res(21,36) = l1;
-
-                res(22,36) = l1;
-                res(22,37) = l1;
-
-                res(23,37) = l1;
-                res(23,38) = l1;
-                res(23,39) = l1;
-
-                res(24,39) = l1;
-
-                res(25,39) = l1;
-                res(25,40) = l1;
-
-                res(26,40) = l1;
-                res(26,41) = l1;
-                res(26,42) = l1;
-
-                res(27,42) = l1;
-
-                res(28,42) = l1;
-                res(28,43) = l1;
-
-                res(29,43) = l1;
-                res(29,44) = l1;
-
-                res(30,44) = l1;
-
-                res(31,46) = l1;
-
-                res(32,46) = l1;
-                res(32,47) = l1;
-
-                res(34,48) = l1;
-
-                res(35,48) = l1;
-                res(35,49) = l1;
-
-                res(37,50) = l1;
-
-                res(38,50) = l1;
-                res(38,51) = l1;
-
-                res(40,52) = l1;
-
-                res(41,52) = l1;
-                res(41,53) = l1;
-
-                res(43,54) = l1;
-
-                res(44,54) = l1;
-
-                res(45,54) = l1;
-                res(45,55) = l1;
-                res(45,56) = l1;
-
-                res(46,56) = l1;
-
-                res(47,56) = l1;
-                res(47,57) = l1;
-
-                res(48,57) = l1;
-
-                res(49,57) = l1;
-                res(49,58) = l1;
-
-                res(50,58) = l1;
-
-                res(51,58) = l1;
-                res(51,59) = l1;
-
-                res(52,59) = l1;
-
-                res(53,55) = l1;
-                res(53,59) = l1;
-
-                res(55,59) = l1;
-        }
-        res += res.transpose().eval();
-        return res;
-}
-
-ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1.)
+ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
 	ArrayXXd res;
 	
@@ -209,7 +65,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		int L=30;
 		res.resize(L,L); res.setZero();
 		
-		if (VARIANT==0)
+		if (VARIANT==1 or VARIANT==0) // my naive counting
 		{
 			res(0,1) = lambda1;
 			res(1,2) = lambda1;
@@ -278,7 +134,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 			res(28,29) = lambda1;
 			res(25,29) = lambda1;
 		}
-		else if (VARIANT==1) // According to Exler, Schnack (2003)
+		else if (VARIANT==2) // According to Exler, Schnack (2003)
 		{
 			res(1-1,3-1) = lambda1;
 			res(1-1,4-1) = lambda1;
@@ -369,12 +225,248 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 			res(28-1,29-1) = lambda1;
 		}
 	}
-        else if (vertex_conf == "3.3.3.3.5") // icosidodecahedron
-        {
-                return hopping_snub(60, lambda1);
-        }
+	else if (vertex_conf == "3^4.5") // snub dodecahedron
+	{
+		int L=60;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=58; ++i) res(i,i+1) = lambda1;
+		
+		res( 0, 4) = lambda1;
+		res( 0, 6) = lambda1;
+		res( 0, 7) = lambda1;
+		res( 0, 8) = lambda1;
+		
+		res( 1, 8) = lambda1;
+		res( 1, 9) = lambda1;
+		res( 1,10) = lambda1;
+		
+		res( 2,10) = lambda1;
+		res( 2,11) = lambda1;
+		res( 2,12) = lambda1;
+		
+		res( 3,12) = lambda1;
+		res( 3,13) = lambda1;
+		res( 3,14) = lambda1;
+		
+		res( 4, 6) = lambda1;
+		res( 4,14) = lambda1;
+		
+		res( 5,14) = lambda1;
+		res( 5,15) = lambda1;
+		res( 5,16) = lambda1;
+		
+		res( 6,18) = lambda1;
+		
+		res( 7,18) = lambda1;
+		res( 7,19) = lambda1;
+		
+		res( 8,21) = lambda1;
+		
+		res( 9,21) = lambda1;
+		res( 9,22) = lambda1;
+		
+		res(10,24) = lambda1;
+		
+		res(11,24) = lambda1;
+		res(11,25) = lambda1;
+		
+		res(12,27) = lambda1;
+		
+		res(13,27) = lambda1;
+		res(13,28) = lambda1;
+		
+		res(15,29) = lambda1;
+		res(15,30) = lambda1;
+		
+		res(16,30) = lambda1;
+		res(16,31) = lambda1;
+		
+		res(17,31) = lambda1;
+		res(17,32) = lambda1;
+		res(17,33) = lambda1;
+		
+		res(18,33) = lambda1;
+		
+		res(19,33) = lambda1;
+		res(19,34) = lambda1;
+		
+		res(20,34) = lambda1;
+		res(20,35) = lambda1;
+		res(20,36) = lambda1;
+		
+		res(21,36) = lambda1;
+		
+		res(22,36) = lambda1;
+		res(22,37) = lambda1;
+		
+		res(23,37) = lambda1;
+		res(23,38) = lambda1;
+		res(23,39) = lambda1;
+		
+		res(24,39) = lambda1;
+		
+		res(25,39) = lambda1;
+		res(25,40) = lambda1;
+		
+		res(26,40) = lambda1;
+		res(26,41) = lambda1;
+		res(26,42) = lambda1;
+		
+		res(27,42) = lambda1;
+		
+		res(28,42) = lambda1;
+		res(28,43) = lambda1;
+		
+		res(29,43) = lambda1;
+		res(29,44) = lambda1;
+		
+		res(30,44) = lambda1;
+		
+		res(31,46) = lambda1;
+		
+		res(32,46) = lambda1;
+		res(32,47) = lambda1;
+		
+		res(34,48) = lambda1;
+		
+		res(35,48) = lambda1;
+		res(35,49) = lambda1;
+		
+		res(37,50) = lambda1;
+		
+		res(38,50) = lambda1;
+		res(38,51) = lambda1;
+		
+		res(40,52) = lambda1;
+		
+		res(41,52) = lambda1;
+		res(41,53) = lambda1;
+		
+		res(43,54) = lambda1;
+		
+		res(44,54) = lambda1;
+		
+		res(45,54) = lambda1;
+		res(45,55) = lambda1;
+		res(45,56) = lambda1;
+		
+		res(46,56) = lambda1;
+		
+		res(47,56) = lambda1;
+		res(47,57) = lambda1;
+		
+		res(48,57) = lambda1;
+		
+		res(49,57) = lambda1;
+		res(49,58) = lambda1;
+		
+		res(50,58) = lambda1;
+		
+		res(51,58) = lambda1;
+		res(51,59) = lambda1;
+		
+		res(52,59) = lambda1;
+		
+		res(53,55) = lambda1;
+		res(53,59) = lambda1;
+		
+		res(55,59) = lambda1;
+	}
+	else if (vertex_conf == "4.6^2") // truncated octahedron
+	{
+		int L=24;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=4; ++i) res(i,i+1) = lambda1;
+		res(0,5) = lambda1;
+		
+		res(5,6) = lambda1;
+		res(0,9) = lambda1;
+		res(1,10) = lambda1;
+		res(2,13) = lambda1;
+		res(3,14) = lambda1;
+		res(4,17) = lambda1;
+		
+		for (int i=6; i<=16; ++i) res(i,i+1) = lambda1;
+		res(6,17) = lambda1;
+		
+		res(7,19) = lambda1;
+		res(8,20) = lambda1;
+		res(11,21) = lambda1;
+		res(12,22) = lambda1;
+		res(15,23) = lambda1;
+		res(16,18) = lambda1;
+		
+		for (int i=18; i<=22; ++i) res(i,i+1) = lambda1;
+		res(18,23) = lambda1;
+	}
+	else if (vertex_conf == "3.4.3.4") // cuboctahedron
+	{
+		int L=12;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=2; ++i) res(i,i+1) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(0,4) = lambda1;
+		res(3,4) = lambda1;
+		res(0,5) = lambda1;
+		res(1,5) = lambda1;
+		res(1,6) = lambda1;
+		res(2,6) = lambda1;
+		res(2,7) = lambda1;
+		res(3,7) = lambda1;
+		
+		res(4,8) = lambda1;
+		res(7,8) = lambda1;
+		res(4,9) = lambda1;
+		res(5,9) = lambda1;
+		res(5,10) = lambda1;
+		res(6,10) = lambda1;
+		res(6,11) = lambda1;
+		res(7,11) = lambda1;
+		
+		for (int i=8; i<=10; ++i) res(i,i+1) = lambda1;
+		res(8,11) = lambda1;
+	}
+	else if (vertex_conf == "3.6^2") // truncated tetrahedron = C12
+	{
+		int L=12;
+		res.resize(L,L); res.setZero();
+		
+		res(0,1) = lambda1;
+		res(1,4) = lambda2;
+		res(4,8) = lambda1;
+		res(5,8) = lambda2;
+		res(2,5) = lambda1;
+		res(0,2) = lambda2;
+		
+		res(0,3) = lambda1;
+		res(1,3) = lambda1;
+		
+		res(4,9) = lambda1;
+		res(8,9) = lambda1;
+		
+		res(5,6) = lambda1;
+		res(2,6) = lambda1;
+		
+		res(3,7) = lambda2;
+		res(6,10) = lambda2;
+		res(9,11) = lambda2;
+		
+		res(7,10) = lambda1;
+		res(10,11) = lambda1;
+		res(7,11) = lambda1;
+	}
 	
 	res += res.transpose().eval();
+	
+	if (VARIANT==0 and vertex_conf != "3.6^2" and vertex_conf != "3.4.3.4")
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
 	
 	return res;
 }
@@ -387,7 +479,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 	// lambda1: pentagon bond, lambda2: hexagon bond
 	if (L== 60)
 	{
-		if (VARIANT==0) // inwards spiral
+		if (VARIANT==1) // inwards spiral
 		{
 			for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
 			res(0,4) = lambda1;
@@ -457,7 +549,9 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 			for (int i=55; i<=58; ++i) res(i,i+1) = lambda1;
 			res(55,59) = lambda1;
 		}
-		else if (VARIANT==0)
+		// reference: https://www.qmul.ac.uk/sbcs/iupac/fullerene2/311.html
+		// also in: Phys. Rev. B 72, 064453 (2005)
+		else if (VARIANT==2 or VARIANT==0) // Kivelson
 		{
 			res(0,4) = lambda1;
 			res(3,4) = lambda1;
@@ -558,8 +652,6 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 			res(57,58) = lambda1;
 		}
 	}
-	// reference: https://www.qmul.ac.uk/sbcs/iupac/fullerene2/311.html
-	// also in: Phys. Rev. B 72, 064453 (2005)
 	else if (L == 20)
 	{
 //		res(11,12) = lambda1;
@@ -634,83 +726,6 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		res(17,18) = lambda1;
 		res(18,19) = lambda1;
 		res(15,19) = lambda1;
-	}
-	// reference: Phys. Rev. B 72, 064453 (2005)
-	else if (L == 12)
-	{
-//		res(0,1) = lambda1;
-//		res(1,2) = lambda1;
-//		res(0,2) = lambda1;
-//		
-//		res(1,5) = lambda1;
-//		res(2,5) = lambda1;
-//		res(2,6) = lambda1;
-//		res(2,3) = lambda1;
-//		res(0,3) = lambda1;
-//		res(0,7) = lambda1;
-//		res(0,4) = lambda1;
-//		res(1,4) = lambda1;
-//		res(1,8) = lambda1;
-//		
-//		res(4,8) = lambda1;
-//		res(5,8) = lambda1;
-//		res(5,6) = lambda1;
-//		res(3,6) = lambda1;
-//		res(3,7) = lambda1;
-//		res(4,7) = lambda1;
-//		
-//		res(8,10) = lambda1;
-//		res(5,10) = lambda1;
-//		res(6,10) = lambda1;
-//		res(6,11) = lambda1;
-//		res(3,11) = lambda1;
-//		res(7,11) = lambda1;
-//		res(7,9) = lambda1;
-//		res(4,9) = lambda1;
-//		res(9,8) = lambda1;
-//		
-//		res(9,10) = lambda1;
-//		res(10,11) = lambda1;
-//		res(9,11) = lambda1;
-		
-		// better numbering (inwards spiral):
-		
-		res(0,1) = lambda1;
-		res(1,2) = lambda1;
-		res(0,2) = lambda1;
-		
-		res(0,3) = lambda1;
-		res(0,4) = lambda1;
-		res(0,5) = lambda1;
-		
-		res(1,5) = lambda1;
-		res(1,6) = lambda1;
-		res(1,7) = lambda1;
-		
-		res(2,3) = lambda1;
-		res(2,7) = lambda1;
-		res(2,8) = lambda1;
-		
-		res(3,4) = lambda1;
-		res(4,5) = lambda1;
-		res(5,6) = lambda1;
-		res(6,7) = lambda1;
-		res(7,8) = lambda1;
-		res(3,8) = lambda1;
-		
-		res(3,9) = lambda1;
-		res(4,9) = lambda1;
-		res(4,10) = lambda1;
-		res(5,10) = lambda1;
-		res(6,10) = lambda1;
-		res(6,11) = lambda1;
-		res(7,11) = lambda1;
-		res(8,11) = lambda1;
-		res(8,9) = lambda1;
-		
-		res(9,10) = lambda1;
-		res(10,11) = lambda1;
-		res(9,11) = lambda1;
 	}
 	else if (L==40)
 	{
@@ -834,8 +849,370 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=18; i<=22; ++i) res(i,i+1) = lambda1;
 		res(18,23) = lambda1;
 	}
+	else if (L==12)
+	{
+		return hopping_Archimedean("3.6^2",VARIANT,lambda1,lambda2);
+	}
 	
 	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	
+	return res;
+}
+
+ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L ==4 )
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		res(0,3) = lambda1;
+		res(1,3) = lambda1;
+		res(2,3) = lambda1;
+	}
+	// reference: Phys. Rev. B 72, 064453 (2005)
+	else if (L == 12)
+	{
+//		res(0,1) = lambda1;
+//		res(1,2) = lambda1;
+//		res(0,2) = lambda1;
+//		
+//		res(1,5) = lambda1;
+//		res(2,5) = lambda1;
+//		res(2,6) = lambda1;
+//		res(2,3) = lambda1;
+//		res(0,3) = lambda1;
+//		res(0,7) = lambda1;
+//		res(0,4) = lambda1;
+//		res(1,4) = lambda1;
+//		res(1,8) = lambda1;
+//		
+//		res(4,8) = lambda1;
+//		res(5,8) = lambda1;
+//		res(5,6) = lambda1;
+//		res(3,6) = lambda1;
+//		res(3,7) = lambda1;
+//		res(4,7) = lambda1;
+//		
+//		res(8,10) = lambda1;
+//		res(5,10) = lambda1;
+//		res(6,10) = lambda1;
+//		res(6,11) = lambda1;
+//		res(3,11) = lambda1;
+//		res(7,11) = lambda1;
+//		res(7,9) = lambda1;
+//		res(4,9) = lambda1;
+//		res(9,8) = lambda1;
+//		
+//		res(9,10) = lambda1;
+//		res(10,11) = lambda1;
+//		res(9,11) = lambda1;
+		
+		// better numbering (inwards spiral):
+		
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(0,3) = lambda1;
+		res(0,4) = lambda1;
+		res(0,5) = lambda1;
+		
+		res(1,5) = lambda1;
+		res(1,6) = lambda1;
+		res(1,7) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,7) = lambda1;
+		res(2,8) = lambda1;
+		
+		res(3,4) = lambda1;
+		res(4,5) = lambda1;
+		res(5,6) = lambda1;
+		res(6,7) = lambda1;
+		res(7,8) = lambda1;
+		res(3,8) = lambda1;
+		
+		res(3,9) = lambda1;
+		res(4,9) = lambda1;
+		res(4,10) = lambda1;
+		res(5,10) = lambda1;
+		res(6,10) = lambda1;
+		res(6,11) = lambda1;
+		res(7,11) = lambda1;
+		res(8,11) = lambda1;
+		res(8,9) = lambda1;
+		
+		res(9,10) = lambda1;
+		res(10,11) = lambda1;
+		res(9,11) = lambda1;
+	}
+	else if (L==20) // dodecahedron
+	{
+		res = hopping_fullerene(L, VARIANT, lambda1, lambda1);
+	}
+	else if (L==8) // cube
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(2,3) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(0,5) = lambda1;
+		res(1,6) = lambda1;
+		res(2,7) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(4,5) = lambda1;
+		res(5,6) = lambda1;
+		res(6,7) = lambda1;
+		res(4,7) = lambda1;
+	}
+	
+	res += res.transpose().eval();
+	
+	// not required for small Platonic solids
+//	if (VARIANT==0)
+//	{
+//		auto res_ = compress_CuthillMcKee(res);
+//		res = res_;
+//	}
+	
+	return res;
+}
+
+ArrayXXd hopping_triangular (int L, int VARIANT=0, double lambda1=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+	}
+	else if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+	}
+	else if (L==6)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(1,4) = lambda1;
+		res(1,5) = lambda1;
+		res(4,5) = lambda1;
+	}
+	
+	res += res.transpose().eval();
+	return res;
+}
+
+void add_tetrahedron (int i, int j, int k, int l, vector<pair<size_t,size_t>> &target)
+{
+//	std::cout << "ijkl=" << i << ", " << j << ", " << k << ", " << l << std::endl;
+//	
+	(i<j)? target.push_back(pair<size_t,size_t>(i,j)) : target.push_back(pair<size_t,size_t>(j,i));
+	(i<k)? target.push_back(pair<size_t,size_t>(i,k)) : target.push_back(pair<size_t,size_t>(k,i));
+	(i<l)? target.push_back(pair<size_t,size_t>(i,l)) : target.push_back(pair<size_t,size_t>(l,i));
+	(j<k)? target.push_back(pair<size_t,size_t>(j,k)) : target.push_back(pair<size_t,size_t>(k,j));
+	(j<l)? target.push_back(pair<size_t,size_t>(j,l)) : target.push_back(pair<size_t,size_t>(l,j));
+	(k<l)? target.push_back(pair<size_t,size_t>(k,l)) : target.push_back(pair<size_t,size_t>(l,k));
+//	
+//	for (int n=0; n<6; ++n)
+//	{
+//		std::cout << "tetrahedron: " << target[target.size()-6+n].first << ", " << target[target.size()-6+n].second << std::endl;
+//	}
+//	std::cout << std::endl;
+}
+
+ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
+{
+	std::vector<std::pair<std::size_t, std::size_t>> edges;
+	
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L==60)
+	{
+		if (VARIANT==0)
+		{
+			// dmax=16 with Cuthill-McKee algorithm
+			add_tetrahedron(0,1,3,4,edges); // dmax=4
+			add_tetrahedron(0,2,5,6,edges); // dmax=6
+			add_tetrahedron(5,13,14,15,edges); // dmax=10
+			add_tetrahedron(14,20,27,28,edges); // dmax=14
+			add_tetrahedron(8,19,20,21,edges); // dmax=13
+			add_tetrahedron(3,7,8,9,edges); // dmax=6
+			
+			add_tetrahedron(9,11,22,23,edges); // dmax=14
+			add_tetrahedron(4,10,11,12,edges); // dmax=8
+			add_tetrahedron(6,16,17,18,edges); // dmax=12
+			add_tetrahedron(15,18,29,30,edges); // dmax=15
+			add_tetrahedron(28,35,42,43,edges); // dmax=15
+			add_tetrahedron(21,33,34,35,edges); // dmax=14
+			
+			add_tetrahedron(34,37,49,50,edges); // dmax=16
+			add_tetrahedron(23,36,37,38,edges); // dmax=15
+			add_tetrahedron(12,24,25,26,edges); // dmax=14
+			add_tetrahedron(17,25,31,32,edges); // dmax=15
+			add_tetrahedron(30,44,45,46,edges); // dmax=16
+			add_tetrahedron(43,45,53,54,edges); // dmax=11
+			
+			add_tetrahedron(54,56,58,59,edges); // dmax=5
+			add_tetrahedron(50,52,57,58,edges); // dmax=8
+			add_tetrahedron(38,41,51,52,edges); // dmax=14
+			add_tetrahedron(26,39,40,41,edges); // dmax=15
+			add_tetrahedron(32,40,47,48,edges); // dmax=16
+			add_tetrahedron(46,48,55,56,edges); // dmax=10
+		}
+		else if (VARIANT==1)
+		{
+			// dmax=25 without optimization
+			add_tetrahedron(0,5,6,13,edges); // dmax=13
+			add_tetrahedron(0,1,7,14,edges); // dmax=14
+			add_tetrahedron(1,2,8,15,edges); // dmax=14
+			add_tetrahedron(2,3,9,16,edges); // dmax=14
+			add_tetrahedron(3,4,10,17,edges); // dmax=14
+			add_tetrahedron(4,5,11,12,edges); // dmax=8
+			
+			add_tetrahedron(12,20,21,33,edges); // dmax=21
+			add_tetrahedron(13,21,22,34,edges); // dmax=21
+			add_tetrahedron(14,24,25,37,edges); // dmax=23
+			add_tetrahedron(15,25,26,38,edges); // dmax=23
+			add_tetrahedron(16,28,29,41,edges); // dmax=25
+			add_tetrahedron(17,18,29,30,edges); // dmax=13
+			
+			add_tetrahedron(18,19,31,43,edges); // dmax=25
+			add_tetrahedron(19,20,32,44,edges); // dmax=25
+			add_tetrahedron(22,23,35,45,edges); // dmax=23
+			add_tetrahedron(23,24,36,46,edges); // dmax=23
+			add_tetrahedron(26,27,39,47,edges); // dmax=21
+			add_tetrahedron(27,28,40,42,edges); // dmax=15
+			
+			add_tetrahedron(42,57,58,59,edges); // dmax=17
+			add_tetrahedron(43,55,56,57,edges); // dmax=14
+			add_tetrahedron(44,53,54,55,edges); // dmax=11
+			add_tetrahedron(45,51,52,53,edges); // dmax=8
+			add_tetrahedron(46,49,50,51,edges); // dmax=5
+			add_tetrahedron(47,48,49,59,edges); // dmax=12
+		}
+	}
+	else if (L==50)
+	{
+		if (VARIANT==0)
+		{
+			add_tetrahedron(0,2,3,6,edges);
+			add_tetrahedron(3,8,7,9,edges);
+			add_tetrahedron(8,11,19,20,edges);
+			add_tetrahedron(4,10,11,12,edges);
+			add_tetrahedron(0,1,4,5,edges);
+			
+			add_tetrahedron(6,16,17,18,edges);
+			add_tetrahedron(9,21,22,23,edges);
+			add_tetrahedron(20,33,34,35,edges);
+			add_tetrahedron(12,24,25,26,edges);
+			add_tetrahedron(5,13,14,15,edges);
+			
+			add_tetrahedron(15,17,29,30,edges);
+			add_tetrahedron(18,22,31,32,edges);
+			add_tetrahedron(23,34,36,37,edges);
+			add_tetrahedron(25,35,38,39,edges);
+			add_tetrahedron(14,26,27,28,edges);
+			
+			add_tetrahedron(30,42,43,44,edges);
+			add_tetrahedron(32,44,45,46,edges);
+			add_tetrahedron(37,46,47,48,edges);
+			add_tetrahedron(39,41,48,49,edges);
+			add_tetrahedron(28,40,41,42,edges);
+		}
+		else if (VARIANT==1)
+		{
+			add_tetrahedron(0,1,6,12,edges);
+			add_tetrahedron(1,2,7,13,edges);
+			add_tetrahedron(2,3,8,14,edges);
+			add_tetrahedron(3,4,9,10,edges);
+			add_tetrahedron(0,4,5,11,edges);
+			
+			add_tetrahedron(12,21,31,32,edges);
+			add_tetrahedron(13,23,33,34,edges);
+			add_tetrahedron(14,15,25,26,edges);
+			add_tetrahedron(10,17,27,28,edges);
+			add_tetrahedron(11,19,29,30,edges);
+			
+			add_tetrahedron(20,30,31,38,edges);
+			add_tetrahedron(22,32,33,39,edges);
+			add_tetrahedron(24,25,34,35,edges);
+			add_tetrahedron(16,26,27,36,edges);
+			add_tetrahedron(18,28,29,37,edges);
+			
+			add_tetrahedron(38,44,45,49,edges);
+			add_tetrahedron(39,40,45,46,edges);
+			add_tetrahedron(35,41,46,47,edges);
+			add_tetrahedron(36,42,47,48,edges);
+			add_tetrahedron(37,43,48,49,edges);
+		}
+	}
+	else if (L==20)
+	{
+		if (VARIANT==0)
+		{
+			add_tetrahedron(0,1,4,5,edges);
+			add_tetrahedron(0,2,3,6,edges);
+			add_tetrahedron(3,7,8,9,edges);
+			add_tetrahedron(8,4,10,11,edges);
+			
+			add_tetrahedron(5,13,12,14,edges);
+			add_tetrahedron(6,14,15,16,edges);
+			add_tetrahedron(9,16,17,18,edges);
+			add_tetrahedron(11,13,18,19,edges);
+		}
+		else if (VARIANT==1)
+		{
+			add_tetrahedron(0,3,4,12,edges);
+			add_tetrahedron(0,1,5,13,edges);
+			add_tetrahedron(1,2,6,14,edges);
+			add_tetrahedron(2,3,7,15,edges);
+			
+			add_tetrahedron(4,8,9,16,edges);
+			add_tetrahedron(5,9,10,17,edges);
+			add_tetrahedron(6,10,11,18,edges);
+			add_tetrahedron(7,8,11,19,edges);
+		}
+	}
+	
+	for (int e=0; e<edges.size(); ++e)
+	{
+		int i = edges[e].first;
+		int j = edges[e].second;
+		res(i,j) = lambda1;
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
 	
 	return res;
 }
@@ -974,7 +1351,7 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 //		
 ////		if (jx==0 and jy==0)
 ////		{
-////			cout << ix << ", " << iy << " -> index=" << index_i << endl;
+////			cout << ix << ", " << iy << " → index=" << index_i << endl;
 ////		}
 //		
 //		if (abs(ix-jx) == 1 and (iy==jy))
@@ -1036,11 +1413,30 @@ vector<Param> Tinf_params_fermions (size_t Ly)
 	return res;
 }
 
+vector<Param> Tinf_params_spins (size_t Ly)
+{
+	vector<Param> res;
+	res.push_back({"Ly",Ly});
+	res.push_back({"CALC_SQUARE",true});
+	res.push_back({"OPEN_BC",true});
+	if (Ly == 2ul)
+	{
+		res.push_back({"J",0.});
+		res.push_back({"Jrung",1.});
+	}
+	else
+	{
+		res.push_back({"J",1.,0});
+		res.push_back({"J",0.,1});
+	}
+	return res;
+}
+
 inline double conjIfImag (double x) {return x;}
 inline std::complex<double> conjIfImag (std::complex<double> x) {return conj(x);}
 
 template<typename Scalar>
-Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty)
+Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty, bool PBC=false)
 {
 	Array<Scalar,Dynamic,Dynamic> t1site(2,2); t1site = 0;
 	t1site(0,1) = tfc;
@@ -1060,6 +1456,34 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar
 		res(2*l+1, 2*l+2) = tx;
 		res(2*l,   2*l+3) = conjIfImag(ty);
 	}
+	
+//	cout << "OBC:" << endl;
+//	cout << endl << res << endl << endl;
+	if (PBC)
+	{
+		for (int l=0; l<2*L-4; l+=2)
+		{
+			// increase hopping range
+			res(l,  l+4) = res(l,  l+2); // d=2 -> d=4
+			res(l,  l+5) = res(l,  l+3); // d=3 -> d=5
+			res(l+1,l+4) = res(l+1,l+2); // d=1 -> d=3
+			res(l+1,l+5) = res(l+1,l+3); // d=2 -> d=4
+			// delete NN hopping except for edges
+			if (l>=2)
+			{
+				res(l,  l+2) = 0.;
+				res(l,  l+3) = 0.;
+				res(l+1,l+2) = 0.;
+				res(l+1,l+3) = 0.;
+			}
+		}
+//		res(0,2*L-2) = res(0,2);
+//		res(0,2*L-1) = res(0,3);
+//		res(1,2*L-2) = res(1,2);
+//		res(1,2*L-1) = res(1,3);
+	}
+//	cout << "PBC:" << endl;
+//	cout << endl << res << endl << endl;
 	
 	res.matrix() += res.matrix().adjoint().eval();
 	
@@ -1091,6 +1515,30 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 //	cout << res.real() << endl;
 //	cout << endl;
 //	cout << res.imag() << endl;
+	return res;
+}
+
+ArrayXXd hopping_MG_T (int L, double J, double Jprime, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+{
+	ArrayXXd res_tmp = create_1D_OBC(L,J,Jprime);
+	ArrayXXd res(2*L,2*L); res = 0;
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res(2*i,2*j) = res_tmp(i,j);
+		if (ANCILLA_HOPPING)
+		{
+			res(2*i+1,2*j+1) = res_tmp(i,j);
+		}
+	}
+	
+	for (int i=0; i<2*L-1; ++i)
+	{
+		res(i,i+1) += bugfix;
+		res(i+1,i) += bugfix;
+	}
+	
 	return res;
 }
 

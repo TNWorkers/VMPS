@@ -286,11 +286,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		// resize Vout
 		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Minit, Qtot_input, GlobParam.Qinit);
+//		Vout.state.graph("init");
+		// reset stuff after constructor:
 		Vout.state.max_Nsv = GlobParam.Minit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.Boundaries = Boundaries_tmp;
-//		Vout.state.graph("init");
 		// If boundaries not pre-set, set them to trivial now:
 		if (Vout.state.Boundaries.IS_TRIVIAL()) Vout.state.Boundaries.set_open_bc(Qtot_input);
 		
@@ -365,6 +366,9 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		Vout.state.max_Nsv = Vout.state.calc_Mmax();
 		Mmax_old = Vout.state.max_Nsv;
+		Vout.state.min_Nsv = DynParam.min_Nsv(0);
+		Vout.state.max_Nrich = DynParam.max_Nrich(0);
+//		cout << termcolor::blue << "Vout.state.max_Nsv=" << Vout.state.max_Nsv << ", Mmax_old=" << Mmax_old << termcolor::reset << endl;
 	}
 	
 //	Vout.state.graph("ginit");
@@ -995,7 +999,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
@@ -1040,8 +1044,9 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
+				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
+			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
@@ -1131,7 +1136,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap2 PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
+			PivotOverlap2<Symmetry,Scalar> PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
@@ -1169,8 +1174,9 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
+				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
+			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -1244,7 +1250,12 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
 		lout << termcolor::bold << Eedge << "=" << setprecision(15) << Vout.energy << ", "
-			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
+		     << Eedge << "/L=" << Vout.energy/N_phys;
+		if (Psi0.size() > 0)
+		{
+			lout << ", gap=" << setprecision(16) << Vout.energy-E0;
+		}
+		lout << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
 		
@@ -1299,6 +1310,27 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	
 	bool MESSAGE_ALPHA = false;
 	
+	//----<increase before first sweep, useful when state is loaded>----
+	if (DynParam.Mincr_per(0) == 0)
+	{
+		// increase by Mincr_abs for small Mmax and by Mincr_rel for large Mmax(e.g. add 10% of current Mmax)
+		size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Mincr_rel(0) * Vout.state.max_Nsv), 
+		                                             Vout.state.max_Nsv + DynParam.Mincr_abs(0));
+		// do not increase beyond Mlimit
+		Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Mlimit);
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			if (Vout.state.max_Nsv != Mmax_old)
+			{
+				lout << "Mmax=" << Mmax_old << "→" << Vout.state.max_Nsv << endl;
+				Mmax_old = Vout.state.max_Nsv;
+			}
+			lout << endl;
+		}
+	}
+	//----</increase before first sweep, useful when state is loaded>----
+	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
@@ -1334,6 +1366,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
+//		cout << "j=" << j << ", Vout.state.eps_svd=" << Vout.state.eps_svd << endl;
 		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
@@ -1395,7 +1428,7 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 		for (int n=0; n<Psi0.size(); ++n)
 		for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);

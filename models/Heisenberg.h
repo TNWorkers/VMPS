@@ -68,6 +68,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
 	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
+	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -84,7 +85,7 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
-	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HeisenbergObservables(L,params,Heisenberg::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
@@ -149,11 +150,12 @@ add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
 		
 		ArrayXd Bz_array = B[loc].ZeroField();
 		ArrayXd mu_array = B[loc].ZeroField();
+		ArrayXd nu_array = B[loc].ZeroField();
 		ArrayXd Kz_array = B[loc].ZeroField();
 		ArrayXXd Jperp_array = B[loc].ZeroHopping();
-
+		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(
-		            B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
+		            B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, nu_array, Kz_array, Kx.a, Dyperp.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya

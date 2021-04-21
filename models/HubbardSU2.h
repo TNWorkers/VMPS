@@ -58,8 +58,22 @@ private:
 	
 public:
 	
+	///@{
 	HubbardSU2() : Mpo(){};
+	
+	HubbardSU2(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,HubbardSU2::defaults),
+	 ParamReturner(HubbardSU2::sweep_defaults)
+	{
+		ParamHandler P(params,HubbardSU2::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	///@}
 	
 	static void add_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist,
 	                           std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
@@ -83,6 +97,7 @@ const map<string,any> HubbardSU2::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 

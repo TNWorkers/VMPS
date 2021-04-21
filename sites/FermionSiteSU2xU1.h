@@ -19,31 +19,35 @@ class FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 	typedef double Scalar;
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	
 public:
+	
 	FermionSite() {};
-	FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input=1);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
 	
 	OperatorType c_1s() const {return c_1s_;}
 	OperatorType cdag_1s() const {return cdag_1s_;}
-
+	
 	OperatorType n_1s() const {return n_1s_;}
 	OperatorType ns_1s() const {return n_1s() - 2.*d_1s();}
 	OperatorType nh_1s() const {return 2.*d_1s() - n_1s() + Id_1s();}
 	OperatorType d_1s() const {return d_1s_;}
-
+	
 	OperatorType S_1s() const {return S_1s_;}
 	
 	OperatorType Tz_1s() const {return 0.5*(n_1s() - Id_1s());}
 	OperatorType cc_1s() const {return p_1s_;}
 	OperatorType cdagcdag_1s() const {return pdag_1s_;}
-
+	
 	Qbasis<Symmetry> basis_1s() const {return basis_1s_;}
+	
 protected:
+	
 	Qbasis<Symmetry> basis_1s_;
-
+	
 	OperatorType Id_1s_; //identity
 	OperatorType F_1s_; //Fermionic sign
 	OperatorType c_1s_; //annihilation
@@ -56,9 +60,11 @@ protected:
 };
 
 FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input)
 {
-
+	bool UPH_IS_INFINITE = false;
+	bool U_IS_INFINITE = false;
+	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q={1,0}; //empty occupied state
 	Eigen::Index inner_dim = 1;
@@ -85,14 +91,14 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 		basis_1s_.push_back(Q,inner_dim,ident);
 		ident.clear();
 	}
-
+	
 	Id_1s_ = OperatorType({1,0},basis_1s_,"id");
 	F_1s_ = OperatorType({1,0},basis_1s_,"F");
 	c_1s_ = OperatorType({2,-1},basis_1s_,"c");
 	d_1s_ = OperatorType({1,0},basis_1s_,"d");
 	S_1s_ = OperatorType({3,0},basis_1s_,"S");
 	
-	// create operators one orbitals	
+	// create operators one orbitals
 	if (!UPH_IS_INFINITE) Id_1s_("empty", "empty") = 1.;
 	
 	if (!U_IS_INFINITE and !UPH_IS_INFINITE) Id_1s_("double", "double") = 1.;
@@ -111,7 +117,6 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	S_1s_("single", "single") = std::sqrt(0.75);
 	p_1s_ = -std::sqrt(0.5) * OperatorType::prod(c_1s_,c_1s_,{1,-2}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s_ = p_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
-
 }
 
 #endif //FERMIONSITESU2xU1_H_

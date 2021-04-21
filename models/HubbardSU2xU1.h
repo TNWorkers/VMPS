@@ -52,15 +52,29 @@ public:
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
-private:
+//private:
 	
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
 	
 public:
 	
+	///@{
 	HubbardSU2xU1() : Mpo(){};
+	
+	HubbardSU2xU1(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,HubbardSU2xU1::defaults),
+	 ParamReturner(HubbardSU2xU1::sweep_defaults)
+	{
+		ParamHandler P(params,HubbardSU2xU1::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	///@}
 	
 	/**
 	 * \describe_set_operators
@@ -95,13 +109,14 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const map<string,any> HubbardSU2xU1::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
-	{"Mincr_abs", 50ul}, {"Mincr_per", 2ul}, {"Mincr_rel", 1.1},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",21ul}, {"eps_svd",1e-7},
+	{"Mincr_abs", 50ul}, {"Mincr_per", 4ul}, {"Mincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",24ul}, {"min_halfsweeps",1ul},
 	{"Minit",2ul}, {"Qinit",2ul}, {"Mlimit",1000ul},
@@ -152,7 +167,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	std::size_t N_sites = F.size();
 	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
-	for(std::size_t loc=0; loc<N_sites; ++loc)
+	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;

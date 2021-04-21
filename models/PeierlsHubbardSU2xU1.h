@@ -27,7 +27,7 @@ public:
 	typedef Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
-private:
+//private:
 	
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
@@ -35,6 +35,18 @@ private:
 public:
 	
 	PeierlsHubbardSU2xU1() : Mpo(){};
+	
+	PeierlsHubbardSU2xU1(Mpo<Symmetry,complex<double>> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry,complex<double>>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,PeierlsHubbardSU2xU1::defaults),
+	 ParamReturner(PeierlsHubbardSU2xU1::sweep_defaults)
+	{
+		ParamHandler P(params,PeierlsHubbardSU2xU1::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	PeierlsHubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	/**
@@ -70,6 +82,7 @@ const map<string,any> PeierlsHubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
+	{"REMOVE_DOUBLE",false},{"REMOVE_EMPTY",false},{"REMOVE_SINGLE",false}, {"mfactor",1},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -81,7 +94,7 @@ const map<string,any> PeierlsHubbardSU2xU1::sweep_defaults =
 	{"max_halfsweeps",24ul}, {"min_halfsweeps",1ul},
 	{"Minit",2ul}, {"Qinit",2ul}, {"Mlimit",1000ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
-	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST",DMRG::CONVTEST::VAR_2SITE}
 };
 
 PeierlsHubbardSU2xU1::

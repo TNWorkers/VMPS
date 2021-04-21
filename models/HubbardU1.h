@@ -20,6 +20,18 @@ public:
 	
 	///@{
 	HubbardU1() : Mpo(){};
+	
+	HubbardU1(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,HubbardU1::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,HubbardU1::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
@@ -41,6 +53,7 @@ const std::map<string,std::any> HubbardU1::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -50,7 +63,7 @@ HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary, con
  HubbardObservables(L,params,HubbardU1::defaults),
  ParamReturner()
 {
-	ParamHandler P(params,HubbardU1::defaults);	
+	ParamHandler P(params,HubbardU1::defaults);
 	size_t Lcell = P.size();
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -59,7 +72,7 @@ HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary, con
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
-	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);	
+	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
 		this->set_name("Hubbard");

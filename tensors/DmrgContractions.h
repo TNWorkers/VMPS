@@ -1792,8 +1792,8 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					for (int r=0; r<W[s1][s2][k].block[qW].outerSize(); ++r)
 					for (typename MpoMatrixType::InnerIterator iW(W[s1][s2][k].block[qW],r); iW; ++iW)
 					{
-						size_t wr = iW.row();
-						size_t wc = iW.col();
+						size_t wr = iW.row() * Ain[s2].block[q].rows();
+						size_t wc = iW.col() * Ain[s2].block[q].cols();
 						Mtmp.block(wr+left_l,wc+left_r,Ain[s2].block[q].rows(),Ain[s2].block[q].cols()) += Ain[s2].block[q] * iW.value() * factor_cgc;
 					}
 					
@@ -2520,7 +2520,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 					// Index plain_left1 = leftBasis.inner_dim(Apair[s].in[q])*locBasis_l.inner_num(sl);
 					// Index left1 = leftTot.leftAmount(Ql,{Apair[s].in[q],  qloc_l[sl]}) + plain_left1;
 					Index left1 = leftTot.leftOffset(Ql, {Apair[s].in[q], qloc_l[sl]}, {0, locBasis_l.inner_num(sl)});
-
+					
 					array<qarray<Symmetry::Nq>,2> source = {Apair[s].out[q],  Symmetry::flip(qloc_r[sr])};
 					// Index plain_left2 = rightBasis.inner_dim(Apair[s].out[q])*locBasis_r.inner_num(sr);
 					// Index left2 = rightTot.leftAmount(Qr,source) + plain_left2;
@@ -2540,7 +2540,9 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
+	//cout << "begin truncate SVD" << endl;
 	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
+	//cout << "end truncate SVD" << endl;
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
 	if (DIR == DMRG::DIRECTION::RIGHT)
@@ -2569,7 +2571,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			left = U.contract(Sigma);
 		}
 	}
-
+	
 	//reshape left back and write result to Al
 	for (const auto &[ql, dim_l, plain] : leftBasis)
 	for (size_t s1=0; s1<qloc_l.size(); s1++)
@@ -2595,7 +2597,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			}
 		}
 	}
-
+	
 	//reshape right back and write result to Al
 	for (const auto &[qr, dim_r, plain] : rightBasis)
 	for (size_t s2=0; s2<qloc_r.size(); s2++)
