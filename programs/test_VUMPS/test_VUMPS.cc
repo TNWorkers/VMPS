@@ -49,7 +49,7 @@ using namespace Eigen;
 // #include "models/KondoU0xSU2.h"
 #include "models/ParamCollection.h"
 
-double Jxy, Jz, J, Jprime, Jprimeprime, Jrung, Jsmall, tPrime, Bx, Bz;
+double Jxy, Jz, J, R, Jprime, Jprimeprime, Jrung, Jsmall, tPrime, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -138,6 +138,7 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",2);
 	Ly = args.get<size_t>("Ly",1);
 	J = args.get<double>("J",1.);
+        R = args.get<double>("R",0.);
 	Jxy = args.get<double>("Jxy",0.);
 	Jz = args.get<double>("Jz",0.);
 	Jsmall = args.get<double>("Jsmall",0.);
@@ -234,7 +235,7 @@ int main (int argc, char* argv[])
 	if (CALC_SU2)
 	{
 		HEISENBERG_SU2 Heis_SU2;
-		Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J},{"Jrung",Jrung},{"Jprime",Jprime},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
+		Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J},{"R",R},{"Jrung",Jrung},{"Jprime",Jprime},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat","err_state_Heis_SU2.dat");
 		DMRG_SU2.userSetGlobParam();
@@ -498,7 +499,7 @@ int main (int argc, char* argv[])
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
-			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
+                    HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"R",R},{"J",J},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
 			double SvecSvec = avg(g_SU2.state,Htmp.SdagS(0,d),g_SU2.state);
 			// if (d == L)
 			// {
@@ -519,7 +520,7 @@ int main (int argc, char* argv[])
 		// print_mag(Heis,g);
 		for (size_t d=1; d<dmax; ++d)
 		{
-			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
+			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"R",R},{"J",J},{"maxPower",1ul},{"D",D}}, BC::INFINITE);
 			double SvecSvec = avg(g_SU2.state,Htmp.SdagS(0,d),g_SU2.state);
 			// if (d == L)
 			// {
