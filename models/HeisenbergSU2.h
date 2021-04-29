@@ -57,6 +57,17 @@ public:
 	   \describe_boundary
 	*/
 	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::ON_EXIT);
+	
+	HeisenbergSU2(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HeisenbergObservables(this->N_sites,params,HeisenbergSU2::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,HeisenbergSU2::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
 	///\}
 	
 	/**
@@ -68,7 +79,7 @@ public:
 	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
 	 * \describe_boundary 
 	*/
-    static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P,
+	static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 
 		

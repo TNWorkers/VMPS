@@ -64,6 +64,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
 	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
+	{"R",0.},
 	{"Bz",0.}, {"Bx",0.},
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms

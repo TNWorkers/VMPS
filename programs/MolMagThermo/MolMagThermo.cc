@@ -408,6 +408,10 @@ int main (int argc, char* argv[])
 			base += make_string("_M=",M);
 		}
 		#endif
+		if (Jprime != 0.)
+		{
+			base += make_string("_Jprime=",Jprime);
+		}
 	}
 	if (MOL=="C60" and VARIANT==0)
 	{
@@ -1275,6 +1279,7 @@ int main (int argc, char* argv[])
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
 				     << ", s=" << svec[i-1] 
+				     << " (S=" << svec[i-1]*L << ")"
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;

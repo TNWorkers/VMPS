@@ -1394,11 +1394,11 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 //	return sqrt(var);
 //}
 
-vector<Param> Tinf_params_fermions (size_t Ly)
+vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
-	res.push_back({"CALC_SQUARE",true});
+	res.push_back({"maxPower",maxPower});
 	res.push_back({"OPEN_BC",true});
 	if (Ly == 2ul)
 	{
@@ -1413,11 +1413,11 @@ vector<Param> Tinf_params_fermions (size_t Ly)
 	return res;
 }
 
-vector<Param> Tinf_params_spins (size_t Ly)
+vector<Param> Tinf_params_spins (size_t Ly, size_t maxPower=1ul)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
-	res.push_back({"CALC_SQUARE",true});
+	res.push_back({"maxPower",maxPower});
 	res.push_back({"OPEN_BC",true});
 	if (Ly == 2ul)
 	{
@@ -1518,9 +1518,22 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 	return res;
 }
 
-ArrayXXd hopping_MG_T (int L, double J, double Jprime, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+ArrayXXd hopping_spinChain (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false)
 {
-	ArrayXXd res_tmp = create_1D_OBC(L,J,Jprime);
+	ArrayXXd res_tmp(L,L);
+	res_tmp.setZero();
+	res_tmp.matrix().diagonal<1> ()(seq(0,last,2)).setConstant(JA);
+	res_tmp.matrix().diagonal<1> ()(seq(1,last,2)).setConstant(JB);
+	res_tmp.matrix().diagonal<2> ()(seq(0,last,2)).setConstant(JpA);
+	res_tmp.matrix().diagonal<2> ()(seq(1,last,2)).setConstant(JpB);
+	res_tmp += res_tmp.transpose().eval();
+	return res_tmp;
+}
+
+ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+{
+	ArrayXXd res_tmp = hopping_spinChain(L,JA,JB,JpA,JpB,false);
+	
 	ArrayXXd res(2*L,2*L); res = 0;
 	
 	for (int i=0; i<L; ++i)

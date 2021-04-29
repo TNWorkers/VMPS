@@ -485,6 +485,8 @@ public:
 	void set_dLphys (int x) {dLphys = x;};
 	bool USE_QAWO = false;
 	
+	vector<vector<MatrixXcd>> get_GwqCell() const {return GwqCell;};
+	
 private:
 	
 	string label;

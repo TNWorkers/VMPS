@@ -99,6 +99,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
 	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
+	{"R",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
 	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
@@ -299,8 +300,28 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
 			push_full("Jzfull", "Jzᵢⱼ", first, last, {1.0});
 		}
+		if (P.HAS("Rfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Qp(0), B[loc].Qm(0), B[loc].Qz(0), B[loc].Qpz(0), B[loc].Qmz(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Qp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Qm_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Qz_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Qpz_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Qmz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				Qp_ranges[i] = B[i].Qp(0);
+				Qm_ranges[i] = B[i].Qm(0);
+				Qz_ranges[i] = B[i].Qz(0);
+				Qpz_ranges[i] = B[i].Qpz(0);
+				Qmz_ranges[i] = B[i].Qmz(0);
+			}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Qm_ranges, Qp_ranges, Qz_ranges, Qmz_ranges, Qpz_ranges};
+			push_full("Rfull", "Rᵢⱼ", first, last, {0.5, 0.5, 1.0, 0.5, 0.5});
+		}
 		
-		if (P.HAS("Jfull") or P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
+		if (P.HAS("Jfull") or P.HAS("Jxyfull") or P.HAS("Jzfull") or P.HAS("Rfull")) continue;
 		
 		// Nearest-neighbour terms: Jxy, Jz, J
 		param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);
@@ -324,6 +345,33 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa),
 				                                                                                     B[lp1].Scomp(SZ,beta)),
 				                                                                                     Jzpara(alfa,beta)+Jpara(alfa,beta)));
+			}
+		}
+		
+		// Nearest-neighbour terms: R
+		param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next_orbitals}, loc%Lcell);
+		labellist[loc].push_back(Rpara.label);
+		
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
+		{
+			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+			for (std::size_t beta=0; beta < next_orbitals; ++beta)
+			{
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qp(alfa),
+				                                                                                     B[lp1].Qm(beta)),
+				                                                                                     0.5*Rpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qm(alfa),
+				                                                                                     B[lp1].Qp(beta)),
+				                                                                                     0.5*Rpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qpz(alfa),
+				                                                                                     B[lp1].Qmz(beta)),
+				                                                                                     0.5*Rpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qmz(alfa),
+				                                                                                     B[lp1].Qpz(beta)),
+				                                                                                     0.5*Rpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qz(alfa),
+				                                                                                     B[lp1].Qz(beta)),
+				                                                                                     Rpara(alfa,beta)));
 			}
 		}
 		
