@@ -409,7 +409,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			{
 				TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
 			}
-			double norm = dot(PhiT,PhiT);
+			double norm = isReal(dot(PhiT,PhiT));
 			lnZvec.push_back(log(norm));
 			PhiT /= sqrt(norm);
 			lout << TDVPT.info() << endl;
@@ -419,7 +419,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			
 			double e = avg_H/L;
 			
-			double avg_Hsq = avg(PhiT,Hprop,PhiT,2);
+			double avg_Hsq = isReal(avg(PhiT,Hprop,PhiT,2));
 			double avgH_sq = pow(avg_H,2);
 			double c = isReal(beta*beta*(avg_Hsq-avgH_sq))/L;
 			
