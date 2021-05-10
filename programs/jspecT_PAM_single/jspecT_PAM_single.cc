@@ -218,6 +218,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
@@ -225,7 +226,11 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				i2 = (i-2)*dLphys;
 				// cdag(i)*c(i-1)
 				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
-				push_operator(i2, i1, lambda, H, Res, Fac);
+				#pragma omp critical
+				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
+					push_operator(i2, i1, lambda, H, Res, Fac);
+				}
 			}
 			
 			if (tff != 0.)
@@ -237,6 +242,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
@@ -246,6 +252,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
 					push_operator(i2, i1, lambda, H, Res, Fac);
 				}
 			}
@@ -526,7 +533,7 @@ int main (int argc, char* argv[])
 	double Ec = 0.;
 	double Ef = -0.5*U;
 	
-	int j0 = args.get<int>("j0",0);
+	int j0 = args.get<int>("j0",L/4);
 	assert(j0>=0 and j0<=L/2-1);
 	
 	size_t Lcell = 2;
@@ -617,9 +624,14 @@ int main (int argc, char* argv[])
 	auto PhiT = SpecMan.get_PhiT();
 	auto [Psi1, Op1, Fac1] = apply_J(2*j0, spec1, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	auto [Psi2, Op2, Fac2] = apply_J(2*j0, spec2, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
+	
+	lout << endl;
 	lout << "Op.size()=" << Op1.size() << "\t" << Op2.size() << endl;
 	lout << "Fac.size()=" << Fac1.size() << "\t" << Fac2.size() << endl;
-	lout << "dot(PhiT,Psi1[0])=" << dot(PhiT,Psi1[0]) << ", dot(PhiT,Psi2[0])=" << dot(PhiT,Psi2[0]) << endl;
+	lout << "avg<spec1>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L) << "\t"
+	     << "avg<spec2>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L)
+	     << endl;
+	lout << endl;
 	lout << JappWatch.info("Applying J to ground state for j0 sites done!") << endl << endl;
 	
 	for (int i=0; i<Psi2.size(); ++i)
