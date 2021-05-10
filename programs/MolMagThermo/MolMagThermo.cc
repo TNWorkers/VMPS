@@ -689,7 +689,7 @@ int main (int argc, char* argv[])
 			{
 				for (int n=0; n<excited.size(); ++n)
 				{
-					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, base, wd, make_string("excited state n=",n," variance:"));
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, make_string("n=",n,"_",base), wd, make_string("excited state n=",n," variance:"));
 				}
 			}
 			

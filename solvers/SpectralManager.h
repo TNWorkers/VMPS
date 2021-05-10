@@ -95,15 +95,15 @@ public:
 	
 	static bool CHECK_SPEC (string spec)
 	{
-		std::array<string,22> possible_specs = {"PES","PESUP","PESDN", //3,3
+		std::array<string,24> possible_specs = {"PES","PESUP","PESDN", //3,3
 		                                        "SSF","SSZ", //2,5
 		                                        "IPE","IPEUP","IPEDN", //3,8
 		                                        "AES","APS", //2,10
 		                                        "CSF","ICSF","PSZ","IPSZ","PSF", //5,15
 		                                        "HSF","IHSF", //2,17
 		                                        "HTS","IHTS", // 2,19
-		                                        "JJC","JJE", // 2,21
-		                                        "QSF" // 1,22
+		                                        "JCJC","JEJE", "JCJE", "JEJC", // 4,23
+		                                        "QSF" // 1,24
 		                                        }; 
 		return find(possible_specs.begin(), possible_specs.end(), spec) != possible_specs.end();
 	}

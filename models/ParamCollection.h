@@ -5,6 +5,7 @@
 
 #include "ParamHandler.h"
 #include "CuthillMcKeeCompressor.h" // from ALGS
+#include <boost/rational.hpp>
 
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {

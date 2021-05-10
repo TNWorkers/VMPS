@@ -1044,7 +1044,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
+				//lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
 			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
@@ -1174,7 +1174,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
+//				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
 			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
