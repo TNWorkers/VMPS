@@ -17,6 +17,22 @@
 #define DMRG_POLYCOMPRESS_INCREMENT 50
 #endif
 
+#ifndef STATE_COMPRESS_M_INCREMENT
+#define STATE_COMPRESS_M_INCREMENT 20
+#endif
+
+#ifndef PROD_COMPRESS_M_INCREMENT
+#define PROD_COMPRESS_M_INCREMENT 20
+#endif
+
+#ifndef STATE_COMPRESS_MLIMIT
+#define STATE_COMPRESS_MLIMIT 10000
+#endif
+
+#ifndef PROD_COMPRESS_MLIMIT
+#define PROD_COMPRESS_MLIMIT 10000
+#endif
+
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
 
 /// \cond
@@ -92,7 +108,8 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Mcutoff_input, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1);
+	                   size_t Mcutoff_input, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1,
+	                   const MpOperator * HdagH = NULL);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -483,11 +500,13 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.max_Nsv += 20;
+			auto max_Nsv_old = Vout.max_Nsv;
+			Vout.max_Nsv += STATE_COMPRESS_M_INCREMENT;
+			Vout.max_Nsv = min(Vout.max_Nsv,size_t(STATE_COMPRESS_MLIMIT));
 			Mcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
+				lout << "resize: " << max_Nsv_old << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
@@ -949,7 +968,8 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-              qarray<Symmetry::Nq> Qtot_input, size_t Mcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
+              qarray<Symmetry::Nq> Qtot_input, size_t Mcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps,
+              const MpOperator * HdagH)
 {
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
@@ -1003,13 +1023,20 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			}
 			else
 			{
-				if (H.IS_HERMITIAN())
+				if (HdagH != NULL)
 				{
-					avgHsqVin = (H.maxPower()>=2)? isReal(avg(Vin,H,Vin,2)) : isReal(avg(Vin,H,H,Vin));
+					avgHsqVin = isReal(avg(Vin,*HdagH,Vin));
 				}
 				else
 				{
-					avgHsqVin = isReal(avg(Vin,Hdag,H,Vin));
+					if (H.IS_HERMITIAN())
+					{
+						avgHsqVin = (H.maxPower()>=2)? isReal(avg(Vin,H,Vin,2)) : isReal(avg(Vin,H,H,Vin));
+					}
+					else
+					{
+						avgHsqVin = isReal(avg(Vin,Hdag,H,Vin));
+					}
 				}
 			}
 		}
@@ -1083,12 +1110,15 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			size_t Delta_Nsv = (sqdist>10.*tol)? 40:20;
-			Vout.max_Nsv += Delta_Nsv;
+			//size_t Delta_Nsv = (sqdist>10.*tol)? 40:20;
+//			Vout.max_Nsv += Delta_Nsv;
+			auto max_Nsv_old = Vout.max_Nsv;
+			Vout.max_Nsv += PROD_COMPRESS_M_INCREMENT;
+			Vout.max_Nsv = min(Vout.max_Nsv,size_t(PROD_COMPRESS_MLIMIT));
 			Mcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.max_Nsv-Delta_Nsv << "→" << Vout.max_Nsv << endl;
+				lout << "resize: " << max_Nsv_old << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		

@@ -1414,7 +1414,9 @@ compress (const double tolerance)
     int compr_rate = (int)std::round(100.-(100.*total_auxdim_final)/(1.0*total_auxdim_initial));
     std::stringstream ss;
     auto curr_prec = std::cout.precision();
-    ss << this->get_name() << " - Compression (Old alg.) | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate << "% (" << std::setprecision(1) << std::fixed << (total_auxdim_initial*1.0)/N_sites << " ⇒ " << (total_auxdim_final*1.0)/N_sites << ") | Linear dependence checks: " << lindep_checks << std::defaultfloat << std::endl;
+    ss << this->get_name() << " - Compression (Old alg.) | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate << "% (" << std::setprecision(1) 
+       << std::fixed << (total_auxdim_initial*1.0)/N_sites << "(max=" << maximum_local_auxdim_initial << ")" << " ⇒ " << (total_auxdim_final*1.0)/N_sites << "(max=" << maximum_local_auxdim_final << ")" 
+       << ") | Linear dependence checks: " << lindep_checks << std::defaultfloat << std::endl;
     std::cout.precision(curr_prec);
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
@@ -3011,6 +3013,10 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
         }
     }
     std::stringstream new_name;
+    if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
+    {
+        new_name << "[";
+    }
     std::size_t curr_prec = std::cout.precision();
     if(std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
@@ -3018,7 +3024,7 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
     }
     if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
     {
-        new_name << " + " << setprecision(3) << offset << setprecision(curr_prec);
+        new_name << " + " << setprecision(3) << offset << setprecision(curr_prec) << "]";
     }
     if(new_name.str().length() < MAX_SUMPROD_STRINGLENGTH)
     {

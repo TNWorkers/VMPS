@@ -999,7 +999,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
@@ -1044,7 +1044,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
+				//lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
 			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
@@ -1136,7 +1136,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			PivotOverlap2 PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
+			PivotOverlap2<Symmetry,Scalar> PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
@@ -1174,7 +1174,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
+//				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << endl;
 			}
 			lout << setprecision(16) << "gap=" << g.energy-E0 << setprecision(6) << endl;
 		}
@@ -1366,6 +1366,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
+//		cout << "j=" << j << ", Vout.state.eps_svd=" << Vout.state.eps_svd << endl;
 		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
@@ -1428,7 +1429,7 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 		for (int n=0; n<Psi0.size(); ++n)
 		for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
 		{
-			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotOverlap1<Symmetry,Scalar> PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);

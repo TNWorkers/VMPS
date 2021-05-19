@@ -47,9 +47,13 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1=0, size_t locy2=0, size_t locy3=0) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Stot (size_t locy1=0, double factor=1., int dLphys=1) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdagtot (size_t locy1=0, double factor=std::sqrt(3.), int dLphys=1) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomptot (SPINOP_LABEL Sa, size_t locy1=0, double factor=1., int dLphys=1) const;
 	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Q (size_t locx, size_t locy=0, double factor=1.) const;
@@ -323,6 +327,25 @@ Sz (size_t locx, size_t locy) const
 
 template<typename Symmetry>
 template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(B.size());
+	vector<double> factors(B.size());
+	for (int l=0; l<B.size(); ++l)
+	{
+		Ops[l] = B[l].Scomp(Sa,locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<B.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, (Sa==SZ)?PROP::HERMITIAN:PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
 Stot (size_t locy, double factor, int dLphys) const
 {
@@ -365,10 +388,10 @@ typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmet
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
-				 {
-					 return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
-					 // return make_corr("T†", "T", locx1, locx2, locy1, locy2, B[locx1].Tdag(locy1), B[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
-				 }
+	{
+		return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
+		// return make_corr("T†", "T", locx1, locx2, locy1, locy2, B[locx1].Tdag(locy1), B[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	}
 	else
 	{
 		vector<Mpo<Symmetry> > out(3);
@@ -376,6 +399,62 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 		out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
 		out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
 		return out;
+	}
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type HeisenbergObservables<Symmetry>::
+SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1, size_t locy2, size_t locy3) const
+{
+	if constexpr (Symmetry::IS_SPIN_SU2())
+	{
+		Mpo<Symmetry,double> Mout(B.size(), Symmetry::qvacuum(), "SdagSxS", PROP::NON_HERMITIAN, false, BC::OPEN, DMRG::VERBOSITY::HALFSWEEPWISE);
+		for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+		
+		std::vector<typename Symmetry::qType> qList(B.size()+1);
+		std::vector<SiteOperator<Symmetry,double>> opList(B.size());
+		
+		for (int i=0; i<qList.size(); ++i) {qList[i] = Symmetry::qvacuum();}
+		for (int i=0; i<opList.size(); ++i) {opList[i] = B[i].Id().template plain<double>();}
+		
+		for (int i=0; i<B.size(); ++i)
+		{
+			if (i>=locx1 and i<locx3)
+			{
+				qList[1+i] = qarray<Symmetry::Nq>{3};
+				if (i==locx1)
+				{
+					opList[i] = (B[i].S(i)).template plain<double>();
+				}
+				else if (i==locx2)
+				{
+					opList[i] = (B[i].S(i)).template plain<double>();
+				}
+			}
+			else
+			{
+				opList[i] = (B[i].S(i)).template plain<double>();
+			}
+		}
+		
+		for (int i=0; i<qList.size(); ++i)
+		{
+			cout << "i=" << i << ", q=" << qList[i] << endl;
+		}
+		
+		Mout.push_qpath(locx1, opList, qList, 1.);
+		
+		Mout.N_phys = B.size();
+		Mout.finalize(PROP::COMPRESS, 1); // power=1
+		Mout.precalc_TwoSiteData(true);
+		
+		return Mout;
+	}
+	else
+	{
+		lout << "SdagSxS is not implemented for this symmetry!" << endl;
+		throw;
 	}
 }
 

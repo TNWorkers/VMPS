@@ -735,8 +735,6 @@ Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 	update_inbase();
 	update_outbase();
 	
-	graph("init");
-	
 	innerResize(Mmax);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -847,10 +845,10 @@ calc_Qlimits()
 		}
 	}
 	
-	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
-	{
-		NEED_WORKAROUND = true;
-	}
+//	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+//	{
+//		NEED_WORKAROUND = true;
+//	}
 	
 	if (NEED_WORKAROUND)
 	{
@@ -929,7 +927,7 @@ calc_Qlimits()
 			vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
 			
 			for (size_t q=0; q<Nq; q++)
-			for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
+			for (size_t i=0; i<out.size(); ++i)
 			{
 				out[i][q] = tmp[q][i];
 			}

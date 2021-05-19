@@ -5,6 +5,7 @@
 
 #include "ParamHandler.h"
 #include "CuthillMcKeeCompressor.h" // from ALGS
+#include <boost/rational.hpp>
 
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {
@@ -23,23 +24,23 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 // If COMPRESSED=true, the ring is flattened so that adjacent sites are as close together as possible
 ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COMPRESSED=false)
 {
-	if (!COMPRESSED)
+	ArrayXXd res(L,L);
+	res.setZero();
+	
+	res = create_1D_OBC(L,lambda1,lambda2);
+	
+	res(0,L-1) = lambda1;
+	res(L-1,0) = lambda1;
+	
+	res(0,L-2) = lambda2;
+	res(L-2,0) = lambda2;
+	res(1,L-1) = lambda2;
+	res(L-1,1) = lambda2;
+	
+	if (COMPRESSED and lambda2 == 0.)
 	{
-		ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
+		res.setZero();
 		
-		res(0,L-1) = lambda1;
-		res(L-1,0) = lambda1;
-		
-		res(0,L-2) = lambda2;
-		res(L-2,0) = lambda2;
-		res(1,L-1) = lambda2;
-		res(L-1,1) = lambda2;
-		
-		return res;
-	}
-	else
-	{
-		ArrayXXd res(L,L); res.setZero();
 		res(0,1) = lambda1; res(1,0) = lambda1;
 		res(L-2,L-1) = lambda1; res(L-1,L-2) = lambda1;
 		for (size_t l=0; l<L-2; l++)
@@ -47,8 +48,13 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 			res(l,l+2) = lambda1;
 			res(l+2,l) = lambda1;
 		}
-		return res;
 	}
+	else if (COMPRESSED and lambda2 != 0.)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	return res;
 }
 
 ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
@@ -457,7 +463,7 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 	
 	res += res.transpose().eval();
 	
-	if (VARIANT==0 and vertex_conf != "3.6^2")
+	if (VARIANT==0 and vertex_conf != "3.6^2" and vertex_conf != "3.4.3.4")
 	{
 		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
@@ -864,8 +870,17 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	
+	if (L ==4 )
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		res(0,3) = lambda1;
+		res(1,3) = lambda1;
+		res(2,3) = lambda1;
+	}
 	// reference: Phys. Rev. B 72, 064453 (2005)
-	if (L == 12)
+	else if (L == 12)
 	{
 //		res(0,1) = lambda1;
 //		res(1,2) = lambda1;
@@ -972,6 +987,45 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 //		res = res_;
 //	}
 	
+	return res;
+}
+
+ArrayXXd hopping_triangular (int L, int VARIANT=0, double lambda1=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+	}
+	else if (L==3)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+	}
+	else if (L==6)
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+		
+		res(2,3) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(1,4) = lambda1;
+		res(1,5) = lambda1;
+		res(4,5) = lambda1;
+	}
+	
+	res += res.transpose().eval();
 	return res;
 }
 
@@ -1341,11 +1395,11 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 //	return sqrt(var);
 //}
 
-vector<Param> Tinf_params_fermions (size_t Ly)
+vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
-	res.push_back({"CALC_SQUARE",true});
+	res.push_back({"maxPower",maxPower});
 	res.push_back({"OPEN_BC",true});
 	if (Ly == 2ul)
 	{
@@ -1356,6 +1410,25 @@ vector<Param> Tinf_params_fermions (size_t Ly)
 	{
 		res.push_back({"t",1.,0});
 		res.push_back({"t",0.,1});
+	}
+	return res;
+}
+
+vector<Param> Tinf_params_spins (size_t Ly, size_t maxPower=1ul)
+{
+	vector<Param> res;
+	res.push_back({"Ly",Ly});
+	res.push_back({"maxPower",maxPower});
+	res.push_back({"OPEN_BC",true});
+	if (Ly == 2ul)
+	{
+		res.push_back({"J",0.});
+		res.push_back({"Jrung",1.});
+	}
+	else
+	{
+		res.push_back({"J",1.,0});
+		res.push_back({"J",0.,1});
 	}
 	return res;
 }
@@ -1444,6 +1517,53 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 //	cout << endl;
 //	cout << res.imag() << endl;
 	return res;
+}
+
+ArrayXXd hopping_spinChain (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false)
+{
+	ArrayXXd res_tmp(L,L);
+	res_tmp.setZero();
+	res_tmp.matrix().diagonal<1> ()(seq(0,last,2)).setConstant(JA);
+	res_tmp.matrix().diagonal<1> ()(seq(1,last,2)).setConstant(JB);
+	res_tmp.matrix().diagonal<2> ()(seq(0,last,2)).setConstant(JpA);
+	res_tmp.matrix().diagonal<2> ()(seq(1,last,2)).setConstant(JpB);
+	res_tmp += res_tmp.transpose().eval();
+	return res_tmp;
+}
+
+ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+{
+	ArrayXXd res_tmp = hopping_spinChain(L,JA,JB,JpA,JpB,false);
+	
+	ArrayXXd res(2*L,2*L); res = 0;
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res(2*i,2*j) = res_tmp(i,j);
+		if (ANCILLA_HOPPING)
+		{
+			res(2*i+1,2*j+1) = res_tmp(i,j);
+		}
+	}
+	
+	for (int i=0; i<2*L-1; ++i)
+	{
+		res(i,i+1) += bugfix;
+		res(i+1,i) += bugfix;
+	}
+	
+	return res;
+}
+
+// returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
+tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_input = boost::rational<int>(1,3))
+{
+	double beta = boost::rational_cast<double>(beta_input);
+	double J = 1.+0.5*beta;
+	double R = -0.5*beta;
+	double offset = -4./3.*beta;
+	return make_tuple(J,R,offset);
 }
 
 #endif

@@ -91,6 +91,7 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
 {
 	lout << "correlations for following state:" << endl;
+	lout << "will save to: " << make_string(wd,"SdagS_",base,"_d=[...]",".dat") << endl;
 	lout << Psi.info() << endl;
 	
 	if (S>0)
@@ -160,11 +161,11 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 {
 	ofstream VarFiler(make_string(wd,"var_",base,".dat"));
 	lout << label << ":" << endl;
+	lout << "will save to: " << make_string(wd,"var_",base,".dat") << endl;
 	VarFiler << "#" << label << endl;
 	VarFiler << "#" << Psi.state.info() << endl;
 	
 	Stopwatch<> Timer;
-	lout << endl;
 	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
 	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 	VarFiler << setprecision(16) << "E=" << E << setprecision(6) << endl;
@@ -184,6 +185,7 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
 	}
 	lout << Timer.info("varE") << endl;
+	lout << endl;
 	VarFiler.close();
 	
 //	auto HmE = H;
@@ -205,6 +207,10 @@ map<string,int> make_Lmap()
 	m["P08"] = 8; // cube
 	m["P12"] = 12; // icosahedron
 	m["P20"] = 20; // dodecahedron
+	// Traingles:
+	m["T03"] = 3;
+	m["T05"] = 5;
+	m["T06"] = 6;
 	// Fullerenes:
 	m["C12"] = 12; // =truncated tetrahedron ATT
 	m["C20"] = 20; // =dodecahedron P20
@@ -272,6 +278,7 @@ int main (int argc, char* argv[])
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
 //	bool CANONICAL = args.get<bool>("CANONICAL",false);
 	bool CALC_C = args.get<bool>("CALC_C",false);
+	bool CALC_C_HME = args.get<bool>("CALC_C_HME",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",50.);
@@ -309,6 +316,8 @@ int main (int argc, char* argv[])
 	
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
+	
+	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
 	
 	// overwrite beta params in case of LOAD
 	if (LOAD!="" and BETAPROP==true)
@@ -374,6 +383,11 @@ int main (int argc, char* argv[])
 					U = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: U=" << U << endl;
 				}
+				if (parsed_vals[j] == "Mlimit")
+				{
+					Mlimit_default = boost::lexical_cast<int>(parsed_vals[j+1]);
+					lout << "extracted: Mlimit_default=" << Mlimit_default << endl;
+				}
 			}
 		}
 	}
@@ -395,6 +409,10 @@ int main (int argc, char* argv[])
 			base += make_string("_M=",M);
 		}
 		#endif
+		if (Jprime != 0.)
+		{
+			base += make_string("_Jprime=",Jprime);
+		}
 	}
 	if (MOL=="C60" and VARIANT==0)
 	{
@@ -425,7 +443,7 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",200ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",300ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
@@ -437,7 +455,7 @@ int main (int argc, char* argv[])
 	
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.Mlimit = args.get<size_t>("Mlimit",500ul); // for groundstate
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",Mlimit_default); // for groundstate
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+Mincr_per);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
 	GlobParam.Minit = args.get<size_t>("Minit",2ul);
@@ -489,6 +507,10 @@ int main (int argc, char* argv[])
 	else if (MOL.at(0)=='C')
 	{
 		hopping = J*hopping_fullerene(L,VARIANT);
+	}
+	else if (MOL.at(0)=='T')
+	{
+		hopping = J*hopping_triangular(L,VARIANT);
 	}
 	else
 	{
@@ -668,7 +690,7 @@ int main (int argc, char* argv[])
 			{
 				for (int n=0; n<excited.size(); ++n)
 				{
-					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, base, wd, make_string("excited state n=",n," variance:"));
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, make_string("n=",n,"_",base), wd, make_string("excited state n=",n," variance:"));
 				}
 			}
 			
@@ -1195,8 +1217,17 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					if (!CALC_C_HME)
+					{
+						c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+					                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					}
+					else
+					{
+						auto HmE = H;
+						HmE.scale(1.,-E);
+						c = beta*beta*avg(PsiTprev,HmE,PsiTprev,2ul)/L;
+					}
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
@@ -1258,6 +1289,7 @@ int main (int argc, char* argv[])
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
 				     << ", s=" << svec[i-1] 
+				     << " (S=" << svec[i-1]*L << ")"
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;

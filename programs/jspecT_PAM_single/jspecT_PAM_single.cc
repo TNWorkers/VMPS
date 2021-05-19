@@ -187,20 +187,24 @@ void push_corrhopOperator (int i, int j, complex<double> lambda, const MODELC &H
 tuple<vector<MODELC::StateXcd>,
       vector<Mpo<MODELC::Symmetry,complex<double>>>,
       vector<complex<double>>> 
-apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const MODELC::StateXcd &Psi, 
+apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const MODELC::StateXcd &Psi, 
          double tcc, double tff, double tfc, double Ec, double Ef, double U, int Mlimit)
 {
-	vector<MODELC::StateXcd> res(L/2);
+	assert(spec=="JC" or spec=="JE");
+	
+	vector<MODELC::StateXcd> res(1);
 	vector<Mpo<MODELC::Symmetry,complex<double>>> Res;
 	vector<complex<double>> Fac;
 	
-	if (spec == "JJC")
+	if (spec == "JC")
 	{
 		#pragma omp parallel for
 		for (int i=0; i<L; i+=2)
 		{
-			//DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-			DMRG::VERBOSITY::OPTION CVERB = DMRG::VERBOSITY::SILENT;
+//			int s = i/2;
+			int s = 0;
+			
+			DMRG::VERBOSITY::OPTION CVERB = (i==j0)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			
 			vector<MODEL::StateXcd> states;
 			vector<complex<double>> factors;
@@ -211,17 +215,22 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+2)*dLphys;
 				complex<double> lambda = +1.i*(-tcc);
 				// cdag(i)*c(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
 				i1 = i*dLphys;
 				i2 = (i-2)*dLphys;
 				// cdag(i)*c(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
-				push_operator(i2, i1, lambda, H, Res, Fac);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				#pragma omp critical
+				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
+					push_operator(i2, i1, lambda, H, Res, Fac);
+				}
 			}
 			
 			if (tff != 0.)
@@ -230,41 +239,47 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+3)*dLphys;
 				complex<double> lambda = +1.i*(-tff);
 				// fdag(i)*f(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
 				i1 = (i+1)*dLphys;
 				i2 = (i-1)*dLphys;
 				// fdag(i)f(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
 					push_operator(i2, i1, lambda, H, Res, Fac);
 				}
 			}
 			
-			int s = i/2;
-			if (states.size() > 0)
+			if (i==j0)
 			{
-				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-				Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
-			}
-			else
-			{
-				lout << "no operator at site " << s << endl;
-				res[s] = Psi;
+				if (states.size() > 0)
+				{
+					MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+					Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
+				}
+				else
+				{
+					lout << "no operator at site " << s << endl;
+					res[s] = Psi;
+				}
 			}
 		}
 	}
-	else if (spec == "JJE")
+	else if (spec == "JE")
 	{
 		for (int i=0; i<L; i+=2)
 		{
-			//DMRG::VERBOSITY::OPTION CVERB = (i==L/2)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
-			DMRG::VERBOSITY::OPTION CVERB = DMRG::VERBOSITY::SILENT;
+//			int s = i/2;
+			int s = 0;
+			
+			DMRG::VERBOSITY::OPTION CVERB = (i==j0)? DMRG::VERBOSITY::HALFSWEEPWISE : DMRG::VERBOSITY::SILENT;
 			
 			vector<MODEL::StateXcd> states;
 			vector<complex<double>> factors;
@@ -276,7 +291,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+4)*dLphys;
 				complex<double> lambda = +1.i*tcc*tcc;
 				// cdag(i)*c(i+2)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -285,7 +300,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = i*dLphys;
 				i2 = (i-4)*dLphys;
 				// cdag(i)*c(i-2)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -298,7 +313,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+5)*dLphys;
 				complex<double> lambda = +1.i*tff*tff;
 				// fdag(i)*f(i+2)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -306,7 +321,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+1)*dLphys;
 				i2 = (i-3)*dLphys;
 				// fdag(i)*f(i-2)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -320,7 +335,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+3)*dLphys;
 				complex<double> lambda = +0.5i*(tcc+tff)*tfc;
 				// cdag(i)*f(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -329,7 +344,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = i*dLphys;
 				i2 = (i-1)*dLphys;
 				// cdag(i)*f(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -338,7 +353,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+1)*dLphys;
 				i2 = (i-2)*dLphys;
 				// fdag(i)*c(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -347,7 +362,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+1)*dLphys;
 				i2 = (i+2)*dLphys;
 				// fdag(i)*c(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -361,7 +376,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+2)*dLphys;
 				complex<double> lambda = +1.i*(-tcc)*Ec;
 				// cdag(i)*c(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -370,7 +385,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = i*dLphys;
 				i2 = (i-2)*dLphys;
 				// cdag(i)*c(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -384,7 +399,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+3)*dLphys;
 				complex<double> lambda = +1.i*(-tff)*Ef;
 				// fdag(i)*f(i+1)
-				push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
@@ -393,7 +408,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+1)*dLphys;
 				i2 = (i-1)*dLphys;
 				// fdag(i)*f(i-1)
-				push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
+				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
 					push_operator(i2, i1, lambda, H, Res, Fac);
@@ -407,7 +422,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				int i2 = (i+3)*dLphys;
 				complex<double> lambda = +0.5i*U*(-tff);
 				// fdag(i)*nf(i)*f(i+1)
-				push_corrhop(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors, false); // false=cdagn_c
+				if (i==j0) push_corrhop(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors, false); // false=cdagn_c
 				#pragma omp critical
 				{
 					push_corrhopOperator(i2, i1, conj(lambda), H, Res, Fac, true);
@@ -416,7 +431,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+1)*dLphys;
 				i2 = (i-1)*dLphys;
 				// fdag(i)*nf(i)*f(i-1)
-				push_corrhop(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors, false);
+				if (i==j0) push_corrhop(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors, false);
 				#pragma omp critical
 				{
 					push_corrhopOperator(i2, i1, lambda, H, Res, Fac, true);
@@ -425,7 +440,7 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				i1 = (i+3)*dLphys;
 				i2 = (i+1)*dLphys;
 				// fdag(i+1)*nf(i)*f(i)
-				push_corrhop(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors, true); // true=cdag_nc
+				if (i==j0) push_corrhop(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors, true); // true=cdag_nc
 				#pragma omp critical
 				{
 					push_corrhopOperator(i2, i1, lambda, H, Res, Fac, false);
@@ -434,23 +449,26 @@ apply_J (string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const 
 				// fdag(i-1)*nf(i)*f(i)
 				i1 = (i-1)*dLphys;
 				i2 = (i+1)*dLphys;
-				push_corrhop(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors, true);
+				if (i==j0) push_corrhop(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors, true);
 				#pragma omp critical
 				{
 					push_corrhopOperator(i2, i1, conj(lambda), H, Res, Fac, false);
 				}
 			}
 			
-			int s = i/2;
-			if (states.size() > 0)
+			if (i==j0)
 			{
-				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-				Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
-			}
-			else
-			{
-				lout << "no operator at site " << s << endl;
-				res[s] = Psi;
+				lout << "compress at j0=i=" << j0 << endl;
+				if (states.size() > 0)
+				{
+					MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
+					Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
+				}
+				else
+				{
+					lout << "no operator at site " << s << endl;
+					res[s] = Psi;
+				}
 			}
 		}
 	}
@@ -467,30 +485,15 @@ complex<double> calc_Joverlap (const MODELC::StateXcd &PhiTt, const vector<MODEL
 	double resRe = 0.;
 	double resIm = 0.;
 	
-//	complex<double> res2 = 0.;
-//	auto [JxPhiTt, trash1, trash2] = apply_J(spec, L, dLphys, tol_OxV, H, PhiTt, tcc, tff, tfc, Ec, Ef, U, Mlimit);
-//	for (int i=0; i<Psi.size(); ++i)
-//	for (int j=0; j<JxPhiTt.size(); ++j)
-//	{
-//		res2 += dot(JxPhiTt[i], Psi[j]);
-//	}
-	
-//	#pragma omp parallel for collapse(2) reduction(+:resRe,resIm)
+	#pragma omp parallel for collapse(2) reduction(+:resRe,resIm)
 	for (int i=0; i<Psi.size(); ++i)
+	for (int k=0; k<Op.size(); ++k)
 	{
-		complex<double> contrib = 0;
-		for (int k=0; k<Op.size(); ++k)
-		{
-			complex<double> c = Fac[k]*avg(PhiTt,Op[k],Psi[i]);
-			resRe += c.real();
-			resIm += c.imag();
-			contrib += c;
-		}
-//		cout << "i=" << i << ", contrib=" << contrib << endl;
+		complex<double> c = Fac[k]*avg(PhiTt,Op[k],Psi[i]);
+		resRe += c.real();
+		resIm += c.imag();
 	}
 	complex<double> res = complex<double>(resRe,resIm);
-	
-//	cout << "res=" << res << ", res2=" << res2 << endl;
 	
 	return res;
 }
@@ -530,6 +533,9 @@ int main (int argc, char* argv[])
 	double Ec = 0.;
 	double Ef = -0.5*U;
 	
+	int j0 = args.get<int>("j0",L/4);
+	assert(j0>=0 and j0<=L/2-1);
+	
 	size_t Lcell = 2;
 	int dLphys = 2;
 	
@@ -539,7 +545,9 @@ int main (int argc, char* argv[])
 	bool SAVE_BETA = args.get<bool>("SAVE_BETA",true);
 	bool LOAD_BETA = args.get<bool>("LOAD_BETA",false);
 	
-	string spec = args.get<string>("spec","JJC"); // JJC, JJE
+	string spec1 = args.get<string>("spec1","JC"); // JC, JE
+	string spec2 = args.get<string>("spec2","JC"); // JC, JE
+	string spec = spec1+spec2;
 	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
 	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // max. Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.025);
@@ -559,7 +567,7 @@ int main (int argc, char* argv[])
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
 	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U,"_V=",V); // Dateiname
 	param_base += make_string("_beta=",beta);
-	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
+	string base = make_string("j0=",j0,"_L=",L,"_N=",N,"_",param_base); // Dateiname
 	string tbase = make_string("tmax=",tmax,"_dt=",dt);
 	string wbase = make_string("wmin=",wmin,"_wmax=",wmax,"_wpoints=",wpoints);
 	lout << base << endl;
@@ -607,45 +615,47 @@ int main (int argc, char* argv[])
 	MODELC Hp(dLphys*L,pparams); Hp.precalc_TwoSiteData();
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
-	SpectralManager<MODELC> SpecMan({spec},Hp);
+	SpectralManager<MODELC> SpecMan({spec},Hp); // spec ist Dummy, brauchen nur die beta-Propagation hieraus
 	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
 	
 	Stopwatch<> JappWatch;
-	lout << endl << "Applying J to ground state for all sites..." << endl;
+	lout << endl << "Applying J to ground state for j0..." << endl;
 	double tol_OxV = 2.; // val>1 = do not compress
 	auto PhiT = SpecMan.get_PhiT();
-	auto [Psi, Op, Fac] = apply_J(spec, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
-	lout << "Op.size()=" << Op.size() << endl;
-	lout << "Fac.size()=" << Fac.size() << endl;
-	lout << JappWatch.info("Applying J to ground state for all sites done!") << endl << endl;
+	auto [Psi1, Op1, Fac1] = apply_J(2*j0, spec1, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
+	auto [Psi2, Op2, Fac2] = apply_J(2*j0, spec2, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	
-	for (int i=0; i<Psi.size(); ++i)
+	lout << endl;
+	lout << "Op.size()=" << Op1.size() << "\t" << Op2.size() << endl;
+	lout << "Fac.size()=" << Fac1.size() << "\t" << Fac2.size() << endl;
+	lout << "avg<spec1>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L) << "\t"
+	     << "avg<spec2>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L)
+	     << endl;
+	lout << endl;
+	lout << JappWatch.info("Applying J to ground state for j0 sites done!") << endl << endl;
+	
+	for (int i=0; i<Psi2.size(); ++i)
 	{
-		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
-		lout << i << "\t" << Psi[i].info() << endl;
+		Psi2[i].eps_svd = tol_compr;
+		Psi2[i].max_Nsv = max(Psi2[i].calc_Mmax(),Mstart);
+		lout << i << "\t" << Psi2[i].info() << endl;
 	}
 	lout << endl;
 	
-	vector<TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>> TDVP(L/2+1);
-	for (int i=0; i<L/2; ++i)
-	{
-		TDVP[i] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,Psi[i]);
-	}
-	TDVP[L/2] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,PhiT);
+	vector<TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>> TDVP(2);
+	TDVP[0] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,Psi2[0]);
+	TDVP[1] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,PhiT);
 	
 	int iVERB = L/4;
 	
-	vector<EntropyObserver<MODELC::StateXcd>> Sobs(L/2+1);
-	vector<vector<bool>> TWO_SITE(L/2+1);
-	for (int i=0; i<L/2; ++i)
-	{
-		DMRG::VERBOSITY::OPTION SOBSVERB = (i==iVERB)? VERB : DMRG::VERBOSITY::SILENT;
-		Sobs[i] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, SOBSVERB, tol_DeltaS);
-		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.);
-	}
-	Sobs[L/2] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, DMRG::VERBOSITY::SILENT, tol_DeltaS);
-	TWO_SITE[L/2] = Sobs[L/2].TWO_SITE(0, PhiT, 1.);
+	vector<EntropyObserver<MODELC::StateXcd>> Sobs(2);
+	vector<vector<bool>> TWO_SITE(2);
+	
+	Sobs[0] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
+	TWO_SITE[0] = Sobs[0].TWO_SITE(0, Psi2[0], 1.);
+	
+	Sobs[1] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, DMRG::VERBOSITY::SILENT, tol_DeltaS);
+	TWO_SITE[1] = Sobs[1].TWO_SITE(0, PhiT, 1.);
 	
 	vector<MatrixXcd> Joverlap(Nt);
 	VectorXcd JoverlapSum(Nt);
@@ -657,7 +667,7 @@ int main (int argc, char* argv[])
 		lout << "t=" << *t << endl;
 		Stopwatch<> StepTimer;
 		
-		JoverlapSum(t.index()) =  calc_Joverlap(PhiT, Psi, Op, Fac, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L);
+		JoverlapSum(t.index()) =  calc_Joverlap(PhiT, Psi2, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L);
 		
 		t << JoverlapSum(t.index());
 		lout << "save results at t=" << *t << ", res=" << JoverlapSum(t.index()) << endl;
@@ -666,34 +676,31 @@ int main (int argc, char* argv[])
 		if (t.index() != t.end()-1)
 		{
 			#pragma omp parallel for
-			for (int i=0; i<L/2+1; ++i)
+			for (int i=0; i<1; ++i)
 			{
-				if (i<L/2)
+				if (i==0)
 				{
 					//-----------------------------------------------------------
-					TDVP[i].t_step_adaptive(Hp, Psi[i], -1.i*dt, TWO_SITE[i], 1);
+					TDVP[i].t_step_adaptive(Hp, Psi2[i], -1.i*dt, TWO_SITE[i], 1);
 					//-----------------------------------------------------------
-				
-					if (i==L/4)
+					
+					lout << "propagated to t=" << *t << endl;
+					lout << TDVP[i].info() << endl;
+					lout << Psi2[i].info() << endl;
+					
+					if (Psi2[i].get_truncWeight().sum() > 0.5*tol_compr)
 					{
-						lout << "propagated to t=" << *t << endl;
-						lout << TDVP[i].info() << endl;
-						lout << Psi[i].info() << endl;
-					}
-				
-					if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
-					{
-						Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
+						Psi2[i].max_Nsv = min(static_cast<size_t>(max(Psi2[i].max_Nsv*1.1, Psi2[i].max_Nsv+50.)),Mlimit);
 						if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 						{
-							lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+							lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi2[i].max_Nsv << termcolor::reset << endl;
 						}
 					}
 					else
 					{
 						if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 						{
-							lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
+							lout << termcolor::green << "trunc_weight=" << Psi2[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
 						}
 					}
 				}
@@ -702,7 +709,7 @@ int main (int argc, char* argv[])
 					//-----------------------------------------------------------
 					TDVP[i].t_step_adaptive(Hp, PhiT, -1.i*dt, TWO_SITE[i], 1);
 					//-----------------------------------------------------------
-				
+					
 					if (PhiT.get_truncWeight().sum() > 0.5*tol_compr)
 					{
 						PhiT.max_Nsv = min(static_cast<size_t>(max(PhiT.max_Nsv*1.1, PhiT.max_Nsv+50.)),Mlimit);
@@ -716,11 +723,11 @@ int main (int argc, char* argv[])
 			lout << StepTimer.info("time step") << endl;
 			
 			#pragma omp parallel for
-			for (int i=0; i<L/2+1; ++i)
+			for (int i=0; i<1; ++i)
 			{
-				if (i<L/2)
+				if (i==0)
 				{
-					auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
+					auto PsiTmp = Psi2[i]; PsiTmp.entropy_skim();
 					TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
 				}
 				else
@@ -729,16 +736,16 @@ int main (int argc, char* argv[])
 					TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PhiTtmp);
 				}
 			}
-		
+			
 			if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
 		}
-	
+		
 		lout << TpropTimer.info("total running time",false) << endl;
 		lout << endl;
 	}
-
+	
 	lout << "saved to: " << make_string(spec+"t_",base,"_",tbase,".dat") << endl << endl;
-
+	
 	VectorXd tvals = t.get_abscissa();
 	for (int i=0; i<tvals.rows(); ++i)
 	{

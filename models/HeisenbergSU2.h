@@ -26,7 +26,7 @@ namespace VMPS
   * \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   * \note \f$J>0\f$ is antiferromagnetic
   */
-	class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public HeisenbergObservables<Sym::SU2<Sym::SpinSU2> >, public ParamReturner
+class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public HeisenbergObservables<Sym::SU2<Sym::SpinSU2> >, public ParamReturner
 {
 public:
 	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
@@ -57,6 +57,17 @@ public:
 	   \describe_boundary
 	*/
 	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::ON_EXIT);
+	
+	HeisenbergSU2(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HeisenbergObservables(this->N_sites,params,HeisenbergSU2::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,HeisenbergSU2::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
 	///\}
 	
 	/**
@@ -68,7 +79,7 @@ public:
 	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
 	 * \describe_boundary 
 	*/
-    static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P,
+	static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 
 		
@@ -159,7 +170,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 		ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		labellist[loc].push_back(ss1.str());
 		labellist[loc].push_back(ss2.str());
-
+		
 		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
 																					 const vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > &first,
 																					 const vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > &last,
@@ -170,7 +181,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			
 			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
 			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-
+			
 			for (size_t j=0; j<first.size(); j++)
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -179,7 +190,6 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 				
 				if (range != 0)
 				{
-
 					vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > ops(range+1);
 					ops[0] = first[j];
 					for (size_t i=1; i<range; ++i)
@@ -195,14 +205,14 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
-
+		
 		// Local Terms: J⟂
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		labellist[loc].push_back(Jperp.label);
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a));
-        pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
-
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
+		
 		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
 		if (P.HAS("Jfull"))
 		{
@@ -210,55 +220,64 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = B[i].S(0);}
 			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
-			continue;
-		}
-				
-		// Nearest-neighbour terms: J
-		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next1_orbitals}, loc%Lcell);
-		param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next1_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jpara.label);
-		labellist[loc].push_back(Rpara.label);
-
-		if (loc < N_sites-1 or !static_cast<bool>(boundary))
-		{
-			for(std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for(std::size_t beta=0; beta<next1_orbitals; ++beta)
-			{
-				auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa), B[lp1].Q(beta));
-				auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].S(beta));
-                                pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
-			}
-		}
-
-		// Next-nearest-neighbour terms: J'
-		
-		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, next2_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jprime.label);
-		
-		if (loc < N_sites-2 or !static_cast<bool>(boundary))
-		{
-			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for (std::size_t beta=0; beta<next2_orbitals; ++beta)
-			{
-				auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].S(beta));
-				pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprime(alfa,beta)));
-			}
 		}
 		
-		// 3rd-neighbour terms: J''
-		
-		param2d Jprimeprime = P.fill_array2d<double>("Jprimeprime", "Jprimeprime_array", {orbitals, next3_orbitals}, loc%Lcell);
-		labellist[loc].push_back(Jprimeprime.label);
-		
-		if (loc < N_sites-3 or !static_cast<bool>(boundary))
+		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
+		if (P.HAS("Rfull"))
 		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {B[loc].Qdag(0)};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > Q_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Q_ranges[i] = B[i].Q(0);}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {Q_ranges};
+			push_full("Rfull", "Rᵢⱼ", first, last, {std::sqrt(5.)});
+		}
+		
+		if (!P.HAS("Jfull"))
+		{
+			// Nearest-neighbour terms: J
+			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next1_orbitals}, loc%Lcell);
+			param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next1_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jpara.label);
+			labellist[loc].push_back(Rpara.label);
 			
-			for(std::size_t alfa=0; alfa<orbitals; ++alfa)
-			for(std::size_t beta=0; beta<next3_orbitals; ++beta)
+			if (loc < N_sites-1 or !static_cast<bool>(boundary))
 			{
-				auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].Id(), B[lp3].S(beta));
-                pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprimeprime(alfa,beta)));
+				for(std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for(std::size_t beta=0; beta<next1_orbitals; ++beta)
+				{
+					auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa), B[lp1].Q(beta));
+					auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].S(beta));
+					pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
+				}
+			}
+			
+			// Next-nearest-neighbour terms: J'
+			param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, next2_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jprime.label);
+			
+			if (loc < N_sites-2 or !static_cast<bool>(boundary))
+			{
+				for (std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for (std::size_t beta=0; beta<next2_orbitals; ++beta)
+				{
+					auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].S(beta));
+					pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprime(alfa,beta)));
+				}
+			}
+			
+			// 3rd-neighbour terms: J''
+			param2d Jprimeprime = P.fill_array2d<double>("Jprimeprime", "Jprimeprime_array", {orbitals, next3_orbitals}, loc%Lcell);
+			labellist[loc].push_back(Jprimeprime.label);
+			
+			if (loc < N_sites-3 or !static_cast<bool>(boundary))
+			{
+				
+				for(std::size_t alfa=0; alfa<orbitals; ++alfa)
+				for(std::size_t beta=0; beta<next3_orbitals; ++beta)
+				{
+					auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa), B[lp1].Id(), B[lp2].Id(), B[lp3].S(beta));
+					pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jprimeprime(alfa,beta)));
+				}
 			}
 		}
 	}
