@@ -1124,11 +1124,13 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		Mmax_new = Vout.calc_Mmax();
 		
+		#ifdef COMPRESSOR_RESTART_FROM_RANDOM
 		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
 		{
 			lout << termcolor::red << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
 			prepSweep(H,Vin,Vout,true);
 		}
+		#endif
 	}
 	
 	// move pivot to edge at the end
