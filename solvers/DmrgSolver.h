@@ -1391,6 +1391,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		{
 			lout << termcolor::green << "saving state to: " << GlobParam.saveName << termcolor::reset << endl;
 			Vout.state.save(GlobParam.saveName,H.info());
+                        lout << termcolor::green << "saved state to: " << GlobParam.saveName << "!" << termcolor::reset << endl;
 		}
 		#endif
 	}
