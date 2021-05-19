@@ -27,7 +27,8 @@ public:
 	
 	template<typename HamiltonianThermal>
 	void beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
-	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q,
+	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q, 
+	                       double s_betainit, double betaswitch, 
 	                       string wd, string th_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
 	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
 	
@@ -233,6 +234,7 @@ template<typename HamiltonianThermal>
 void SpectralManager<Hamiltonian>::
 beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, int Lcell, int dLphys, 
                   double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
+                  double s_betainit, double betaswitch, 
                   string wd, string th_label, bool LOAD_BETA, bool SAVE_BETA,
                   DMRG::VERBOSITY::OPTION VERB)
 {
@@ -256,8 +258,8 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		DMRG::CONTROL::GLOB GlobParam;
 		if (dLphys == 2)
 		{
-			GlobParam.Minit = 100ul;
-			GlobParam.Qinit = 100ul;
+			GlobParam.Minit = 10ul;
+			GlobParam.Qinit = 10ul;
 		}
 		fDMRG.GlobParam = GlobParam;
 		fDMRG.GlobParam.CALC_S_ON_EXIT = false;
@@ -319,6 +321,12 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //			}
 		}
 		
+		cout << termcolor::yellow
+		     << "avg(th.state, Htherm.SdagS(0,1), th.state)=" << avg(th.state, Htherm.SdagS(0,1), th.state) 
+		     << ", avg(th.state, Htherm.SdagS(0,0,0,1), th.state)=" << avg(th.state, Htherm.SdagS(0,0,0,1), th.state) 
+		     << termcolor::reset
+		     << endl;
+		
 		PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
 		PhiT.eps_svd = tol_compr_beta;
 		PhiT.min_Nsv = 0ul;
@@ -337,7 +345,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		betavals.push_back(0.01);
 		betasteps.push_back(0.01);
 		vector<double> lnZvec;
-		double s_betainit = log(Hprop.locBasis(0).size());
+//		double s_betainit = log((dLphys==2)?Hprop.locBasis(0).size():Hprop.locBasis(0).size()/2);
 		
 		for (int i=1; i<20; ++i)
 		{
@@ -423,7 +431,14 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			double avgH_sq = pow(avg_H,2);
 			double c = isReal(beta*beta*(avg_Hsq-avgH_sq))/L;
 			
-			double chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
+			double chi = std::nan("0");
+			#ifdef USING_SU2
+			chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
+			#else
+			chi =  0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SP,0,1.,dLphys), Hprop.Scomptot(SM,0,1.,dLphys), PhiT))/L;
+			chi += 0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SM,0,1.,dLphys), Hprop.Scomptot(SP,0,1.,dLphys), PhiT))/L;
+			chi +=     isReal(beta*avg(PhiT, Hprop.Scomptot(SZ,0,1.,dLphys), Hprop.Scomptot(SZ,0,1.,dLphys), PhiT))/L;
+			#endif
 			
 //			double chi_ = beta*(2.*avg(PhiT,Hchi,PhiT)/L+0.75);
 			

@@ -52,6 +52,8 @@ public:
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Stot (size_t locy1=0, double factor=1., int dLphys=1) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdagtot (size_t locy1=0, double factor=std::sqrt(3.), int dLphys=1) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomptot (SPINOP_LABEL Sa, size_t locy1=0, double factor=1., int dLphys=1) const;
 	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Q (size_t locx, size_t locy=0, double factor=1.) const;
@@ -325,6 +327,25 @@ Sz (size_t locx, size_t locy) const
 
 template<typename Symmetry>
 template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(B.size());
+	vector<double> factors(B.size());
+	for (int l=0; l<B.size(); ++l)
+	{
+		Ops[l] = B[l].Scomp(Sa,locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<B.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, (Sa==SZ)?PROP::HERMITIAN:PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
 Stot (size_t locy, double factor, int dLphys) const
 {
@@ -367,10 +388,10 @@ typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmet
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
-	 {
-		 return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
-		 // return make_corr("T†", "T", locx1, locx2, locy1, locy2, B[locx1].Tdag(locy1), B[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
-	 }
+	{
+		return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
+		// return make_corr("T†", "T", locx1, locx2, locy1, locy2, B[locx1].Tdag(locy1), B[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	}
 	else
 	{
 		vector<Mpo<Symmetry> > out(3);

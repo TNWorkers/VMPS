@@ -1,6 +1,10 @@
 #ifndef STRAWBERRY_DMRGEXTERNAL_WITH_Q
 #define STRAWBERRY_DMRGEXTERNAL_WITH_Q
 
+#ifndef OXV_EXACT_INIT_M
+#define OXV_EXACT_INIT_M 100
+#endif
+
 #include "Stopwatch.h" // from HELPERS
 
 #include "Mps.h"
@@ -656,7 +660,8 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
+                int max_halfsweeps = 200, int min_halfsweeps = 1)
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
@@ -687,6 +692,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	// Irrelevant for infinite boundary conditions.
 	for (size_t l=0; l<L; ++l)
 	{
+		//cout << "OxV_exact, l=" << l << endl;
 		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l),
@@ -715,7 +721,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),100ul), tol_compr, 200);
+		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), tol_compr, max_halfsweeps, min_halfsweeps);
 		Vtmp.max_Nsv = Vtmp.calc_Mmax();
 		
 //		lout << "Vtmp.calc_Mmax()=" << Vtmp.calc_Mmax() << endl;

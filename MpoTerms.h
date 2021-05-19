@@ -3013,6 +3013,10 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
         }
     }
     std::stringstream new_name;
+    if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
+    {
+        new_name << "[";
+    }
     std::size_t curr_prec = std::cout.precision();
     if(std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
@@ -3020,7 +3024,7 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
     }
     if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
     {
-        new_name << " + " << setprecision(3) << offset << setprecision(curr_prec);
+        new_name << " + " << setprecision(3) << offset << setprecision(curr_prec) << "]";
     }
     if(new_name.str().length() < MAX_SUMPROD_STRINGLENGTH)
     {

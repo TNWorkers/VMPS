@@ -278,6 +278,7 @@ int main (int argc, char* argv[])
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
 //	bool CANONICAL = args.get<bool>("CANONICAL",false);
 	bool CALC_C = args.get<bool>("CALC_C",false);
+	bool CALC_C_HME = args.get<bool>("CALC_C_HME",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",50.);
@@ -1216,8 +1217,17 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					if (!CALC_C_HME)
+					{
+						c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+					                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					}
+					else
+					{
+						auto HmE = H;
+						HmE.scale(1.,-E);
+						c = beta*beta*avg(PsiTprev,HmE,PsiTprev,2ul)/L;
+					}
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
