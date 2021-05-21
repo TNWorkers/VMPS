@@ -483,14 +483,14 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	
 	if (Vin.calc_Dmax() <= 4)
 	{
-		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1);
 	}
 	else
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
-		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
+		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 100, 10000, 1e-4);
 	}
 	
 ////	double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
@@ -721,7 +721,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), tol_compr, max_halfsweeps, min_halfsweeps);
+		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), 100, 10000, tol_compr, max_halfsweeps, min_halfsweeps);
 		Vtmp.max_Nsv = Vtmp.calc_Mmax();
 		
 //		lout << "Vtmp.calc_Mmax()=" << Vtmp.calc_Mmax() << endl;
@@ -793,10 +793,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, 
-                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
+                int max_halfsweeps = 200, int min_halfsweeps = 1)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY);
+	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps);
 	Vinout = Vtmp;
 }
 
