@@ -754,13 +754,16 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 				stateOptimize1(Vin,Vout,Ares);
 //				cout << "end stateOptimize1" << endl;
 				
-				if (Vout.squaredNorm() < 1e-7)
+				Stopwatch<> OheadTimer;
+				double Vsqnorm = Vout.squaredNorm();
+				t_ohead += OheadTimer.time();
+				if (Vsqnorm < 1e-7)
 				{
 					if (CHOSEN_VERBOSITY > 0)
 					{
 						lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
 					}
-					Vout /= sqrt(Vout.squaredNorm());
+					Vout /= sqrt(Vsqnorm);
 				}
 				
 				PivotVector<Symmetry,Scalar> Asum;
@@ -1066,6 +1069,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				prodOptimize2(H,Vin,Vout);
+				
 			}
 			else
 			{
@@ -1178,10 +1182,11 @@ prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	precalc_blockStructure (Heff[pivot].L, Vout.A[pivot], Heff[pivot].W, Vin.A[pivot], Heff[pivot].R, 
 	                        H.locBasis(pivot), H.opBasis(pivot), 
 	                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
-	t_ohead += OheadTimer.time();
 	
 	PivotVector<Symmetry,Scalar> Ain(Vin.A[pivot]);
 	Aout = PivotVector<Symmetry,Scalar>(Vout.A[pivot]);
+	t_ohead += OheadTimer.time();
+	
 	Stopwatch<> OptTimer;
 	OxV(Heff[pivot], Ain, Aout);
 	t_opt += OptTimer.time();
@@ -1192,25 +1197,27 @@ template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
-	Stopwatch<> Chronos;
-	
 	PivotVector<Symmetry,Scalar> Aout;
 	prodOptimize1(H,Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
 	
 	// safeguard against sudden norm loss:
-	if (Vout.squaredNorm() < 1e-7)
+	Stopwatch<> OheadTimer;
+	double Vsqnorm = Vout.squaredNorm();
+	t_ohead += OheadTimer.time();
+	if (Vsqnorm < 1e-7)
 	{
 		if (CHOSEN_VERBOSITY > 0)
 		{
 			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
 		}
-		Vout /= sqrt(Vout.squaredNorm());
+		Vout /= sqrt(Vsqnorm);
 	}
 	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
 	t_sweep += SweepTimer.time();
+	
 	pivot = Vout.get_pivot();
 	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
 }
@@ -1241,6 +1248,7 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	t_ohead += OheadTimer.time();
+	
 	Stopwatch<> OptTimer;
 	OxV(Heff2, ApairIn, ApairOut);
 	t_opt += OptTimer.time();

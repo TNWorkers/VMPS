@@ -427,7 +427,7 @@ int main (int argc, char* argv[])
 	}
 	
 	Psi1.save(make_string(LOAD,"_ROT=",ROT,"_div=",div));
-	lout << termcolor::green << "rotated wavefunction saved to: " << make_string(LOAD,"_ROT=",ROT,"_div=",div) << endl;
+	lout << termcolor::green << "rotated wavefunction saved to: " << make_string(LOAD,"_ROT=",ROT,"_div=",div) << termcolor::reset << endl;
 	lout << Psi1.info() << endl;
 	
 	lout << setprecision(16) << "<PHP>=" << avg(Psi1, H, Psi1) << ", E0=" << avg(g.state, H, g.state) << ", dot=" << g.state.dot(Psi1) << setprecision(6) << endl;
