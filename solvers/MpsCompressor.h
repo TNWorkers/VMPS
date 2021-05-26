@@ -1074,7 +1074,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		cout << termcolor::underline;
 		lout << tol_input;
 		cout << termcolor::reset;
-		lout << endl;
+		lout << endl << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -1132,7 +1132,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
                         t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
                         lout << Vout.info() << endl;
-                        
 		}
 		
 		bool RESIZED = false;
@@ -1158,18 +1157,14 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
                 #ifdef USE_HDF5_STORAGE
 		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
 		{
-			cout << termcolor::green;
-                        lout << "saving state to: " << saveName;
-                        cout << termcolor::reset;
-                        lout << endl;
 			Vout.save(saveName,H.info());
                         cout << termcolor::green;
-                        lout << "saved state to: " << saveName << "!";
+                        lout << "Saved state to: " << saveName;
                         cout << termcolor::reset;
                         lout << endl;
 		}
 		#endif
-                
+
 		#ifdef COMPRESSOR_RESTART_FROM_RANDOM
 		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
 		{
@@ -1180,6 +1175,10 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			prepSweep(H,Vin,Vout,true);
 		}
 		#endif
+                if (CHOSEN_VERBOSITY>=2)
+		{
+                        lout << endl;
+                }
 	}
 	
 	// move pivot to edge at the end

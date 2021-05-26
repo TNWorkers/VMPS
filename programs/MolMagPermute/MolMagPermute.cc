@@ -185,35 +185,6 @@ int main (int argc, char* argv[])
 	
 	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
 
-        size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
-        
-        string ROT = args.get<string>("rot","h");
-
-        string base;
-	base = make_string("L=",L,"_D=",D);
-	#ifdef USING_SU2
-	{
-		base += make_string("_S=",S);
-	}
-	#elif defined(#ifdef USING_U1)
-	{
-		base += make_string("_M=",M);
-	}
-	#endif
-	if (Jprime != 0.)
-	{
-		base += make_string("_Jprime=",Jprime);
-	}
-	if (MOL=="C60" and VARIANT==0)
-	{
-		base += make_string("_MOL=","C60CMK");
-	}
-	else
-	{
-		base += make_string("_MOL=",MOL);
-	}
-
-        lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
 	// overwrite beta params in case of LOAD
 	if (LOAD!="")
 	{
@@ -258,13 +229,6 @@ int main (int argc, char* argv[])
 			}
 		}
 	}
-	
-	lout << args.info() << endl;
-	#ifdef _OPENMP
-	lout << "threads=" << omp_get_max_threads() << endl;
-	#else
-	lout << "not parallelized" << endl;
-	#endif
 	
 	ArrayXXd hopping;
 	if (MOL=="RING")
@@ -315,30 +279,43 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	// string base;
-	// base = make_string("L=",L,"_D=",D);
-	// #ifdef USING_SU2
-	// {
-	// 	base += make_string("_S=",S);
-	// }
-	// #elif defined(#ifdef USING_U1)
-	// {
-	// 	base += make_string("_M=",M);
-	// }
-	// #endif
-	// if (Jprime != 0.)
-	// {
-	// 	base += make_string("_Jprime=",Jprime);
-	// }
-	// if (MOL=="C60" and VARIANT==0)
-	// {
-	// 	base += make_string("_MOL=","C60CMK");
-	// }
-	// else
-	// {
-	// 	base += make_string("_MOL=",MOL);
-	// }
-	
+        size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
+        
+        string ROT = args.get<string>("rot","h");
+
+        string base;
+	base = make_string("L=",L,"_D=",D);
+	#ifdef USING_SU2
+	{
+		base += make_string("_S=",S);
+	}
+	#elif defined(#ifdef USING_U1)
+	{
+		base += make_string("_M=",M);
+	}
+	#endif
+	if (Jprime != 0.)
+	{
+		base += make_string("_Jprime=",Jprime);
+	}
+	if (MOL=="C60" and VARIANT==0)
+	{
+		base += make_string("_MOL=","C60CMK");
+	}
+	else
+	{
+		base += make_string("_MOL=",MOL);
+	}
+
+        lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
+
+	lout << args.info() << endl;
+	#ifdef _OPENMP
+	lout << "threads=" << omp_get_max_threads() << endl;
+	#else
+	lout << "not parallelized" << endl;
+	#endif
+
 	vector<Param> params;
 	qarray<MODEL::Symmetry::Nq> Q;
 	if constexpr (MODEL::FAMILY == HUBBARD)
