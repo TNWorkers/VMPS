@@ -91,9 +91,9 @@ public:
 	 * \param[in] HdagH : set this if Hdag*H is available as an MPO
 	 */
 	template<typename MpOperator>
-	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Minit, size_t Mincr=100, size_t Mlimit=10000, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1,
-	                   const MpOperator * HdagH = NULL);
+	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
+                           qarray<Symmetry::Nq> Qtot_input, size_t Minit, size_t Mincr=100, size_t Mlimit=10000, double tol=1e-4,
+                           size_t max_halfsweeps=100, size_t min_halfsweeps=1, std::size_t savePeriod = 0, std::string saveName="backup", const MpOperator * HdagH = NULL);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -959,8 +959,15 @@ template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input, 
               size_t Minit, size_t Mincr, size_t Mlimit, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps,
-              const MpOperator * HdagH)
+              std::size_t savePeriod, std::string saveName, const MpOperator * HdagH)
 {
+        if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << endl << termcolor::colorize << termcolor::bold
+		 << "———————————————————————————————————————————prodCompress: |Φ> = H|Ψ>————————————————————————————————————————————"
+		 <<  termcolor::reset << endl;
+	}
+        
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	tol = tol_input;
@@ -1042,7 +1049,32 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << Chronos.info("preparation prodCompress") << endl;
+                lout << Chronos.info("• preparation prodCompress") << endl;
+		size_t standard_precision = cout.precision();
+                lout <<                          "• initial state         : " << Vout.info() << endl;
+                lout << "• Bond dim. increase by ";
+		cout << termcolor::underline;
+		lout << Mincr;
+		cout << termcolor::reset;
+		lout << " every ";
+		cout << termcolor::underline;
+		lout << "4";
+		cout << termcolor::reset;
+		lout << " half-sweeps" << endl;
+                lout << "• make between ";
+		cout << termcolor::underline;
+		lout << min_halfsweeps;
+		cout << termcolor::reset;
+		lout << " and ";
+		cout << termcolor::underline;
+		lout << max_halfsweeps;
+		cout << termcolor::reset;
+		lout << " half-sweep iterations" << endl;
+                lout << "• convergence tolerance: ";
+		cout << termcolor::underline;
+		lout << tol_input;
+		cout << termcolor::reset;
+		lout << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -1087,12 +1119,20 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << " distance^2=";
-			if (sqdist <= tol) {lout << termcolor::green;}
-			else               {lout << termcolor::yellow;}
-			lout << sqdist << termcolor::reset << ", ";
-			t_tot = FullSweepTimer.time();
+                        cout << termcolor::underline;
+                        lout << "half-sweeps=" << N_halfsweeps;
+                        cout << termcolor::reset;
+                        size_t standard_precision = cout.precision();
+                        lout << ", distance^2=";
+                        if (sqdist <= tol) {cout << termcolor::green;}
+			else               {cout << termcolor::yellow;}
+			lout << sqdist;
+                        cout << termcolor::reset;
+                        lout << endl;
+                        t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
+                        lout << Vout.info() << endl;
+                        
 		}
 		
 		bool RESIZED = false;
@@ -1114,11 +1154,29 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
-		
+
+                #ifdef USE_HDF5_STORAGE
+		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
+		{
+			cout << termcolor::green;
+                        lout << "saving state to: " << saveName;
+                        cout << termcolor::reset;
+                        lout << endl;
+			Vout.save(saveName,H.info());
+                        cout << termcolor::green;
+                        lout << "saved state to: " << saveName << "!";
+                        cout << termcolor::reset;
+                        lout << endl;
+		}
+		#endif
+                
 		#ifdef COMPRESSOR_RESTART_FROM_RANDOM
 		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
 		{
-			lout << termcolor::red << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
+			cout << termcolor::red;
+                        lout << "Warning: Could not reach tolerance, restarting from random!";
+                        cout << termcolor::reset;
+                        lout << endl;
 			prepSweep(H,Vin,Vout,true);
 		}
 		#endif

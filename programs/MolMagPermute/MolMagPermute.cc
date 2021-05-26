@@ -184,7 +184,36 @@ int main (int argc, char* argv[])
 	if (wd.back() != '/') {wd += "/";}
 	
 	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
-	
+
+        size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
+        
+        string ROT = args.get<string>("rot","h");
+
+        string base;
+	base = make_string("L=",L,"_D=",D);
+	#ifdef USING_SU2
+	{
+		base += make_string("_S=",S);
+	}
+	#elif defined(#ifdef USING_U1)
+	{
+		base += make_string("_M=",M);
+	}
+	#endif
+	if (Jprime != 0.)
+	{
+		base += make_string("_Jprime=",Jprime);
+	}
+	if (MOL=="C60" and VARIANT==0)
+	{
+		base += make_string("_MOL=","C60CMK");
+	}
+	else
+	{
+		base += make_string("_MOL=",MOL);
+	}
+
+        lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
 	// overwrite beta params in case of LOAD
 	if (LOAD!="")
 	{
@@ -286,29 +315,29 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	string base;
-	base = make_string("L=",L,"_D=",D);
-	#ifdef USING_SU2
-	{
-		base += make_string("_S=",S);
-	}
-	#elif defined(#ifdef USING_U1)
-	{
-		base += make_string("_M=",M);
-	}
-	#endif
-	if (Jprime != 0.)
-	{
-		base += make_string("_Jprime=",Jprime);
-	}
-	if (MOL=="C60" and VARIANT==0)
-	{
-		base += make_string("_MOL=","C60CMK");
-	}
-	else
-	{
-		base += make_string("_MOL=",MOL);
-	}
+	// string base;
+	// base = make_string("L=",L,"_D=",D);
+	// #ifdef USING_SU2
+	// {
+	// 	base += make_string("_S=",S);
+	// }
+	// #elif defined(#ifdef USING_U1)
+	// {
+	// 	base += make_string("_M=",M);
+	// }
+	// #endif
+	// if (Jprime != 0.)
+	// {
+	// 	base += make_string("_Jprime=",Jprime);
+	// }
+	// if (MOL=="C60" and VARIANT==0)
+	// {
+	// 	base += make_string("_MOL=","C60CMK");
+	// }
+	// else
+	// {
+	// 	base += make_string("_MOL=",MOL);
+	// }
 	
 	vector<Param> params;
 	qarray<MODEL::Symmetry::Nq> Q;
@@ -343,13 +372,12 @@ int main (int argc, char* argv[])
 	//----------- Code to perform the rotation -----------
 	//----------------------------------------------------
 	
-	string ROT = args.get<string>("rot","h");
 	double tol_compr = args.get<double>("tol_compr",(MOL=="SOD20")?1e-7:1e-4);
 	int max_halfsweeps = args.get<int>("max_halfsweeps",24);
 	int min_halfsweeps = args.get<int>("min_halfsweeps",1);
 	int div = args.get<int>("div",3);
-	size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
-	size_t Mincr = args.get<size_t>("Mincr",250ul);
+
+	size_t Mincr = args.get<size_t>("Mincr",400ul);
 	
 	Eigenstate<MODEL::StateXd> g;
 	g.state.load(LOAD,g.energy);
@@ -357,7 +385,7 @@ int main (int argc, char* argv[])
 	else if (g.state.get_pivot() == L-2) g.state.sweep(L-1,DMRG::BROOM::QR);
 	lout << "LOADED: " << g.state.info() << endl;
 	
-	Permutation<60> P(make_string(MOL,"_",ROT,"_90.dat"));
+	Permutation P(make_string(MOL,"_",ROT,"_90.dat"));
 	std::vector<Transposition> T = P.transpositions();
 	MODEL::Operator Ptot;
 	int i=0;
@@ -417,12 +445,12 @@ int main (int argc, char* argv[])
 	
 	//OxV_exact(Pop[0], g.state, Psi1, tol_compr, DMRG::VERBOSITY::HALFSWEEPWISE, max_halfsweeps, min_halfsweeps);
 	MpsCompressor<MODEL::Symmetry,double,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-	Compadre.prodCompress(Pop[0], PopDag[0], g.state, Psi1, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, &PopDagP[0]);
+	Compadre.prodCompress(Pop[0], PopDag[0], g.state, Psi1, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT), &PopDagP[0]);
 	for (int k=1; k<Nchunks; ++k)
 	{
 //		OxV_exact(Pop[k], Psi1, Psi2, tol_compr, DMRG::VERBOSITY::HALFSWEEPWISE, max_halfsweeps, min_halfsweeps);
 		MpsCompressor<MODEL::Symmetry,double,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, &PopDagP[k]);
+		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1ul, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT),  &PopDagP[k]);
 		Psi1 = Psi2;
 	}
 	
