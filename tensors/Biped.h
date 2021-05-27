@@ -1019,43 +1019,46 @@ formatted () const
 	return ss.str();
 }
 
-template<typename Symmetry, typename MatrixType_>
-std::string Biped<Symmetry,MatrixType_>::
-print ( const bool SHOW_MATRICES, const std::size_t precision ) const
-{
-#ifdef HELPERS_IO_TABLE
-	std::stringstream out_string;
+template <typename Symmetry, typename MatrixType_>
+std::string
+Biped<Symmetry, MatrixType_>::print(const bool SHOW_MATRICES,
+                                    const std::size_t precision) const {
+#ifdef TOOLS_IO_TABLE
+  std::stringstream out_string;
 
-	TextTable t( '-', '|', '+' );
-	t.add("ν");
-	t.add("Q_ν");
-	t.add("A_ν");
-	t.endOfRow();
-	for (std::size_t nu=0; nu<size(); nu++)
-	{
-		std::stringstream ss,tt,uu;
-		ss << nu;
-		tt << "(" << Sym::format<Symmetry>(in[nu]) << "," << Sym::format<Symmetry>(out[nu]) << ")";
-		uu << block[nu].rows() << "x" << block[nu].cols();
-		t.add(ss.str());
-		t.add(tt.str());
-		t.add(uu.str());
-		t.endOfRow();
-	}
-	t.setAlignment( 0, TextTable::Alignment::RIGHT );
-	out_string << t;
+  TextTable t('-', '|', '+');
+  t.add("ν");
+  t.add("Q_ν");
+  t.add("A_ν");
+  t.endOfRow();
+  for (std::size_t nu = 0; nu < size(); nu++) {
+    std::stringstream ss, tt, uu;
+    ss << nu;
+    tt << "(" << Sym::format<Symmetry>(in[nu]) << ","
+       << Sym::format<Symmetry>(out[nu]) << ")";
+    uu << block[nu].rows() << "x" << block[nu].cols();
+    t.add(ss.str());
+    t.add(tt.str());
+    t.add(uu.str());
+    t.endOfRow();
+  }
+  t.setAlignment(0, TextTable::Alignment::RIGHT);
+  out_string << t;
 
-	if (SHOW_MATRICES)
-	{
-		out_string << termcolor::blue << termcolor::underline << "A-tensors:" << termcolor::reset << std::endl;
-		for (std::size_t nu=0; nu<dim; nu++)
-		{
-			out_string << termcolor::blue << "ν=" << nu << termcolor::reset << std::endl << std::setprecision(precision) << std::fixed << termcolor::green << block[nu] << termcolor::reset << std::endl;
-		}
-	}
-	return out_string.str();
+  if (SHOW_MATRICES) {
+    out_string << termcolor::blue << termcolor::underline
+               << "A-tensors:" << termcolor::reset << std::endl;
+    for (std::size_t nu = 0; nu < dim; nu++) {
+      out_string << termcolor::blue << "ν=" << nu << termcolor::reset
+                 << std::endl
+                 << std::setprecision(precision) << std::fixed
+                 << termcolor::green << block[nu] << termcolor::reset
+                 << std::endl;
+    }
+  }
+  return out_string.str();
 #else
-	return "Can't print. Table Library is missing.";
+  return "Can't print. Table Library is missing.";
 #endif
 }
 

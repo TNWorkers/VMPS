@@ -3883,7 +3883,8 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 	//Decompose the two-site Atensor Apair
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Cdumb;
 	double trunc, Sdumb;
-	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], Cdumb, false, trunc, Sdumb, this->eps_svd, this->min_Nsv, this->max_Nsv);
+        map<qarray<Nq>,ArrayXd> SV_dumb;
+	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], Cdumb, false, trunc, Sdumb, SV_dumb, this->eps_svd, this->min_Nsv, this->max_Nsv);
 	truncWeight(l) = trunc;
 	update_outbase(l);
 	update_inbase(l+1);
