@@ -3480,18 +3480,22 @@ double Mps<Symmetry,Scalar>::
 squaredNorm() const
 {
 	double res = 0.;
-//	// exploit canonical form:
-//	if (this->pivot != -1)
-//	{
-//		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]);
-//		for (size_t s=1; s<qloc[this->pivot].size(); s++)
-//		{
-//			out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]);
-//		}
-//		res = out.trace();
-//	}
-//	// use dot product otherwise:
-//	else
+	// exploit canonical form:
+	if (this->pivot != -1)
+	{
+		/* Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]); */
+		for (size_t s=0; s<qloc[this->pivot].size(); s++)
+		{
+                        for (size_t q=0; q<A[this->pivot][s].dim; ++q)
+                                {
+                                        res += (A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace() * Symmetry::coeff_dot(A[this->pivot][s].out[q]);
+			/* out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]); */
+                                }
+		}
+		/* res = out.trace(); */
+	}
+	// use dot product otherwise:
+	else
 	{
 		res = isReal(dot(*this));
 	}

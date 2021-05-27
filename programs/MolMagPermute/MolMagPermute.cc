@@ -9,8 +9,6 @@
 #define PROD_COMPRESS_M_INCREMENT 200
 #define USE_OLD_COMPRESSION
 #define OXV_EXACT_INIT_M 3000
-#define STATE_COMPRESS_MLIMIT 3000
-#define PROD_COMPRESS_MLIMIT 3000
 
 #include <iostream>
 #include <fstream>
@@ -137,7 +135,7 @@ int main (int argc, char* argv[])
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
 	bool PRINT_FREE = args.get<bool>("PRINT_FREE",false);
 	if constexpr (MODEL::FAMILY == HUBBARD) PRINT_FREE = true;
-	string MOL = args.get<string>("MOL","SOD20");
+	string MOL = args.get<string>("MOL","SOD60");
 	int VARIANT = args.get<int>("VARIANT",0); // to try different enumeration variants
 	map<string,int> Lmap = make_Lmap();
 	map<string,string> Vmap = make_vertexMap();
@@ -186,7 +184,7 @@ int main (int argc, char* argv[])
 	if (wd.back() != '/') {wd += "/";}
 	
 	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
-	
+
 	// overwrite beta params in case of LOAD
 	if (LOAD!="")
 	{
@@ -222,6 +220,11 @@ int main (int argc, char* argv[])
 				{
 					Mlimit_default = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: Mlimit_default=" << Mlimit_default << endl;
+				}
+				if (parsed_vals[j] == "MOL")
+				{
+					MOL = parsed_vals[j+1];
+					lout << "extracted: MOL=" << MOL << endl;
 				}
 			}
 		}
@@ -276,7 +279,11 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	string base;
+        size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
+        
+        string ROT = args.get<string>("rot","h");
+
+        string base;
 	base = make_string("L=",L,"_D=",D);
 	#ifdef USING_SU2
 	{
@@ -299,7 +306,16 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_MOL=",MOL);
 	}
-	
+
+        lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
+
+	lout << args.info() << endl;
+	#ifdef _OPENMP
+	lout << "threads=" << omp_get_max_threads() << endl;
+	#else
+	lout << "not parallelized" << endl;
+	#endif
+
 	vector<Param> params;
 	qarray<MODEL::Symmetry::Nq> Q;
 	if constexpr (MODEL::FAMILY == HUBBARD)
@@ -329,32 +345,24 @@ int main (int argc, char* argv[])
 	MODEL H(size_t(L),params);
 	lout << H.info() << endl;
 	
+	//----------------------------------------------------
+	//----------- Code to perform the rotation -----------
+	//----------------------------------------------------
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	string ROT = args.get<string>("rot","h");
 	double tol_compr = args.get<double>("tol_compr",(MOL=="SOD20")?1e-7:1e-4);
 	int max_halfsweeps = args.get<int>("max_halfsweeps",24);
 	int min_halfsweeps = args.get<int>("min_halfsweeps",1);
 	int div = args.get<int>("div",3);
+
+	size_t Mincr = args.get<size_t>("Mincr",400ul);
 	
 	Eigenstate<MODEL::StateXd> g;
 	g.state.load(LOAD,g.energy);
+	if (g.state.get_pivot() == 1) g.state.sweep(0,DMRG::BROOM::QR);
+	else if (g.state.get_pivot() == L-2) g.state.sweep(L-1,DMRG::BROOM::QR);
 	lout << "LOADED: " << g.state.info() << endl;
 	
-	Permutation<60> P(make_string(MOL,"_",ROT,"_90.dat"));
+	Permutation P(make_string(MOL,"_",ROT,"_90.dat"));
 	std::vector<Transposition> T = P.transpositions();
 	MODEL::Operator Ptot;
 	int i=0;
@@ -414,16 +422,18 @@ int main (int argc, char* argv[])
 	
 	//OxV_exact(Pop[0], g.state, Psi1, tol_compr, DMRG::VERBOSITY::HALFSWEEPWISE, max_halfsweeps, min_halfsweeps);
 	MpsCompressor<MODEL::Symmetry,double,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-	Compadre.prodCompress(Pop[0], PopDag[0], g.state, Psi1, {1}, 3000, tol_compr, max_halfsweeps, min_halfsweeps, &PopDagP[0]);
+	Compadre.prodCompress(Pop[0], PopDag[0], g.state, Psi1, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT), &PopDagP[0]);
 	for (int k=1; k<Nchunks; ++k)
 	{
 //		OxV_exact(Pop[k], Psi1, Psi2, tol_compr, DMRG::VERBOSITY::HALFSWEEPWISE, max_halfsweeps, min_halfsweeps);
 		MpsCompressor<MODEL::Symmetry,double,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, {1}, 3000, tol_compr, max_halfsweeps, min_halfsweeps, &PopDagP[k]);
+		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1ul, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT),  &PopDagP[k]);
 		Psi1 = Psi2;
 	}
 	
 	Psi1.save(make_string(LOAD,"_ROT=",ROT,"_div=",div));
+	lout << termcolor::green << "rotated wavefunction saved to: " << make_string(LOAD,"_ROT=",ROT,"_div=",div) << termcolor::reset << endl;
+	lout << Psi1.info() << endl;
 	
 	lout << setprecision(16) << "<PHP>=" << avg(Psi1, H, Psi1) << ", E0=" << avg(g.state, H, g.state) << ", dot=" << g.state.dot(Psi1) << setprecision(6) << endl;
 }

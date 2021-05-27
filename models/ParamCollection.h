@@ -1523,10 +1523,10 @@ ArrayXXd hopping_spinChain (int L, double JA, double JB, double JpA, double JpB,
 {
 	ArrayXXd res_tmp(L,L);
 	res_tmp.setZero();
-	res_tmp.matrix().diagonal<1> ()(seq(0,last,2)).setConstant(JA);
-	res_tmp.matrix().diagonal<1> ()(seq(1,last,2)).setConstant(JB);
-	res_tmp.matrix().diagonal<2> ()(seq(0,last,2)).setConstant(JpA);
-	res_tmp.matrix().diagonal<2> ()(seq(1,last,2)).setConstant(JpB);
+	res_tmp.matrix().diagonal<1> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JA);
+	res_tmp.matrix().diagonal<1> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JB);
+	res_tmp.matrix().diagonal<2> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JpA);
+	res_tmp.matrix().diagonal<2> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JpB);
 	res_tmp += res_tmp.transpose().eval();
 	return res_tmp;
 }

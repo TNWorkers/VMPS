@@ -573,7 +573,7 @@ apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK)
 		OxPhiTt[z].resize(Lcell);
 		for (int i=0; i<Lcell; ++i)
 		{
-			OxV_exact(O[z][L/2+i], PhiTt, OxPhiTt[z][i], 2., DMRG::VERBOSITY::ON_EXIT);
+			OxV_exact(O[z][L/2+i], PhiTt, OxPhiTt[z][i], 2., DMRG::VERBOSITY::ON_EXIT, 200, 1);
 		}
 	}
 }

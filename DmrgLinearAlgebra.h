@@ -483,14 +483,14 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	
 	if (Vin.calc_Dmax() <= 4)
 	{
-		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1);
 	}
 	else
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
-		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
+		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 100, 10000, 1e-4);
 	}
 	
 ////	double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
@@ -721,7 +721,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), tol_compr, max_halfsweeps, min_halfsweeps);
+		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), 100, 10000, tol_compr, max_halfsweeps, min_halfsweeps);
 		Vtmp.max_Nsv = Vtmp.calc_Mmax();
 		
 //		lout << "Vtmp.calc_Mmax()=" << Vtmp.calc_Mmax() << endl;
@@ -793,10 +793,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, 
-                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
+                int max_halfsweeps = 200, int min_halfsweeps = 1)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY);
+	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps);
 	Vinout = Vtmp;
 }
 
@@ -853,22 +854,30 @@ Mpo<Symmetry,Scalar> prod (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Sc
 }
 
 template<typename Symmetry, typename MpsScalar=double, typename MpoScalar=double>
-void OvecxV(const std::vector<Mpo<Symmetry,MpoScalar>>& Os, Mps<Symmetry,MpsScalar>& v_in, double tol_compr=1e-8, std::size_t max_halfsweeps=24ul, std::size_t min_halfsweeps=1ul)
+void OvecxV(const std::vector<Mpo<Symmetry,MpoScalar>>& Os, Mps<Symmetry,MpsScalar>& v_in, std::size_t Minit_in=0ul, std::size_t Mincr=100ul, std::size_t Mlimit=10000ul, double tol_compr=1e-5, std::size_t max_halfsweeps=24ul, std::size_t min_halfsweeps=1ul)
 {
     assert(Os.size() > 0);
     Mps<Symmetry,MpsScalar> v_other = v_in;
-
-    assert(Os[0].IS_UNITARY());
+    std::size_t Minit = Minit_in;
+    if(Minit_in == 0ul)
+    {
+        Minit = v_in.calc_Mmax();
+    }
+    assert(Os[0].IS_UNITARY() and "Unitarity is needed for this method");
     MpsCompressor<Symmetry,MpsScalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-    Compadre.prodCompress(Os[0], Os[0], v_in, v_other, Symmetry::qvacuum(), 3000ul, tol_compr, max_halfsweeps, min_halfsweeps, &Os[0]);
+    Compadre.prodCompress(Os[0], Os[0], v_in, v_other, Symmetry::qvacuum(), Minit, Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps);
     for (std::size_t k=1; k<Os.size(); ++k)
     {
         Mps<Symmetry,MpsScalar> &v_old = (k % 2 == 1 ? v_other : v_in);
         Mps<Symmetry,MpsScalar> &v_new = (k % 2 == 1 ? v_in : v_other);
         
-        assert(Os[k].IS_UNITARY());
+        if(Minit_in == 0ul)
+        {
+            Minit = v_old.calc_Mmax();
+        }
+        assert(Os[k].IS_UNITARY() and "Unitarity is needed for this method");
         MpsCompressor<Symmetry,MpsScalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-        Compadre.prodCompress(Os[k], Os[k], v_old, v_new, Symmetry::qvacuum(), 3000ul, tol_compr, max_halfsweeps, min_halfsweeps, &Os[k]);
+        Compadre.prodCompress(Os[k], Os[k], v_old, v_new, Symmetry::qvacuum(), Minit, Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps);
     }
     if(Os.size() % 2 == 1)
     {
