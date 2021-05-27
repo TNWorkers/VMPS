@@ -852,4 +852,28 @@ Mpo<Symmetry,Scalar> prod (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Sc
 	return Prod_asMpo;
 }
 
+template<typename Symmetry, typename MpsScalar=double, typename MpoScalar=double>
+void OvecxV(const std::vector<Mpo<Symmetry,MpoScalar>>& Os, Mps<Symmetry,MpsScalar>& v_in, double tol_compr=1e-8, std::size_t max_halfsweeps=24ul, std::size_t min_halfsweeps=1ul)
+{
+    assert(Os.size() > 0);
+    Mps<Symmetry,MpsScalar> v_other = v_in;
+
+    assert(Os[0].IS_UNITARY());
+    MpsCompressor<Symmetry,MpsScalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+    Compadre.prodCompress(Os[0], Os[0], v_in, v_other, Symmetry::qvacuum(), 3000ul, tol_compr, max_halfsweeps, min_halfsweeps, &Os[0]);
+    for (std::size_t k=1; k<Os.size(); ++k)
+    {
+        Mps<Symmetry,MpsScalar> &v_old = (k % 2 == 1 ? v_other : v_in);
+        Mps<Symmetry,MpsScalar> &v_new = (k % 2 == 1 ? v_in : v_other);
+        
+        assert(Os[k].IS_UNITARY());
+        MpsCompressor<Symmetry,MpsScalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+        Compadre.prodCompress(Os[k], Os[k], v_old, v_new, Symmetry::qvacuum(), 3000ul, tol_compr, max_halfsweeps, min_halfsweeps, &Os[k]);
+    }
+    if(Os.size() % 2 == 1)
+    {
+        v_in = v_other;
+    }
+}
+
 #endif
