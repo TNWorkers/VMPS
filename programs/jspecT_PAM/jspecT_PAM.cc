@@ -536,6 +536,8 @@ int main (int argc, char* argv[])
 	double dbeta = args.get<double>("dbeta",0.1);
 	double beta = args.get<double>("beta",1.);
 	double tol_compr_beta = args.get<double>("tol_compr_beta",1e-5);
+	bool SAVE_BETA = args.get<bool>("SAVE_BETA",true);
+	bool LOAD_BETA = args.get<bool>("LOAD_BETA",false);
 	
 	string spec = args.get<string>("spec","JJC"); // JJC, JJE
 	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
@@ -606,15 +608,16 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, base, false, false, VERB);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
 	
+	Stopwatch<> JappWatch;
 	lout << endl << "Applying J to ground state for all sites..." << endl;
 	double tol_OxV = 2.; // val>1 = do not compress
 	auto PhiT = SpecMan.get_PhiT();
 	auto [Psi, Op, Fac] = apply_J(spec, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	lout << "Op.size()=" << Op.size() << endl;
 	lout << "Fac.size()=" << Fac.size() << endl;
-	lout << endl << "Applying J to ground state for all sites done!" << endl << endl;
+	lout << JappWatch.info("Applying J to ground state for all sites done!") << endl << endl;
 	
 	for (int i=0; i<Psi.size(); ++i)
 	{

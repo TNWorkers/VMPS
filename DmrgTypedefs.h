@@ -52,7 +52,7 @@ inline std::complex<double> conjIfcomplex (std::complex<double> x) {return conj(
 	}
 #endif
 
-enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
+enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM, QP, QM};
 
 std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 {
@@ -62,6 +62,8 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	else if (Sa==SZ)  {s << "Sz";}
 	else if (Sa==SP)  {s << "S+";}
 	else if (Sa==SM)  {s << "S-";}
+	else if (Sa==QP)  {s << "Q+";}
+	else if (Sa==QM)  {s << "Q-";}
 	return s;
 }
 

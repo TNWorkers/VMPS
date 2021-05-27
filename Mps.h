@@ -831,237 +831,6 @@ resize_arrays()
 	SVspec.resize(this->N_sites-1);
 }
 
-//template<typename Symmetry, typename Scalar>
-//void Mps<Symmetry,Scalar>::
-//calc_Qlimits()
-//{
-//	// workaround for empty band
-//	bool NEED_WORKAROUND = false;
-//	for (int q=0; q<Symmetry::Nq; ++q)
-//	{
-//		if (Symmetry::kind()[q] == Sym::KIND::N and Qtot[q] == 0)
-//		{
-//			NEED_WORKAROUND = true;
-//		}
-//	}
-//	
-////	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
-////	{
-////		NEED_WORKAROUND = true;
-////	}
-//	
-//	if (NEED_WORKAROUND)
-//	{
-//		set_Qlimits_to_inf();
-//	}
-//	else
-//	{
-//		auto lowest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
-//		{
-//			qarray<Nq> out;
-//			array<vector<int>,Nq> tmp;
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				tmp[q].resize(qs.size());
-//				for (size_t i=0; i<qs.size(); i++)
-//				{
-//					tmp[q][i] = qs[i][q];
-//				}
-//			}
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				sort(tmp[q].begin(),tmp[q].end());
-//				out[q] = tmp[q][0];
-//			}
-//			return out;
-//		};
-//		
-//		// For spins: calculate maximal S across the chain
-//		size_t Smax = 1;
-//		if (!Symmetry::IS_TRIVIAL)
-//		{
-//			for (size_t l=0; l<this->N_sites; ++l)
-//			for (size_t s=0; s<qloc[l].size(); ++s)
-//			{
-//				if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
-//			}
-//		}
-////		cout << "Smax=" << Smax << endl;
-//		
-//		auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
-//		{
-//			if (Symmetry::IS_TRIVIAL)
-//			{
-//				vector<qarray<Nq> > out(1);
-//				out[0] = Symmetry::qvacuum();
-//				return out;
-//			}
-//			
-////			cout << "in:" << endl;
-////			for (size_t i=0; i<qs.size(); ++i)
-////			{
-////				cout << qs[i] << ", ";
-////			}
-////			cout << endl;
-//			
-//			// sort for every q and remove duplicates
-//			array<vector<int>,Nq> tmp;
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				tmp[q].resize(qs.size());
-//				for (size_t i=0; i<qs.size(); i++)
-//				{
-//					tmp[q][i] = qs[i][q];
-//				}
-//				sort(tmp[q].begin(),tmp[q].end());
-//				tmp[q].erase(unique(tmp[q].begin(), tmp[q].end()), tmp[q].end());
-//			}
-//			
-//			// Can have different resulting sizes depending on q...
-//			Array<size_t,Dynamic,1> tmp_sizes(Nq);
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				tmp_sizes(q) = tmp[q].size();
-//			}
-//	//		cout << "sizes=" << tmp_sizes.transpose() << endl;
-//			vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
-//			
-//			for (size_t q=0; q<Nq; q++)
-//			for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
-//			{
-//				out[i][q] = tmp[q][i];
-//			}
-//			
-////			cout << "out:" << endl;
-////			for (size_t i=0; i<out.size(); ++i)
-////			{
-////				cout << out[i] << ", ";
-////			}
-////			cout << endl;
-//			
-////			cout << "returning lowest_qs, size=" << out.size() << endl;
-//			return out;
-//		};
-//		
-//		auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
-//		{
-//			qarray<Nq> out;
-//			array<vector<int>,Nq> tmp;
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				tmp[q].resize(qs.size());
-//				for (size_t i=0; i<qs.size(); i++)
-//				{
-//					tmp[q][i] = qs[i][q];
-//				}
-//			}
-//			for (size_t q=0; q<Nq; q++)
-//			{
-//				sort(tmp[q].begin(),tmp[q].end());
-//				out[q] = tmp[q][qs.size()-1];
-//			}
-//			return out;
-//		};
-//		
-//		QinTop.resize(this->N_sites);
-//		QinBot.resize(this->N_sites);
-//		QoutTop.resize(this->N_sites);
-//		QoutBot.resize(this->N_sites);
-//		
-//		// If non-trivial boundaries: we have an infinite state with a heterogeneous section, no Qlimits
-//		if (!Boundaries.IS_TRIVIAL())
-//		{
-//	//		cout << termcolor::red << "Boundaries.IS_TRIVIAL()==false, infinite limits" << termcolor::reset << endl;
-//			set_Qlimits_to_inf();
-//		}
-//		else
-//		{
-//			QinTop[0] = Symmetry::qvacuum();
-//			QinBot[0] = Symmetry::qvacuum();
-//			
-////			vector<vector<qarray<Symmetry::Nq> > > QinBotRange;
-////			QinBotRange.resize(this->N_sites);
-////			QinBotRange[0] = {Symmetry::qvacuum()};
-//			
-////			for (int l=0; l<this->N_sites; ++l)
-////			{
-////				for (int m=0; m<qloc[l].size(); ++m)
-////				{
-////					cout << "l=" << l << ", qloc=" << qloc[l][m] << endl;
-////				}
-////			}
-//			
-//			for (size_t l=1; l<this->N_sites; ++l)
-//			{
-//				auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
-//				auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBot[l-1]);
-////				cout << "l=" << l << ", new_tops.size()=" << new_tops.size() << endl;
-////				cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
-//				
-//				QinTop[l] = highest_q(new_tops);
-//				QinBot[l] = lowest_q(new_bots);
-////				auto tmp = lowest_qs(new_bots);
-////				QinBotRange[l].resize(tmp.size());
-////				QinBotRange[l] = tmp;
-////				cout << "l=" << l << ", QinBotRange[l].size()=" << QinBotRange[l].size() << endl;
-//			}
-////			for (int i=0; i<QinBotRange.size(); ++i)
-////			for (int j=0; j<QinBotRange[i].size(); ++j)
-////			{
-////				cout << "i=" << i << ", j=" << j << ", QinBotRange[i][j]=" << QinBotRange[i][j] << endl;
-////			}
-//			
-//			QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
-//			QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
-//			
-////			vector<vector<qarray<Symmetry::Nq> > > QoutBotRange;
-////			QoutBotRange.resize(this->N_sites);
-////			QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
-//			
-//			for (int l=this->N_sites-2; l>=0; --l)
-//			{
-//				vector<qarray<Symmetry::Nq> > qlocflip;
-//				for (size_t q=0; q<qloc[l+1].size(); ++q)
-//				{
-//					qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
-//				}
-//				auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-//				auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
-//				
-//				QoutTop[l] = highest_q(new_tops);
-//				QoutBot[l] = lowest_q(new_bots);
-////				QoutBotRange[l] = lowest_qs(new_bots);
-//			}
-//			
-//			for (size_t l=0; l<this->N_sites; ++l)
-//			{
-//				if (l!=0)
-//				{
-//					for (size_t q=0; q<Nq; q++)
-//					{
-//						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
-//						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
-//					}
-//				}
-//				if (l!=this->N_sites-1)
-//				{
-//					for (size_t q=0; q<Nq; q++)
-//					{
-//						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
-//						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
-//					}
-//				}
-//				
-////				cout << "l=" << l 
-////					 << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
-////					 << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
-////					 << endl;
-//			}
-//		}
-//	}
-//}
-
-// old Qlimits:
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 calc_Qlimits()
@@ -1158,7 +927,7 @@ calc_Qlimits()
 			vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
 			
 			for (size_t q=0; q<Nq; q++)
-			for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
+			for (size_t i=0; i<out.size(); ++i)
 			{
 				out[i][q] = tmp[q][i];
 			}
@@ -3711,18 +3480,22 @@ double Mps<Symmetry,Scalar>::
 squaredNorm() const
 {
 	double res = 0.;
-//	// exploit canonical form:
-//	if (this->pivot != -1)
-//	{
-//		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]);
-//		for (size_t s=1; s<qloc[this->pivot].size(); s++)
-//		{
-//			out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]);
-//		}
-//		res = out.trace();
-//	}
-//	// use dot product otherwise:
-//	else
+	// exploit canonical form:
+	if (this->pivot != -1)
+	{
+		/* Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]); */
+		for (size_t s=0; s<qloc[this->pivot].size(); s++)
+		{
+                        for (size_t q=0; q<A[this->pivot][s].dim; ++q)
+                                {
+                                        res += (A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace() * Symmetry::coeff_dot(A[this->pivot][s].out[q]);
+			/* out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]); */
+                                }
+		}
+		/* res = out.trace(); */
+	}
+	// use dot product otherwise:
+	else
 	{
 		res = isReal(dot(*this));
 	}

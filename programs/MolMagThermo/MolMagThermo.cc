@@ -5,6 +5,7 @@
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
+#define USE_OLD_COMPRESSION
 
 //#define DMRG_CONTRACTLANDR_PARALLELIZE
 //#define DMRG_PARALLELIZE_GRALF
@@ -48,12 +49,13 @@ Logger lout;
 //#include "InterpolGSL.h"
 //#include "IntervalIterator.h"
 
-#include "models/HeisenbergSU2.h"
-typedef VMPS::HeisenbergSU2 MODEL;
-#define USING_SU2
-//#include "models/HeisenbergU1.h"
-//typedef VMPS::HeisenbergU1 MODEL;
-//#define USING_U1
+//#include "models/HeisenbergSU2.h"
+//typedef VMPS::HeisenbergSU2 MODEL;
+//#define USING_SU2
+
+#include "models/HeisenbergU1.h"
+typedef VMPS::HeisenbergU1 MODEL;
+#define USING_U1
 
 /* 
 ArrayXXd permute_random (const ArrayXXd &A)
@@ -278,6 +280,7 @@ int main (int argc, char* argv[])
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
 //	bool CANONICAL = args.get<bool>("CANONICAL",false);
 	bool CALC_C = args.get<bool>("CALC_C",false);
+	bool CALC_C_HME = args.get<bool>("CALC_C_HME",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",50.);
@@ -349,6 +352,11 @@ int main (int argc, char* argv[])
 					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
 					lout << "extracted: tol_beta_compr=" << tol_beta_compr << endl;
 				}
+				if (parsed_vals[j] == "MOL")
+				{
+					MOL = parsed_vals[j+1];
+					lout << "extracted: MOL=" << MOL << endl;
+				}
 			}
 		}
 	}
@@ -387,6 +395,11 @@ int main (int argc, char* argv[])
 					Mlimit_default = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: Mlimit_default=" << Mlimit_default << endl;
 				}
+				if (parsed_vals[j] == "MOL")
+				{
+					MOL = parsed_vals[j+1];
+					lout << "extracted: MOL=" << MOL << endl;
+				}
 			}
 		}
 	}
@@ -403,11 +416,15 @@ int main (int argc, char* argv[])
 		{
 			base += make_string("_S=",S);
 		}
-		#elif defined(#ifdef USING_U1)
+		#elif defined(USING_U1)
 		{
 			base += make_string("_M=",M);
 		}
 		#endif
+		if (Jprime != 0.)
+		{
+			base += make_string("_Jprime=",Jprime);
+		}
 	}
 	if (MOL=="C60" and VARIANT==0)
 	{
@@ -579,7 +596,7 @@ int main (int argc, char* argv[])
 			#elif defined(USING_U1)
 			{
 				Q = {M};
-				params.push_bacl({"Bz",Bz})
+				params.push_back({"Bz",Bz});
 			}
 			#endif
 		}
@@ -685,7 +702,7 @@ int main (int argc, char* argv[])
 			{
 				for (int n=0; n<excited.size(); ++n)
 				{
-					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, base, wd, make_string("excited state n=",n," variance:"));
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, make_string("n=",n,"_",base), wd, make_string("excited state n=",n," variance:"));
 				}
 			}
 			
@@ -1212,8 +1229,17 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					if (!CALC_C_HME)
+					{
+						c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+					                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					}
+					else
+					{
+						auto HmE = H;
+						HmE.scale(1.,-E);
+						c = beta*beta*avg(PsiTprev,HmE,PsiTprev,2ul)/L;
+					}
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
@@ -1239,7 +1265,7 @@ int main (int argc, char* argv[])
 				{
 					chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
 				}
-				#elif defined(#ifdef USING_U1)
+				#elif defined(USING_U1)
 				{
 					//chi = beta*avg(PsiTprev,H.Sztot(0,1.,dLphys),H.Sztot(0,1.,dLphys),PsiTprev)/L;
 					// Sztot NOT IMPLEMENTED
@@ -1275,6 +1301,7 @@ int main (int argc, char* argv[])
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
 				     << ", s=" << svec[i-1] 
+				     << " (S=" << svec[i-1]*L << ")"
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;

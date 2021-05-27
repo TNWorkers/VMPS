@@ -78,49 +78,64 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type Sdag (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type Q (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type Qdag (size_t orbital=0) const;
 	
 	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qz (size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qp (size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qm (size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qpz (size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qmz (size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sz (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sp (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Sm (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),OperatorType>::type Sx (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),OperatorType>::type iSy (size_t orbital=0) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Scomp (SPINOP_LABEL Sa, int orbital=0) const
+	{
+		assert(Sa != SY and Sa != QP and Sa != QM);
+		OperatorType out;
+		if constexpr (Dummy::NO_SPIN_SYM())
 		{
-			assert(Sa != SY);
-			OperatorType out;
-			if constexpr (Dummy::NO_SPIN_SYM())
-			{						 
-				if      (Sa==SX)  { out = Sx(orbital); }
-				else if (Sa==iSY) { out = iSy(orbital); }
-				else if (Sa==SZ)  { out = Sz(orbital); }
-				else if (Sa==SP)  { out = Sp(orbital); }
-				else if (Sa==SM)  { out = Sm(orbital); }
-			}
-			else
-			{
-				if (Sa==SZ)  { out = Sz(orbital); }
-				else if (Sa==SP)  { out = Sp(orbital); }
-				else if (Sa==SM)  { out = Sm(orbital); }
-			}
-			return out;
-		};
+			if      (Sa==SX)  { out = Sx(orbital); }
+			else if (Sa==iSY) { out = iSy(orbital); }
+			else if (Sa==SZ)  { out = Sz(orbital); }
+			else if (Sa==SP)  { out = Sp(orbital); }
+			else if (Sa==SM)  { out = Sm(orbital); }
+		}
+		else
+		{
+			if (Sa==SZ)  { out = Sz(orbital); }
+			else if (Sa==SP)  { out = Sp(orbital); }
+			else if (Sa==SM)  { out = Sm(orbital); }
+		}
+		return out;
+	};
 	///\}
 
 	template<class Dummy = Symmetry>
@@ -150,12 +165,12 @@ public:
 	 */
 	template<typename Scalar_>
 	SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const;
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-																							  const ArrayXd &Bz, const ArrayXd &mu, const ArrayXd &nu,
-																							  const ArrayXd &Kz) const;
-
+	                                                                                          const ArrayXd &Bz, const ArrayXd &mu, const ArrayXd &nu,
+	                                                                                          const ArrayXd &Kz) const;
+	
 	/**
 	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	 * \param Jxy : \f$J^{xy}\f$
@@ -169,9 +184,9 @@ public:
 	 */
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-																							 const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, const ArrayXd &nu,
-																							 const ArrayXd &Kz, const ArrayXd &Kx, 
-																							 const ArrayXXd &Dy) const;
+	                                                                                         const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, const ArrayXd &nu,
+	                                                                                         const ArrayXd &Kz, const ArrayXd &Kx, 
+	                                                                                         const ArrayXXd &Dy) const;
 	/**
 	 * Creates the full Heisenberg (XYZ) Hamiltonian on the supersite.
 	 * \param J : \f$J^{\alpha}\f$, \f$\alpha \in \{x,y,z\} \f$
@@ -181,16 +196,14 @@ public:
 	 */	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,-1,-1> > >::type HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J, 
-																																			   const std::array<ArrayXd,3> &B,
-																																			   const std::array<ArrayXd,3> &K,
-																																			   const std::array<ArrayXXd,3> &D) const;
+	                                                                                                                                           const std::array<ArrayXd,3> &B,
+	                                                                                                                                           const std::array<ArrayXd,3> &K,
+	                                                                                                                                           const std::array<ArrayXXd,3> &D) const;
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> >>::type coupling_Bx (const Array<double,Dynamic,1> &Bx) const;
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,-1,-1> >>::type coupling_By (const Array<double,Dynamic,1> &By) const;
-
-
 	
 	/**Returns the basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
@@ -367,6 +380,46 @@ typename std::enable_if<Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Mat
 Qdag (std::size_t orbital) const
 {
 	return Q(orbital).adjoint();
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+Qz (std::size_t orbital) const
+{
+	return make_operator(this->Qz_1s(), orbital,"Qz");
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+Qp (std::size_t orbital) const
+{
+	return make_operator(this->Qp_1s(), orbital,"Qp");
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+Qm (std::size_t orbital) const
+{
+	return make_operator(this->Qm_1s(), orbital,"Qm");
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+Qpz (std::size_t orbital) const
+{
+	return make_operator(this->Qpz_1s(), orbital,"Qpz");
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+Qmz (std::size_t orbital) const
+{
+	return make_operator(this->Qmz_1s(), orbital,"Qmz");
 }
 
 template<typename Symmetry_, size_t order>

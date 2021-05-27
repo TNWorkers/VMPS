@@ -190,11 +190,13 @@ tuple<vector<MODELC::StateXcd>,
 apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H, const MODELC::StateXcd &Psi, 
          double tcc, double tff, double tfc, double Ec, double Ef, double U, int Mlimit)
 {
+	assert(spec=="JC" or spec=="JE");
+	
 	vector<MODELC::StateXcd> res(1);
 	vector<Mpo<MODELC::Symmetry,complex<double>>> Res;
 	vector<complex<double>> Fac;
 	
-	if (spec == "JJC")
+	if (spec == "JC")
 	{
 		#pragma omp parallel for
 		for (int i=0; i<L; i+=2)
@@ -216,6 +218,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
@@ -223,7 +226,11 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				i2 = (i-2)*dLphys;
 				// cdag(i)*c(i-1)
 				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
-				push_operator(i2, i1, lambda, H, Res, Fac);
+				#pragma omp critical
+				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
+					push_operator(i2, i1, lambda, H, Res, Fac);
+				}
 			}
 			
 			if (tff != 0.)
@@ -235,6 +242,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, lambda, tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << conj(lambda) << endl;
 					push_operator(i2, i1, conj(lambda), H, Res, Fac);
 				}
 				
@@ -244,6 +252,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (i==j0) push_term(i1, i2, conj(lambda), tol_OxV, CVERB, H, Psi, states, factors);
 				#pragma omp critical
 				{
+//					cout << "push: " << i2 << ", " << i1 << ", " << lambda << endl;
 					push_operator(i2, i1, lambda, H, Res, Fac);
 				}
 			}
@@ -263,7 +272,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 			}
 		}
 	}
-	else if (spec == "JJE")
+	else if (spec == "JE")
 	{
 		for (int i=0; i<L; i+=2)
 		{
@@ -524,7 +533,7 @@ int main (int argc, char* argv[])
 	double Ec = 0.;
 	double Ef = -0.5*U;
 	
-	int j0 = args.get<int>("j0",0);
+	int j0 = args.get<int>("j0",L/4);
 	assert(j0>=0 and j0<=L/2-1);
 	
 	size_t Lcell = 2;
@@ -536,7 +545,9 @@ int main (int argc, char* argv[])
 	bool SAVE_BETA = args.get<bool>("SAVE_BETA",true);
 	bool LOAD_BETA = args.get<bool>("LOAD_BETA",false);
 	
-	string spec = args.get<string>("spec","JJC"); // JJC, JJE
+	string spec1 = args.get<string>("spec1","JC"); // JC, JE
+	string spec2 = args.get<string>("spec2","JC"); // JC, JE
+	string spec = spec1+spec2;
 	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
 	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // max. Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.025);
@@ -604,27 +615,35 @@ int main (int argc, char* argv[])
 	MODELC Hp(dLphys*L,pparams); Hp.precalc_TwoSiteData();
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
-	SpectralManager<MODELC> SpecMan({spec},Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, base, LOAD_BETA, SAVE_BETA, VERB);
+	SpectralManager<MODELC> SpecMan({spec},Hp); // spec ist Dummy, brauchen nur die beta-Propagation hieraus
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
 	
-	lout << endl << "Applying J to ground state for j0 sites..." << endl;
+	Stopwatch<> JappWatch;
+	lout << endl << "Applying J to ground state for j0..." << endl;
 	double tol_OxV = 2.; // val>1 = do not compress
 	auto PhiT = SpecMan.get_PhiT();
-	auto [Psi, Op, Fac] = apply_J(2*j0, spec, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
-	lout << "Op.size()=" << Op.size() << endl;
-	lout << "Fac.size()=" << Fac.size() << endl;
-	lout << endl << "Applying J to ground state for j0 sites done!" << endl << endl;
+	auto [Psi1, Op1, Fac1] = apply_J(2*j0, spec1, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
+	auto [Psi2, Op2, Fac2] = apply_J(2*j0, spec2, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	
-	for (int i=0; i<Psi.size(); ++i)
+	lout << endl;
+	lout << "Op.size()=" << Op1.size() << "\t" << Op2.size() << endl;
+	lout << "Fac.size()=" << Fac1.size() << "\t" << Fac2.size() << endl;
+	lout << "avg<spec1>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L) << "\t"
+	     << "avg<spec2>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L)
+	     << endl;
+	lout << endl;
+	lout << JappWatch.info("Applying J to ground state for j0 sites done!") << endl << endl;
+	
+	for (int i=0; i<Psi2.size(); ++i)
 	{
-		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),Mstart);
-		lout << i << "\t" << Psi[i].info() << endl;
+		Psi2[i].eps_svd = tol_compr;
+		Psi2[i].max_Nsv = max(Psi2[i].calc_Mmax(),Mstart);
+		lout << i << "\t" << Psi2[i].info() << endl;
 	}
 	lout << endl;
 	
 	vector<TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>> TDVP(2);
-	TDVP[0] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,Psi[0]);
+	TDVP[0] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,Psi2[0]);
 	TDVP[1] = TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd>(Hp,PhiT);
 	
 	int iVERB = L/4;
@@ -633,7 +652,7 @@ int main (int argc, char* argv[])
 	vector<vector<bool>> TWO_SITE(2);
 	
 	Sobs[0] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
-	TWO_SITE[0] = Sobs[0].TWO_SITE(0, Psi[0], 1.);
+	TWO_SITE[0] = Sobs[0].TWO_SITE(0, Psi2[0], 1.);
 	
 	Sobs[1] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, DMRG::VERBOSITY::SILENT, tol_DeltaS);
 	TWO_SITE[1] = Sobs[1].TWO_SITE(0, PhiT, 1.);
@@ -648,7 +667,7 @@ int main (int argc, char* argv[])
 		lout << "t=" << *t << endl;
 		Stopwatch<> StepTimer;
 		
-		JoverlapSum(t.index()) =  calc_Joverlap(PhiT, Psi, Op, Fac, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L);
+		JoverlapSum(t.index()) =  calc_Joverlap(PhiT, Psi2, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L);
 		
 		t << JoverlapSum(t.index());
 		lout << "save results at t=" << *t << ", res=" << JoverlapSum(t.index()) << endl;
@@ -662,26 +681,26 @@ int main (int argc, char* argv[])
 				if (i==0)
 				{
 					//-----------------------------------------------------------
-					TDVP[i].t_step_adaptive(Hp, Psi[i], -1.i*dt, TWO_SITE[i], 1);
+					TDVP[i].t_step_adaptive(Hp, Psi2[i], -1.i*dt, TWO_SITE[i], 1);
 					//-----------------------------------------------------------
 					
 					lout << "propagated to t=" << *t << endl;
 					lout << TDVP[i].info() << endl;
-					lout << Psi[i].info() << endl;
+					lout << Psi2[i].info() << endl;
 					
-					if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
+					if (Psi2[i].get_truncWeight().sum() > 0.5*tol_compr)
 					{
-						Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+50.)),Mlimit);
+						Psi2[i].max_Nsv = min(static_cast<size_t>(max(Psi2[i].max_Nsv*1.1, Psi2[i].max_Nsv+50.)),Mlimit);
 						if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 						{
-							lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+							lout << termcolor::yellow << "i=" << i << ", Setting Psi.max_Nsv to " << Psi2[i].max_Nsv << termcolor::reset << endl;
 						}
 					}
 					else
 					{
 						if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE and i==iVERB)
 						{
-							lout << termcolor::green << "trunc_weight=" << Psi[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
+							lout << termcolor::green << "trunc_weight=" << Psi2[i].get_truncWeight().sum() << " < " << 0.5*tol_compr << " => no bond dimension increase" << termcolor::reset << endl;
 						}
 					}
 				}
@@ -708,7 +727,7 @@ int main (int argc, char* argv[])
 			{
 				if (i==0)
 				{
-					auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
+					auto PsiTmp = Psi2[i]; PsiTmp.entropy_skim();
 					TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
 				}
 				else

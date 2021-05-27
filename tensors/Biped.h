@@ -713,6 +713,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		
 //		cout << "begin Jack.compute" << endl;
 //		cout << "block[q]=" << endl << block[q] << endl;
+//		cout << "begin Jack: " << block[q].rows() << "x" << block[q].cols() << endl;
 		Jack.compute(block[q], ComputeThinU|ComputeThinV);
 //		cout << "end Jack.compute" << endl;
 //		cout << "Jack computation done!" << endl;

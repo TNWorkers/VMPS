@@ -826,6 +826,9 @@ make_Hamiltonian (bool LOAD, bool SAVE, string wd, bool ODD)
 			params_full.push_back({"Jxyfull",Ghopx2});
 		}
 		
+//		MODEL Hfull(L,params_full);
+//		lout << "Hfull:" << Hfull.info() << endl;
+		
 		Mpo<typename MODEL::Symmetry,double> Hmpo(Terms);
 		H = MODEL(Hmpo,params_full);
 //		H.calc(2ul); // takes too long

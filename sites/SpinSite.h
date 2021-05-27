@@ -25,19 +25,28 @@ public:
 	OperatorType F_1s() const {return F_1s_;}
 	
 	OperatorType n_1s() const {return n_1s(UP) + n_1s(DN);}
-
+	
+	// dipole
 	OperatorType Sz_1s() const {return Sz_1s_;}
 	OperatorType Sp_1s() const {return Sp_1s_;}
 	OperatorType Sm_1s() const {return Sm_1s_;}
-
+	
+	// quadrupole
+	OperatorType Qz_1s() const {return Qz_1s_;}
+	OperatorType Qp_1s() const {return Qp_1s_;}
+	OperatorType Qm_1s() const {return Qm_1s_;}
+	OperatorType Qpz_1s() const {return Qpz_1s_;}
+	OperatorType Qmz_1s() const {return Qmz_1s_;}
+	
 	Qbasis<Symmetry> basis_1s() const {return basis_1s_;}
-
+	
 protected:
+	
 	std::size_t D;
 	
 	void fill_basis();
 	void fill_SiteOps();
-
+	
 	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry_::qType getQ (SPINOP_LABEL Sa) const;
 	
@@ -48,9 +57,17 @@ protected:
 	
 	OperatorType n_1s_; //particle number
 	
-	OperatorType Sz_1s_; //orbital spin
-	OperatorType Sp_1s_; //orbital spin
-	OperatorType Sm_1s_; //orbital spin	
+	//orbital spin
+	OperatorType Sz_1s_;
+	OperatorType Sp_1s_;
+	OperatorType Sm_1s_;
+	
+	//orbital quadrupole
+	OperatorType Qz_1s_;
+	OperatorType Qp_1s_;
+	OperatorType Qm_1s_;
+	OperatorType Qpz_1s_;
+	OperatorType Qmz_1s_;
 };
 
 template<typename Symmetry_, size_t order>
@@ -73,9 +90,16 @@ fill_SiteOps()
 	Id_1s_.setIdentity();
 	
 	F_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
+	
 	Sz_1s_ = OperatorType(getQ(SZ),basis_1s_);
 	Sp_1s_ = OperatorType(getQ(SP),basis_1s_);
 	Sm_1s_ = OperatorType(getQ(SM),basis_1s_);
+	
+	Qz_1s_ = OperatorType(getQ(SZ),basis_1s_);
+	Qp_1s_ = OperatorType(getQ(QP),basis_1s_);
+	Qm_1s_ = OperatorType(getQ(QM),basis_1s_);
+	Qpz_1s_ = OperatorType(getQ(SP),basis_1s_);
+	Qmz_1s_ = OperatorType(getQ(SM),basis_1s_);
 	
 	OperatorType Sbase  = OperatorType(getQ(SP),basis_1s_);
 	
@@ -86,17 +110,24 @@ fill_SiteOps()
 	{
 		double m = -S + static_cast<double>(i);
 		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
-		int Qplus1 = Q +2; //note spacing of m is 2 because we deal with 2*m instead of m
+		int Qplus1 = Q + 2; //note spacing of m is 2 because we deal with 2*m instead of m
 		stringstream ssQ; ssQ << Q;
 		stringstream ssQplus1; ssQplus1 << Qplus1;
 		Sbase(ssQplus1.str(),ssQ.str()) = 0.5*sqrt(S*(S+1.)-m*(m+1.));
 	}
 	
+	F_1s_ = 0.5*Id_1s_-Sz_1s_;
+	
 	Sp_1s_ = 2.*Sbase;
 	Sm_1s_ = Sp_1s_.adjoint();
-	Sz_1s_ = 0.5 * (Sp_1s_ * Sm_1s_ - Sm_1s_*Sp_1s_);
+	Sz_1s_ = 0.5 * (Sp_1s_*Sm_1s_ - Sm_1s_*Sp_1s_);
 	
-	F_1s_ = 0.5*Id_1s_ - Sz_1s_;
+	Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
+	Qp_1s_ = Sp_1s_*Sp_1s_;
+	Qm_1s_ = Sm_1s_*Sm_1s_;
+	Qpz_1s_ = Sp_1s_*Sz_1s_+Sz_1s_*Sp_1s_;
+	Qmz_1s_ = Sm_1s_*Sz_1s_+Sz_1s_*Sm_1s_;
+	
 	return;
 }
 
@@ -175,13 +206,15 @@ getQ (SPINOP_LABEL Sa) const
 			if      (Sa==SZ) {out = {0};}
 			else if (Sa==SP) {out = {+2};}
 			else if (Sa==SM) {out = {-2};}
+			else if (Sa==QP) {out = {+4};}
+			else if (Sa==QM) {out = {-4};}
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
-		assert(Sa != SX and Sa != iSY);
+		assert(Sa != SX and Sa != iSY and Sa != QP and Sa != QM);
 		
 		typename Symmetry::qType out;
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
