@@ -184,7 +184,7 @@ int main (int argc, char* argv[])
 	if (wd.back() != '/') {wd += "/";}
 	
 	size_t Mlimit_default = 500ul; // Extracted from LOAD, but can be overwritten by -Mlimit option.
-
+	
 	// overwrite beta params in case of LOAD
 	if (LOAD!="")
 	{
@@ -279,11 +279,10 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-        size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
-        
-        string ROT = args.get<string>("rot","h");
-
-        string base;
+	size_t Mlimit = args.get<size_t>("Mlimit",Mlimit_default);
+	string ROT = args.get<string>("rot","h");
+	string base;
+	
 	base = make_string("L=",L,"_D=",D);
 	#ifdef USING_SU2
 	{
@@ -306,16 +305,16 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_MOL=",MOL);
 	}
-
-        lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
-
+	
+	lout.set(make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT,".log"), wd+"log", true);
+	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
 	#else
 	lout << "not parallelized" << endl;
 	#endif
-
+	
 	vector<Param> params;
 	qarray<MODEL::Symmetry::Nq> Q;
 	if constexpr (MODEL::FAMILY == HUBBARD)
@@ -335,7 +334,7 @@ int main (int argc, char* argv[])
 		#elif defined(USING_U1)
 		{
 			Q = {M};
-			params.push_bacl({"Bz",Bz})
+			params.push_back({"Bz",Bz})
 		}
 		#endif
 	}
@@ -427,7 +426,7 @@ int main (int argc, char* argv[])
 	{
 //		OxV_exact(Pop[k], Psi1, Psi2, tol_compr, DMRG::VERBOSITY::HALFSWEEPWISE, max_halfsweeps, min_halfsweeps);
 		MpsCompressor<MODEL::Symmetry,double,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, Q, g.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1ul, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT),  &PopDagP[k]);
+		Compadre.prodCompress(Pop[k], PopDag[k], Psi1, Psi2, Q, Psi1.state.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 1ul, make_string(base,"_Mlimit=",Mlimit,"_ROT=",ROT),  &PopDagP[k]);
 		Psi1 = Psi2;
 	}
 	

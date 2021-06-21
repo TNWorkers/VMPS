@@ -1557,7 +1557,9 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 }
 
 // returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
-tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_input = boost::rational<int>(1,3))
+// H = J*S_i*S_{i+1} - beta*(S_i*S_{i+1})^2
+//   = (J+beta/2)*S_i*S_{i+1} - beta/2 Q_i*Q_{i+1}
+tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_input = boost::rational<int>(-1,3))
 {
 	double beta = boost::rational_cast<double>(beta_input);
 	double J = 1.+0.5*beta;

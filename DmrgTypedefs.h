@@ -52,7 +52,7 @@ inline std::complex<double> conjIfcomplex (std::complex<double> x) {return conj(
 	}
 #endif
 
-enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM, QP, QM};
+enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM, QZ, QP, QM, QPZ, QMZ};
 
 std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 {
@@ -62,9 +62,21 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	else if (Sa==SZ)  {s << "Sz";}
 	else if (Sa==SP)  {s << "S+";}
 	else if (Sa==SM)  {s << "S-";}
+	else if (Sa==QZ)  {s << "Qz";}
 	else if (Sa==QP)  {s << "Q+";}
 	else if (Sa==QM)  {s << "Q-";}
+	else if (Sa==QPZ)  {s << "Q+z";}
+	else if (Sa==QMZ)  {s << "Q-z";}
 	return s;
+}
+
+enum STRING {NOSTRING, STRINGX, STRINGY, STRINGZ};
+
+SPINOP_LABEL STRING_TO_SPINOP (STRING STR)
+{
+	if      (STR==STRINGX) {return SX;}
+	else if (STR==STRINGY) {return iSY;}
+	return SZ;
 }
 
 enum MODEL_FAMILY {HEISENBERG, HUBBARD, KONDO, SPINLESS};

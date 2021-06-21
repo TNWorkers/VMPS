@@ -1391,8 +1391,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
 			lout << termcolor::green << "saving state to: " << GlobParam.saveName << termcolor::reset << endl;
-			Vout.state.save(GlobParam.saveName,H.info());
-                        lout << termcolor::green << "saved state to: " << GlobParam.saveName << "!" << termcolor::reset << endl;
+			Vout.state.save(GlobParam.saveName, H.info(), Vout.energy);
+			lout << termcolor::green << "saved state to: " << GlobParam.saveName << "!" << termcolor::reset << endl;
 		}
 		#endif
 	}
@@ -1402,7 +1402,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	{
 		string filename = make_string(GlobParam.saveName,"_fullMmax=",Vout.state.calc_fullMmax());
 		lout << termcolor::green << "saving final state to: " << filename << termcolor::reset << endl;
-		Vout.state.save(filename,H.info());
+		Vout.state.save(filename, H.info(), Vout.energy);
 	}
 	#endif
 	

@@ -38,6 +38,10 @@ public:
 	OperatorType Qpz_1s() const {return Qpz_1s_;}
 	OperatorType Qmz_1s() const {return Qmz_1s_;}
 	
+	OperatorType exp_i_pi_Sx() const {return exp_i_pi_Sx_1s_;}
+	OperatorType exp_i_pi_Sy() const {return exp_i_pi_Sy_1s_;}
+	OperatorType exp_i_pi_Sz() const {return exp_i_pi_Sz_1s_;}
+	
 	Qbasis<Symmetry> basis_1s() const {return basis_1s_;}
 	
 protected:
@@ -68,6 +72,10 @@ protected:
 	OperatorType Qm_1s_;
 	OperatorType Qpz_1s_;
 	OperatorType Qmz_1s_;
+	
+	OperatorType exp_i_pi_Sx_1s_;
+	OperatorType exp_i_pi_Sy_1s_;
+	OperatorType exp_i_pi_Sz_1s_;
 };
 
 template<typename Symmetry_, size_t order>
@@ -101,6 +109,13 @@ fill_SiteOps()
 	Qpz_1s_ = OperatorType(getQ(SP),basis_1s_);
 	Qmz_1s_ = OperatorType(getQ(SM),basis_1s_);
 	
+	exp_i_pi_Sz_1s_ = OperatorType(getQ(SZ),basis_1s_);
+	if constexpr (Symmetry::IS_TRIVIAL)
+	{
+		exp_i_pi_Sx_1s_ = OperatorType(getQ(SX),basis_1s_);
+		exp_i_pi_Sy_1s_ = OperatorType(getQ(iSY),basis_1s_);
+	}
+	
 	OperatorType Sbase  = OperatorType(getQ(SP),basis_1s_);
 	
 	double S = 0.5*(D-1);
@@ -108,25 +123,60 @@ fill_SiteOps()
 	
 	for (size_t i=0; i<D-1; ++i)
 	{
-		double m = -S + static_cast<double>(i);
 		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 		int Qplus1 = Q + 2; //note spacing of m is 2 because we deal with 2*m instead of m
+		
 		stringstream ssQ; ssQ << Q;
 		stringstream ssQplus1; ssQplus1 << Qplus1;
+		
+		double m = -S + static_cast<double>(i);
 		Sbase(ssQplus1.str(),ssQ.str()) = 0.5*sqrt(S*(S+1.)-m*(m+1.));
 	}
 	
 	F_1s_ = 0.5*Id_1s_-Sz_1s_;
 	
-	Sp_1s_ = 2.*Sbase;
-	Sm_1s_ = Sp_1s_.adjoint();
+	Sm_1s_ = 2.*Sbase;
+	Sp_1s_ = Sm_1s_.adjoint();
 	Sz_1s_ = 0.5 * (Sp_1s_*Sm_1s_ - Sm_1s_*Sp_1s_);
+	
+//	cout << Sbase << endl;
+//	cout << Sp_1s_ << endl;
+//	cout << Sm_1s_ << endl;
+//	cout << Sz_1s_ << endl;
 	
 	Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
 	Qp_1s_ = Sp_1s_*Sp_1s_;
 	Qm_1s_ = Sm_1s_*Sm_1s_;
 	Qpz_1s_ = Sp_1s_*Sz_1s_+Sz_1s_*Sp_1s_;
 	Qmz_1s_ = Sm_1s_*Sz_1s_+Sz_1s_*Sm_1s_;
+	
+	if constexpr (Symmetry::IS_TRIVIAL)
+	{
+		// The exponentials are only correct for integer spin S=1,2,3,...!
+		for (size_t i=0; i<D; ++i)
+		{
+			int Q1 = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
+			int Q2 = +static_cast<int>(Sx2) - 2*static_cast<int>(i);
+			stringstream ssQ1; ssQ1 << Q1;
+			stringstream ssQ2; ssQ2 << Q2;
+			
+			// exp(i*pi*Sx) has -1 on the antidiagonal for S=1,3,5,...
+			// and +1 for S=2,4,6,...
+			exp_i_pi_Sx_1s_(ssQ1.str(),ssQ2.str()) = pow(-1.,D);
+			
+			// exp(i*pi*Sy) has alternating +-1 on the antidiagonal
+			// starting with -1 for even D and with +1 for odd D
+			exp_i_pi_Sy_1s_(ssQ1.str(),ssQ2.str()) = pow(-1.,D+1) * pow(-1,i);
+		}
+	}
+	
+	for (size_t i=0; i<D; ++i)
+	{
+		double m = -S + static_cast<double>(i);
+		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
+		stringstream ssQ; ssQ << Q;
+		exp_i_pi_Sz_1s_(ssQ.str(),ssQ.str()) = pow(-1.,m);
+	}
 	
 	return;
 }
@@ -200,14 +250,15 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
+//			cout << "Sa=" << Sa << endl;
 			assert(Sa != SX and Sa != iSY);
 			
 			typename Symmetry::qType out;
-			if      (Sa==SZ) {out = {0};}
-			else if (Sa==SP) {out = {+2};}
-			else if (Sa==SM) {out = {-2};}
-			else if (Sa==QP) {out = {+4};}
-			else if (Sa==QM) {out = {-4};}
+			if      (Sa==SZ or Sa==QZ)  {out = {0};}
+			else if (Sa==SP or Sa==QPZ) {out = {+2};}
+			else if (Sa==SM or Sa==QMZ) {out = {-2};}
+			else if (Sa==QP)            {out = {+4};}
+			else if (Sa==QM)            {out = {-4};}
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}

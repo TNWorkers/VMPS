@@ -49,13 +49,13 @@ Logger lout;
 //#include "InterpolGSL.h"
 //#include "IntervalIterator.h"
 
-//#include "models/HeisenbergSU2.h"
-//typedef VMPS::HeisenbergSU2 MODEL;
-//#define USING_SU2
+#include "models/HeisenbergSU2.h"
+typedef VMPS::HeisenbergSU2 MODEL;
+#define USING_SU2
 
-#include "models/HeisenbergU1.h"
-typedef VMPS::HeisenbergU1 MODEL;
-#define USING_U1
+//#include "models/HeisenbergU1.h"
+//typedef VMPS::HeisenbergU1 MODEL;
+//#define USING_U1
 
 /* 
 ArrayXXd permute_random (const ArrayXXd &A)
@@ -146,8 +146,10 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 			#pragma omp critical
 			{
 				lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
+				
 				CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
 				CorrFiler.flush();
+				
 				CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
 				CorrFilerAll.flush();
 			}

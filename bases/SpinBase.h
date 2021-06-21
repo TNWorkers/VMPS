@@ -118,7 +118,7 @@ public:
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Scomp (SPINOP_LABEL Sa, int orbital=0) const
 	{
-		assert(Sa != SY and Sa != QP and Sa != QM);
+		assert(Sa != SY and Sa != QP and Sa != QM and Sa != QPZ and Sa != QMZ);
 		OperatorType out;
 		if constexpr (Dummy::NO_SPIN_SYM())
 		{
@@ -130,18 +130,32 @@ public:
 		}
 		else
 		{
-			if (Sa==SZ)  { out = Sz(orbital); }
+			if      (Sa==SZ)  { out = Sz(orbital); }
 			else if (Sa==SP)  { out = Sp(orbital); }
 			else if (Sa==SM)  { out = Sm(orbital); }
 		}
+		return out;
+	};
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Qcomp (SPINOP_LABEL Sa, int orbital=0) const
+	{
+		assert(Sa != SX and Sa != SY and Sa != iSY and Sa != SZ and Sa != SP and Sa != SM);
+		OperatorType out;
+		if      (Sa==QZ)  {out = Qz(orbital);}
+		else if (Sa==QP)  {out = Qp(orbital);}
+		else if (Sa==QM)  {out = Qm(orbital);}
+		else if (Sa==QPZ) {out = Qpz(orbital);}
+		else if (Sa==QMZ) {out = Qmz(orbital);}
 		return out;
 	};
 	///\}
 
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry,Eigen::MatrixXcd> >::type Rcomp (SPINOP_LABEL Sa, int orbital=0) const;
-
-	// OperatorType beadz() const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type bead (STRING STR, size_t orbital=0) const;
 	
 	/**Identity*/
 	OperatorType Id (std::size_t orbital=0) const;
@@ -208,7 +222,7 @@ public:
 	/**Returns the basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 	
-private:	
+private:
 	OperatorType make_operator(const OperatorType &Op_1s, size_t orbital=0, string label="") const;
 	std::size_t N_orbitals;
 	std::size_t N_states;
@@ -333,22 +347,36 @@ Rcomp (SPINOP_LABEL Sa, int orbital) const
 	return Oout; //SiteOperator<Symmetry,complex<double>>(Op,getQ(Sa));
 }
 
-// template<typename Symmetry>
-// SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-// beadz() const
-// {
-// 	MatrixXd Szdiag = Scomp(SZ,0).data;
-// 	MatrixXd tmp(D,D); tmp.setZero();
-	
-// 	for (int i=0; i<D; ++i)
-// 	{
-// 		// not sure if true for S>1
-// 		tmp(i,i) = exp(1.i*M_PI*2./(double(D)-1.) * Szdiag(i,i)).real();
-// 	}
-// 	SparseMatrixXd mat = tmp.sparseView();
-// 	OperatorType Oout(mat,Symmetry::qvacuum());
-// 	return Oout;
-// }
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+bead (STRING STR, std::size_t orbital) const
+{
+	if (STR == STRINGZ)
+	{
+		if (this->D%2==0)
+		{
+			lout << termcolor::red << "Warning: exp(iπSz) is not correct for half-integer S!" << termcolor::reset << endl;
+		}
+		return make_operator(this->exp_i_pi_Sz(), orbital, "exp(iπSz)");
+	}
+	else if (STR == STRINGX)
+	{
+		if (this->D%2==0)
+		{
+			lout << termcolor::red << "Warning: exp(iπSx) is not correct for half-integer S!" << termcolor::reset << endl;
+		}
+		return make_operator(this->exp_i_pi_Sx(), orbital, "exp(iπSx)");
+	}
+	else
+	{
+		if (this->D%2==0)
+		{
+			lout << termcolor::red << "Warning: exp(iπSy) is not correct for half-integer S!" << termcolor::reset << endl;
+		}
+		return make_operator(this->exp_i_pi_Sy(), orbital, "exp(iπSy)");
+	}
+}
 
 template<typename Symmetry_, size_t order>
 template <typename Dummy>
