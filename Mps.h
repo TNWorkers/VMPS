@@ -3434,11 +3434,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		Lnext.clear();
 	}
 	
-//	cout << "Qmulti.size()=" << Qmulti.size() << endl;
 	Lnext.setIdentity(outBasis(this->N_sites-1), outBasis(this->N_sites-1));
-	
-//	auto res = L.contract(Lnext);
-//	cout << res.print(false) << endl;
 	
 	return L.contract(Lnext).trace();
 }
@@ -3485,12 +3481,10 @@ squaredNorm() const
 	{
 		/* Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]); */
 		for (size_t s=0; s<qloc[this->pivot].size(); s++)
+		for (size_t q=0; q<A[this->pivot][s].dim; ++q)
 		{
-                        for (size_t q=0; q<A[this->pivot][s].dim; ++q)
-                                {
-                                        res += (A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace() * Symmetry::coeff_dot(A[this->pivot][s].out[q]);
+			res += isReal((A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace()) * Symmetry::coeff_dot(A[this->pivot][s].out[q]);
 			/* out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]); */
-                                }
 		}
 		/* res = out.trace(); */
 	}

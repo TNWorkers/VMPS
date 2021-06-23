@@ -166,14 +166,12 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
 		param2d Jzpara = P.fill_array2d<double>("Jz", "Jzpara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Dxpara = P.fill_array2d<double>("Dx", "Dxpara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Dzpara = P.fill_array2d<double>("Dz", "Dzpara", {orbitals, next_orbitals}, loc%Lcell);
-		param2d JyKTpara = P.fill_array2d<double>("JyKT", "JyKTpara", {orbitals, next_orbitals}, loc%Lcell);
 		
 		labellist[loc].push_back(Jxpara.label);
 		labellist[loc].push_back(Jypara.label);
 		labellist[loc].push_back(Jzpara.label);
 		labellist[loc].push_back(Dxpara.label);
 		labellist[loc].push_back(Dzpara.label);
-		labellist[loc].push_back(JyKTpara.label);
 		
 		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{

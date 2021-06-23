@@ -16,8 +16,14 @@ public:
 	
 	SpectralManager(){};
 	
+	// IBC
 	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, VUMPS::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
 	                 int Ncells_input, const vector<Param> &params_hetero, 
+	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
+	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
+	
+	// OBC
+	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, DMRG::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
 	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
 	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
 	
@@ -38,6 +44,10 @@ public:
 	              double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	              size_t Mlim=500ul, double tol_DeltaS=1e-2, double tol_compr=1e-4);
 	
+	void compute_finite (size_t j0, string wd, string label, int Ns, double tmax, double dt=0.1, 
+	                     double wmin=-10., double wmax=10., int wpoints=501, GREEN_INTEGRATION INT=OOURA, 
+	                     size_t Mlim=500ul, double tol_DeltaS=1e-2, double tol_compr=1e-4);
+	
 	void compute_thermal (string wd, string label, int dLphys,
 	                      double tmax, double dt=0.1, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	                      size_t Mlim=500ul, double tol_DeltaS=1e-2, double tol_compr=1e-4);
@@ -52,6 +62,9 @@ public:
 	void make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, int Ns, 
 	               double tmax, double wmin=-10., double wmax=10., int wpoints=501, Q_RANGE QR=ZERO_2PI, int qpoints=501, GREEN_INTEGRATION INT=OOURA, 
 	               bool SAVE_N_MU=true);
+	
+	void make_A1P_finite (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, 
+	                      double tmax, double wmin=-10., double wmax=10., int wpoints=501, GREEN_INTEGRATION INT=OOURA);
 	
 	Mpo<Symmetry,Scalar> get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor=1., size_t locy=0, int dLphys=1);
 	
@@ -124,6 +137,7 @@ private:
 	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiCell;
 	
 	Eigenstate<Umps<Symmetry,Scalar>> g;
+	Eigenstate<Mps<Symmetry,Scalar>> gfinite;
 	vector<GreenPropagator<Hamiltonian,typename Hamiltonian::Symmetry,Scalar,complex<double>>> Green;
 	
 	double betamax, dbeta, tol_compr_beta;
@@ -227,6 +241,98 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 	
 	Eg = isReal(avg_hetero(Phi, Hwork, Phi, true)); // USE_BOUNDARY=true
 	lout << setprecision(16) << "Eg=" << Eg << ", eg=" << g.energy << endl;
+}
+
+// non-thermal OBC
+template<typename Hamiltonian>
+SpectralManager<Hamiltonian>::
+SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, DMRG::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
+                 string gs_label, bool LOAD_GS, bool SAVE_GS, DMRG::VERBOSITY::OPTION VERB)
+:specs(specs_input), CHOSEN_VERB(VERB)
+{
+	for (const auto &spec:specs)
+	{
+		assert(CHECK_SPEC(spec) and "Wrong spectral abbreviation!");
+	}
+	L = H.length();
+	Ncells = 1;
+	Nspec = specs.size();
+	Lhetero = L*Ncells;
+	
+	typename Hamiltonian::Solver fDMRG(VERB);
+	
+	if (LOAD_GS)
+	{
+		gfinite.state.load(gs_label, gfinite.energy);
+		lout << "loaded: " << gfinite.state.info() << endl;
+	}
+	else
+	{
+		fDMRG.userSetGlobParam();
+		fDMRG.GlobParam = GlobSweepParams;
+		fDMRG.edgeState(H,gfinite,Q);
+		if (SAVE_GS)
+		{
+			lout << "saving groundstate..." << endl;
+			gfinite.state.save(gs_label, "groundstate", gfinite.energy);
+		}
+	}
+	
+	lout << setprecision(16) << "gfinite.energy=" << gfinite.energy << endl;
+	
+	Hwork = Hamiltonian(Lhetero,params,BC::OPEN);
+	lout << "H: " << Hwork.info() << endl;
+	Hwork.precalc_TwoSiteData(true); // FORCE=true
+	
+	// Phi
+	Phi = gfinite.state;
+	
+	// shift values O→O-<O>
+	vector<vector<Scalar>> Oshift(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		Oshift[z].resize(L);
+		for (int l=0; l<L; ++l)
+		{
+			if (specs[z] == "HSF")
+			{
+				Hamiltonian Haux(2*L, {{"maxPower",1ul}}, BC::OPEN, DMRG::VERBOSITY::SILENT);
+				Oshift[z][l] = avg(gfinite.state, get_Op(Haux,l,specs[z]), gfinite.state);
+			}
+			else
+			{
+				Oshift[z][l] = avg(gfinite.state, get_Op(H,l,specs[z]), gfinite.state);
+			}
+			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
+		}
+	}
+	
+	// O and OxPhiCell
+	vector<vector<Mpo<Symmetry,Scalar>>> O(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		O[z].resize(L);
+		for (int l=0; l<L; ++l)
+		{
+			O[z][l] = get_Op(Hwork, l, specs[z]);
+			O[z][l].scale(1.,-Oshift[z][l]);
+		}
+	}
+	
+	OxPhiCell.resize(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		OxPhiCell[z].resize(L);
+		for (int l=0; l<L; ++l)
+		{
+			Mps<Symmetry,Scalar> tmp;
+			Mpo<Symmetry,Scalar> Otmp = O[z][l];
+			OxV_exact(Otmp, Phi, tmp, 2., DMRG::VERBOSITY::SILENT, 200, 1);
+			OxPhiCell[z][l] = tmp.template cast<complex<double>>();
+		}
+	}
+	
+	Eg = gfinite.energy;
 }
 
 template<typename Hamiltonian>
@@ -636,6 +742,30 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 
 template<typename Hamiltonian>
 void SpectralManager<Hamiltonian>::
+compute_finite (size_t j0, string wd, string label, int Ns, double tmax, double dt, double wmin, double wmax, int wpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
+{
+	if (Green.size()==0)
+	{
+		resize_Green(wd,label,Ns,tmax,dt,wmin,wmax,wpoints,ZERO_2PI,501,INT);
+	}
+	
+	// Propagation
+	#pragma omp parallel for
+	for (int z=0; z<Nspec; ++z)
+	{
+		string spec = specs[z];
+		Green[z].set_tol_DeltaS(tol_DeltaS);
+		Green[z].set_lim_Nsv(Mlim);
+		Green[z].set_tol_compr(tol_compr);
+		
+		Green[z].set_OxPhiFull(OxPhiCell[z]);
+		Green[z].compute_one(j0, Hwork, OxPhiCell[z], Eg, TIME_DIR(spec));
+		Green[z].save(false); // IGNORE_TX=false
+	}
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
 compute_thermal (string wd, string label, int dLphys, double tmax, double dt, double wmin, double wmax, int wpoints, Q_RANGE QR, int qpoints, GREEN_INTEGRATION INT, size_t Mlim, double tol_DeltaS, double tol_compr)
 {
 	if (Green.size()==0)
@@ -696,6 +826,29 @@ make_A1P (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, 
 				mu.save(make_string(wd,"n(μ)_tmax=",tmax,"_",label,".dat"));
 			}
 		}
+	}
+}
+
+template<typename Hamiltonian>
+void SpectralManager<Hamiltonian>::
+make_A1P_finite (GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> > &Gfull, string wd, string label, double tmax, double wmin, double wmax, int wpoints, GREEN_INTEGRATION INT)
+{
+	auto itPES = find(specs.begin(), specs.end(), "PES");
+	auto itIPE = find(specs.begin(), specs.end(), "IPE");
+	
+	if (itPES != specs.end() and itIPE != specs.end())
+	{
+		int iPES = distance(specs.begin(), itPES);
+		int iIPE = distance(specs.begin(), itIPE);
+		
+		// Add PES+IPE
+		MatrixXcd GinA1P;
+		GinA1P.resize(Green[iPES].get_Gtx().rows(), Green[iPES].get_Gtx().cols());
+		GinA1P.setZero();
+		GinA1P += Green[iPES].get_Gtx() + Green[iIPE].get_Gtx();
+		
+		Gfull = GreenPropagator<Hamiltonian,Symmetry,Scalar,complex<double> >(wd+"A1P"+"_"+label,L,tmax,GinA1P,INT);
+		Gfull.recalc_FTw(wmin,wmax,wpoints);
 	}
 }
 
