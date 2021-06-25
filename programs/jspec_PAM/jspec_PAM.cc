@@ -40,6 +40,7 @@ Logger lout;
 
 #include "models/PeierlsHubbardSU2xU1.h"
 typedef VMPS::PeierlsHubbardSU2xU1 MODEL; // complex
+#define USING_SU2
 
 #ifdef TIME_PROP_USE_TERMPLOT
 #include "plot.hpp"

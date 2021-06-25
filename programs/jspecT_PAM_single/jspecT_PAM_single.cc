@@ -617,7 +617,7 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp); // spec ist Dummy, brauchen nur die beta-Propagation hieraus
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, log(2), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB); // betaswitch=2
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, log(4), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB); // betaswitch=2
 	
 	Stopwatch<> JappWatch;
 	lout << endl << "Applying J to ground state for j0..." << endl;

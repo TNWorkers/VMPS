@@ -50,7 +50,7 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S1, typename S2> friend 
-	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY);
+	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY, int max_halfsweeps, int min_halfsweeps);
 	
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	

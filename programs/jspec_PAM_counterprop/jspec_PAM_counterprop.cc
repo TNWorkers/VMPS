@@ -149,7 +149,7 @@ void push_term (int i, int j, complex<double> lambda, double tol_OxV, DMRG::VERB
 	if (i>=0 and i<H.length() and j>=0 and j<H.length())
 	{
 		MODEL::StateXcd OxVres;
-		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
+		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB);
 		states.push_back(OxVres);
 		factors.push_back(lambda);
 	}
@@ -163,11 +163,11 @@ void push_corrhop (int i, int j, complex<double> lambda, double tol_OxV, DMRG::V
 		MODEL::StateXcd OxVres;
 		if (DAG)
 		{
-			OxV_exact(H.cdag_nc(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
+			OxV_exact(H.cdag_nc(i,j), target, OxVres, tol_OxV, CVERB);
 		}
 		else
 		{
-			OxV_exact(H.cdagn_c(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
+			OxV_exact(H.cdagn_c(i,j), target, OxVres, tol_OxV, CVERB);
 		}
 		states.push_back(OxVres);
 		factors.push_back(lambda);
@@ -481,7 +481,7 @@ int main (int argc, char* argv[])
 //				OxV_exact(Commutator, g.state, JCxg[s], tol_OxV, VERB);
 //				JCxg[s] *= 1.i;
 				
-				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB, 200, 1);
+				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB);
 				factors[0] = 1.i;
 				// reduces size:
 				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
@@ -609,7 +609,7 @@ int main (int argc, char* argv[])
 //				JCxg[s] *= 1.i;
 				
 				// reduces size:
-				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB, 200, 1);
+				OxV_exact(Commutator, g.state, states[0], tol_OxV, VERB);
 				factors[0] = 1.i;
 				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
 				Compadre.lincomboCompress(states, factors, JCxg[s], g.state, Mlimit, 1e-6, 32);

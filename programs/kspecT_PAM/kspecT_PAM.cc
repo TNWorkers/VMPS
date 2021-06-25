@@ -30,6 +30,7 @@ Logger lout;
 typedef VMPS::HubbardSU2xU1 MODEL;
 #include "models/PeierlsHubbardSU2xU1.h"
 typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
+#define USING_SU2
 
 #include "solvers/GreenPropagator.h"
 #include "DmrgLinearAlgebra.h"
@@ -198,7 +199,7 @@ int main (int argc, char* argv[])
 	else
 	{
 		SpectralManager<MODELC> SpecMan(specs,Hp);
-		SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, "thermodyn", base, LOAD_GS, SAVE_GS, VERB);
+		SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlim, Q, log(4), 2., "thermodyn", base, LOAD_GS, SAVE_GS, VERB);
 		
 		if (CALC_SPEC)
 		{

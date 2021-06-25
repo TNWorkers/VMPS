@@ -39,6 +39,7 @@ Logger lout;
 typedef VMPS::HubbardSU2xU1 MODEL;
 #include "models/PeierlsHubbardSU2xU1.h"
 typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
+#define USING_SU2
 
 #ifdef TIME_PROP_USE_TERMPLOT
 #include "plot.hpp"
@@ -608,7 +609,7 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp);
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, log(4), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
 	
 	Stopwatch<> JappWatch;
 	lout << endl << "Applying J to ground state for all sites..." << endl;

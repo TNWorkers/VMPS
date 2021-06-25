@@ -658,6 +658,7 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
  * \param tol_compr : if \f$tol_compr < 1\f$, compresses the result with this tolerance
  * \param VERBOSITY : verbosity level, which is also passed on to the MpsCompressor class
 */
+// Note: Changes to the function parameters here affect the forward declaration in Mps.h
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
