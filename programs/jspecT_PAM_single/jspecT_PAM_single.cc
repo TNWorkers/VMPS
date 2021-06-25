@@ -39,6 +39,7 @@ Logger lout;
 typedef VMPS::HubbardSU2xU1 MODEL;
 #include "models/PeierlsHubbardSU2xU1.h"
 typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
+#define USING_SU2
 
 #ifdef TIME_PROP_USE_TERMPLOT
 #include "plot.hpp"
@@ -132,7 +133,7 @@ void push_term (int i, int j, complex<double> lambda, double tol_OxV, DMRG::VERB
 //		cout << "push term at i=" << i << ", j=" << j << ", lambda=" << lambda << endl;
 		//cout << H.cdagc(i,j).info() << endl;
 		MODELC::StateXcd OxVres;
-		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB);
+		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
 		states.push_back(OxVres);
 		factors.push_back(lambda);
 	}
@@ -157,11 +158,11 @@ void push_corrhop (int i, int j, complex<double> lambda, double tol_OxV, DMRG::V
 		MODELC::StateXcd OxVres;
 		if (DAG)
 		{
-			OxV_exact(H.cdag_nc(i,j), target, OxVres, tol_OxV, CVERB);
+			OxV_exact(H.cdag_nc(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
 		}
 		else
 		{
-			OxV_exact(H.cdagn_c(i,j), target, OxVres, tol_OxV, CVERB);
+			OxV_exact(H.cdagn_c(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
 		}
 		states.push_back(OxVres);
 		factors.push_back(lambda);
@@ -616,7 +617,7 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp); // spec ist Dummy, brauchen nur die beta-Propagation hieraus
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB);
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, log(2), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB); // betaswitch=2
 	
 	Stopwatch<> JappWatch;
 	lout << endl << "Applying J to ground state for j0..." << endl;
