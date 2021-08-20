@@ -56,7 +56,7 @@ public:
 	 * \param orb2 : orbital on supersite i+1
 	 */
 	OperatorType sign (std::size_t orb1=0, std::size_t orb2=0) const;
-
+	
 	/**
 	 * Occupation number operator
 	 * \param orbital : orbital index
@@ -119,7 +119,7 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Scomp (SPINOP_LABEL Sa, int orbital=0) const
 	{
 		assert(Sa != SY and Sa != QP and Sa != QM and Sa != QPZ and Sa != QMZ);
-		OperatorType out;
+		OperatorType out = Zero();
 		if constexpr (Dummy::NO_SPIN_SYM())
 		{
 			if      (Sa==SX)  { out = Sx(orbital); }
@@ -130,8 +130,10 @@ public:
 		}
 		else
 		{
+			assert(Sa != SX and Sa != iSY);
 			if      (Sa==SZ)  { out = Sz(orbital); }
 			else if (Sa==SP)  { out = Sp(orbital); }
+			else if (Sa==SM)  { out = Sm(orbital); }
 			else if (Sa==SM)  { out = Sm(orbital); }
 		}
 		return out;
@@ -155,11 +157,17 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry,Eigen::MatrixXcd> >::type Rcomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
 	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type bead (STRING STR, size_t orbital=0) const;
+	
+	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type bead (STRING STR, size_t orbital=0) const;
 	
 	/**Identity*/
 	OperatorType Id (std::size_t orbital=0) const;
-
+	
+	/**Identity*/
+	OperatorType Zero (std::size_t orbital=0) const;
+	
 	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
 	
@@ -323,32 +331,6 @@ n (std::size_t orbital) const
 
 template<typename Symmetry_, size_t order>
 template <typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
-Rcomp (SPINOP_LABEL Sa, int orbital) const
-{
-	assert(orbital<N_orbitals);
-	SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > Oout;
-	SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > Scomp_cmplx = Scomp(Sa,orbital).template cast<complex<double> >();
-	if (Sa==iSY)
-	{
-		Oout = 2.*M_PI*Scomp_cmplx;
-	}
-	else
-	{
-		Oout = 2.*1.i*M_PI*Scomp_cmplx;
-	}
-	Oout.data() = Oout.data().exp(1.);
-	
-	cout << "Rcomp=" << Oout << endl << endl;
-	// cout << "Re=" << Mtmp.exp().real() << endl << endl;
-	// cout << "Im=" << Mtmp.exp().imag() << endl << endl;
-	// cout << "Op=" << Op << endl << endl;
-	
-	return Oout; //SiteOperator<Symmetry,complex<double>>(Op,getQ(Sa));
-}
-
-template<typename Symmetry_, size_t order>
-template <typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
 bead (STRING STR, std::size_t orbital) const
 {
@@ -376,6 +358,15 @@ bead (STRING STR, std::size_t orbital) const
 		}
 		return make_operator(this->exp_i_pi_Sy(), orbital, "exp(iπSy)");
 	}
+}
+
+template<typename Symmetry_, size_t order>
+template <typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+bead (STRING STR, std::size_t orbital) const
+{
+	lout << termcolor::red << "Warning: returning Id instead of exp(iπSa) with SU(2) symmetry!" << termcolor::reset << endl;
+	return make_operator(this->Id_1s(), orbital,"Id");
 }
 
 template<typename Symmetry_, size_t order>
@@ -490,7 +481,7 @@ typename std::enable_if<Dummy::NO_SPIN_SYM(), SiteOperatorQ<Symmetry_,Eigen::Mat
 iSy (std::size_t orbital) const
 {
 	OperatorType out = 0.5 * (Sp(orbital) - Sm(orbital));
-	out.label() = "Sy";
+	out.label() = "iSy";
 	return out;
 }
 
@@ -499,6 +490,13 @@ SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > Sp
 Id (std::size_t orbital) const
 {
 	return make_operator(this->Id_1s(), orbital,"Id");
+}
+
+template<typename Symmetry_, size_t order>
+SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Symmetry_,order>::
+Zero (std::size_t orbital) const
+{
+	return make_operator(this->Zero_1s(), orbital, "Zero");
 }
 
 template<typename Symmetry_, size_t order>

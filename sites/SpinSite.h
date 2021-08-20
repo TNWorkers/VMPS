@@ -22,6 +22,7 @@ public:
 	SpinSite(std::size_t D_input);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
+	OperatorType Zero_1s() const {return Zero_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
 	
 	OperatorType n_1s() const {return n_1s(UP) + n_1s(DN);}
@@ -56,10 +57,11 @@ protected:
 	
 	Qbasis<Symmetry> basis_1s_;
 	
-	OperatorType Id_1s_; //identity
-	OperatorType F_1s_; //Fermionic sign
+	OperatorType Id_1s_; // identity
+	OperatorType Zero_1s_; // zero
+	OperatorType F_1s_; // fermionic sign
 	
-	OperatorType n_1s_; //particle number
+	OperatorType n_1s_; // particle number
 	
 	//orbital spin
 	OperatorType Sz_1s_;
@@ -96,6 +98,9 @@ fill_SiteOps()
 {
 	Id_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	Id_1s_.setIdentity();
+	
+	Zero_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
+	Zero_1s_.setZero();
 	
 	F_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	

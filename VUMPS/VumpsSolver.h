@@ -1910,7 +1910,7 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
 	
 	Gimli.set_dimK(min(static_cast<size_t>(LINEARSOLVER_DIMK),dim(bvec)));
 	MpoTransferVector<Symmetry,Scalar> LRres_tmp;
-	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, true);
+	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-11, true);
 	LRres = LRres_tmp.data;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)

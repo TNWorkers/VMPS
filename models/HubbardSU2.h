@@ -126,7 +126,7 @@ HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, co
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-
+	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
@@ -136,15 +136,15 @@ HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, co
 	{
 		this->set_name("U=∞-Hubbard");
 	}
-
-	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
-	HubbardSU2xU1::set_operators(F, P, pushlist, labellist, boundary);
-    add_operators(F, P, pushlist, labellist, boundary);
 	
-    this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+	std::vector<std::vector<std::string>> labellist;
+	HubbardSU2xU1::set_operators(F, P, pushlist, labellist, boundary);
+	add_operators(F, P, pushlist, labellist, boundary);
+	
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
@@ -157,7 +157,7 @@ add_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		std::size_t orbitals = F[loc].orbitals();
-		// Can also implement superconducting terms here 		
+		// Can also implement superconducting terms here
 	}
 }
 

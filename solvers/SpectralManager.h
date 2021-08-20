@@ -27,8 +27,8 @@ public:
 	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
 	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
 	
-	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H)
-	:specs(specs_input), Hwork(H)
+	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE)
+	:specs(specs_input), Hwork(H), CHOSEN_VERB(VERB)
 	{};
 	
 	template<typename HamiltonianThermal>
@@ -453,12 +453,20 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		vector<double> lnZvec;
 //		double s_betainit = log((dLphys==2)?Hprop.locBasis(0).size():Hprop.locBasis(0).size()/2);
 		
-		for (int i=1; i<20; ++i)
+		for (int i=1; i<22; ++i)
 		{
 			double beta_last = betavals[betavals.size()-1];
 			if (beta_last > betamax) break;
-			betasteps.push_back(0.01);
-			betavals.push_back(beta_last+0.01);
+			if (i>=20)
+			{
+				betasteps.push_back(0.05);
+				betavals.push_back(beta_last+0.05);
+			}
+			else
+			{
+				betasteps.push_back(0.01);
+				betavals.push_back(beta_last+0.01);
+			}
 		}
 		
 		while (betavals[betavals.size()-1] < betamax)
@@ -481,7 +489,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		lout << endl;
 		
 		ofstream BetaFiler(make_string(wd,"/thermodyn_",th_label,".dat"));
-		BetaFiler << "#T\tβ\tc\te\tchi";
+		BetaFiler << "#T\tβ\tc\te\tchi\tchiz\tchic\ts";
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
 		BetaFiler << endl;
 		
@@ -515,7 +523,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		{
 			Stopwatch<> betaStepper;
 			double beta = betavals[i];
-			if (beta>10.)
+			if (beta>betaswitch)
 			{
 				TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
 			}
@@ -538,12 +546,24 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			double c = isReal(beta*beta*(avg_Hsq-avgH_sq))/L;
 			
 			double chi = std::nan("0");
+			double chiz = std::nan("0");
+			double chic = 0;
 			#ifdef USING_SU2
 			chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
+			chiz = chi/3.;
+			for (int l=0; l<dLphys*L; l+=dLphys)
+			{
+				chic += isReal(beta*avg(PhiT, Hprop.SdagS(l,L/2), PhiT))/3.;
+			}
 			#else
 			chi =  0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SP,0,1.,dLphys), Hprop.Scomptot(SM,0,1.,dLphys), PhiT))/L;
 			chi += 0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SM,0,1.,dLphys), Hprop.Scomptot(SP,0,1.,dLphys), PhiT))/L;
-			chi +=     isReal(beta*avg(PhiT, Hprop.Scomptot(SZ,0,1.,dLphys), Hprop.Scomptot(SZ,0,1.,dLphys), PhiT))/L;
+			chiz = isReal(beta*avg(PhiT, Hprop.Scomptot(SZ,0,1.,dLphys), Hprop.Scomptot(SZ,0,1.,dLphys), PhiT))/L;
+			chi += chiz;
+			for (int l=0; l<dLphys*L; l+=dLphys)
+			{
+				chic += isReal(beta*avg(PhiT, Hprop.SzSz(l,L/2), PhiT));
+			}
 			#endif
 			
 //			double chi_ = beta*(2.*avg(PhiT,Hchi,PhiT)/L+0.75);
@@ -557,6 +577,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << "S=" << PhiTtmp.entropy().transpose() << endl;
 			
 			VectorXd nphys(Lcell); for (int j=0; j<Lcell; ++j) nphys(j) = 0.;
+			VectorXd SdagSphys(Lcell); for (int j=0; j<Lcell; ++j) SdagSphys(j) = 0.;
 			double nancl = 0.;
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
@@ -569,18 +590,32 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 					nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
 				}
 			}
+			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+			{
+				for (int j=0, icell=0; j<dLphys*(L-1); j+=dLphys, icell+=1)
+				{
+					//cout << "j,j+dLphys=" << j << "," << j+dLphys << ", icell=" << icell << ", icellmodLcell=" << icell%Lcell << ", val=" <<  isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT)) << endl;
+					SdagSphys(icell%Lcell) += isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT));
+				}
+			}
 			
 			nphys /= L;
 			double nphystot = nphys.sum();
 			nancl /= L;
 			
-			lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi << ", s=" << s;
-			BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi << "\t" << s;
+			lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi << ", chiz=" << chiz << ", chic=" << chic << ", s=" << s;
+			BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi << "\t" << chiz << "\t" << chic << "\t" << s;
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
 				lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
 				BetaFiler << "\t" << nphystot;
 			}
+//			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+//			{
+//				double Nb = L-1;
+//				lout << ", SdagSphys/Nb=" << SdagSphys.transpose()/Nb << ", sum/Nb=" << SdagSphys.sum()/Nb;
+//				BetaFiler << "\t" << SdagSphys.transpose()/Nb;
+//			}
 			lout << termcolor::reset << endl;
 			BetaFiler << endl;
 			lout << betaStepper.info("βstep") << endl;

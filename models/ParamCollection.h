@@ -870,7 +870,7 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	
-	if (L ==4 )
+	if (L == 4) // tetrahedron
 	{
 		res(0,1) = lambda1;
 		res(1,2) = lambda1;
@@ -878,6 +878,23 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 		res(0,3) = lambda1;
 		res(1,3) = lambda1;
 		res(2,3) = lambda1;
+	}
+	else if (L == 6) // octahedron
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(2,3) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(0,4) = lambda1;
+		res(1,4) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
+		
+		res(0,5) = lambda1;
+		res(1,5) = lambda1;
+		res(2,5) = lambda1;
+		res(3,5) = lambda1;
 	}
 	// reference: Phys. Rev. B 72, 064453 (2005)
 	else if (L == 12)
@@ -1414,12 +1431,13 @@ vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 	return res;
 }
 
-vector<Param> Tinf_params_spins (size_t Ly, size_t maxPower=1ul)
+vector<Param> Tinf_params_spins (size_t Ly, size_t maxPower=1ul, size_t D=2ul)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
 	res.push_back({"maxPower",maxPower});
 	res.push_back({"OPEN_BC",true});
+	res.push_back({"D",D});
 	if (Ly == 2ul)
 	{
 		res.push_back({"J",0.});
@@ -1519,21 +1537,39 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM_T (int L, Scalar tfc, Scalar tcc, Scal
 	return res;
 }
 
-ArrayXXd hopping_spinChain (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false)
+ArrayXXd hopping_spinChain (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false, bool PBC=false)
 {
 	ArrayXXd res_tmp(L,L);
-	res_tmp.setZero();
-	res_tmp.matrix().diagonal<1> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JA);
-	res_tmp.matrix().diagonal<1> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JB);
-	res_tmp.matrix().diagonal<2> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JpA);
-	res_tmp.matrix().diagonal<2> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JpB);
-	res_tmp += res_tmp.transpose().eval();
+	
+	if (PBC)
+	{
+		lout << termcolor::yellow << "Warning: ignoring JB, JpB for PBC!" << termcolor::reset << endl;
+		res_tmp = create_1D_PBC(L,JA,JpA);
+	}
+	else
+	{
+		res_tmp.setZero();
+		res_tmp.matrix().diagonal<1> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JA);
+		res_tmp.matrix().diagonal<1> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JB);
+		res_tmp.matrix().diagonal<2> ()(Eigen::seq(0,Eigen::last,2)).setConstant(JpA);
+		res_tmp.matrix().diagonal<2> ()(Eigen::seq(1,Eigen::last,2)).setConstant(JpB);
+		res_tmp += res_tmp.transpose().eval();
+	}
 	return res_tmp;
 }
 
-ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false, double bugfix=1e-7)
+ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double JpB, bool ANCILLA_HOPPING=false, double bugfix=1e-7, bool PBC=false)
 {
-	ArrayXXd res_tmp = hopping_spinChain(L,JA,JB,JpA,JpB,false);
+	ArrayXXd res_tmp;
+	if (PBC)
+	{
+		lout << termcolor::yellow << "Warning: ignoring JB, JpB for PBC!" << termcolor::reset << endl;
+		res_tmp = create_1D_PBC(L,JA,JpA);
+	}
+	else
+	{
+		res_tmp = hopping_spinChain(L,JA,JB,JpA,JpB,false);
+	}
 	
 	ArrayXXd res(2*L,2*L); res = 0;
 	

@@ -1065,7 +1065,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 		{
 			lout << TDVP[0].info() << endl;
 			lout << Psi[0].info() << endl;
-			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
+			lout << termcolor::blue << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << termcolor::reset << endl;
 		}
 		
 		// 2. measure
@@ -1209,7 +1209,7 @@ propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		{
 			lout << TDVP.info() << endl;
 			lout << Psi.info() << endl;
-			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
+			lout << termcolor::blue << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << termcolor::reset << endl;
 		}
 		
 		// 2. measure
@@ -1361,10 +1361,11 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		{
 			lout << TDVP[0][0].info() << endl;
 			lout << Psi[0][0].info() << endl;
-			lout << "propagated to: t=0.5*" << tval << "=" << 0.5*tval 
+			lout << termcolor::blue
+			     << "propagated to: t=0.5*" << tval << "=" << 0.5*tval 
 			     << ", stepsize=0.5*" << tsteps(t.index()) << "=" << 0.5*tsteps(t.index())
 			     << ", step#" << t.index()+1 << "/" << Nt
-			     << endl;
+			     << termcolor::reset << endl;
 		}
 		
 		// 2. measure

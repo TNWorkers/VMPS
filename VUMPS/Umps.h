@@ -389,7 +389,7 @@ info() const
 	stringstream ss;
 	ss << "Umps: ";
 	ss << Symmetry::name() << ", ";
-	ss << ", " << Symmetry::name() << ", ";
+	//ss << ", " << Symmetry::name() << ", ";
 	if (Nq != 0)
 	{
 		ss << "(";

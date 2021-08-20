@@ -45,7 +45,19 @@ public:
 	
 	///\{
 	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(Heisenberg::sweep_defaults) {};
+	
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	
+	HeisenbergXYZ (Mpo<Symmetry,complex<double> > &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry,complex<double> >(Mpo_input),
+	 HeisenbergObservables(this->N_sites,params,Heisenberg::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,Heisenberg::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
 	///\}
 	
 	template<typename Symmetry_>
@@ -72,7 +84,7 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 	
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul},
 	
-	{"J",0.}, {"Jprime",0.}
+	{"J",0.}, {"Jprime",0.}, {"Jxy",0.}, {"mu",0.}, {"nu",0.}, {"R",0.}, {"Jxyprime",0.}, {"Jzprime",0.}, {"Jw",0.}, {"betaKT",0.}
 };
 
 HeisenbergXYZ::

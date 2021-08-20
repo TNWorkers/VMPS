@@ -58,7 +58,7 @@ public:
 	*/
 	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::ON_EXIT);
 	
-	HeisenbergSU2(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	HeisenbergSU2 (Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
 	:Mpo<Symmetry>(Mpo_input),
 	 HeisenbergObservables(this->N_sites,params,HeisenbergSU2::defaults),
 	 ParamReturner()

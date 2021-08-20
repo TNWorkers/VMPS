@@ -485,7 +485,7 @@ public:
      *  @param factor   The factor to scale the interactions with
      *  @param offset   The factor all local identity operators are multiplied by
      */
-    void scale (const double factor, const Scalar offset=0., const std::size_t power=0ul, const double tolerance=1.e-14);
+    void scale (const Scalar factor, const Scalar offset=0., const std::size_t power=0ul, const double tolerance=1.e-14);
     
     /**
      *  @return Cast instance of MpoTerms with another scalar type
@@ -2731,6 +2731,10 @@ assert_hilbert (const std::size_t loc, const std::size_t dim)
 	}
 	else
 	{
+		if (hilbert_dimension[loc] != dim)
+		{
+			lout << termcolor::red << "hilbert_dimension[loc]=" << hilbert_dimension[loc] << ", dim=" << dim << termcolor::reset << endl;
+		}
 		assert(hilbert_dimension[loc] == dim and "Dimensions of operator and local Hilbert space do not match!");
 	}
 }
@@ -2848,14 +2852,17 @@ check_qPhys () const
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-scale (const double factor, const Scalar offset, const std::size_t power, const double tolerance)
+scale (const Scalar factor, const Scalar offset, const std::size_t power, const double tolerance)
 {
     std::size_t calc_to_power = (power != 0 ? power : current_power);
     got_update();
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
 //    	lout << termcolor::blue << "SCALING" << ", std::abs(factor-1.)=" << std::abs(factor-1.) << termcolor::reset << endl;
-        bool sign_factor = (factor < 0. ? true : false);
+		
+//        bool sign_factor = (factor < 0. ? true : false);
+		bool sign_factor = (std::abs(std::arg(factor)) > 0. ? true : false);
+        
         double factor_per_site = std::pow(std::abs(factor), 1./(1.*N_sites));
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
@@ -2898,7 +2905,14 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
                             std::map<qType,OperatorType> &existing_ops = (it->second)[pos_qVac][col];
                             for(auto &[q,op] : existing_ops)
                             {
-                                op = -1.*op;
+								if constexpr(std::is_same<Scalar,complex<double>>::value)
+                				{
+                                	op = exp(1.i*std::arg(factor))*op;
+                                }
+                                else
+                                {
+                                	op = -1.*op;
+                                }
                             }
                         }
                     }
@@ -2919,7 +2933,14 @@ scale (const double factor, const Scalar offset, const std::size_t power, const 
                                 std::map<qType,OperatorType> &existing_ops = (it->second)[row][col];
                                 for(auto &[q,op] : existing_ops)
                                 {
-                                    op = -1.*op;
+                                    if constexpr(std::is_same<Scalar,complex<double>>::value)
+		            				{
+		                            	op = exp(1.i*std::arg(factor))*op;
+		                            }
+		                            else
+		                            {
+		                            	op = -1.*op;
+		                            }
                                 }
                             }
                         }

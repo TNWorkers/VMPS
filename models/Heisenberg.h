@@ -46,7 +46,19 @@ public:
 	
 	///@{
 	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables(), ParamReturner(Heisenberg::sweep_defaults) {};
+	
 	Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	
+	Heisenberg (Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HeisenbergObservables(this->N_sites,params,Heisenberg::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,Heisenberg::defaults);
+		size_t Lcell = P.size();
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
 	///@}
 	
 	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
@@ -203,8 +215,14 @@ add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
 				auto tight_Sz = B[(loc+1)%N_sites].Scomp(SZ,beta);
 				auto tight_iSy = B[(loc+1)%N_sites].Scomp(iSY,beta);
 				
-				auto local_iSw= local_iSy*B[loc].bead(STRINGZ,alfa);
-				auto tight_iSw= B[(loc+1)%N_sites].bead(STRINGX,alfa)*tight_iSy;
+				// Set first to 1 in order to avoid warning for half-integer spin
+				auto local_iSw = B[loc].Id();
+				auto tight_iSw = B[(loc+1)%N_sites].Id();
+				if (abs(Jwpara(alfa,beta)) != 0.)
+				{
+					local_iSw= local_iSy*B[loc].bead(STRINGZ,alfa);
+					tight_iSw= B[(loc+1)%N_sites].bead(STRINGX,alfa)*tight_iSy;
+				}
 				
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Sx), Jxpara(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_iSy, tight_iSy), -Jypara(alfa,beta)));

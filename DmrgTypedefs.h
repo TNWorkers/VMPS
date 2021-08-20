@@ -72,6 +72,15 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 
 enum STRING {NOSTRING, STRINGX, STRINGY, STRINGZ};
 
+std::ostream& operator<< (std::ostream& s, STRING STR)
+{
+	if      (STR==NOSTRING) {s << "NOSTRING";}
+	else if (STR==STRINGX)  {s << "STRINGX";}
+	else if (STR==STRINGY)  {s << "STRINGY";}
+	else if (STR==STRINGZ)  {s << "STRINGZ";}
+	return s;
+}
+
 SPINOP_LABEL STRING_TO_SPINOP (STRING STR)
 {
 	if      (STR==STRINGX) {return SX;}
@@ -320,12 +329,12 @@ struct DMRG
 			static double max_alpha_rsvd             (size_t i) {return (i<11)? 1e2:0;}
 			static double min_alpha_rsvd             (size_t i) {return (i<11)? 1e-11:0;}
 			static double eps_svd                    (size_t i) {return 1e-8;}
-			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least Dincr_abs
+			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least 20
 			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
 			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
-			static void   doSomething                (size_t i) {return;} // -1 = infinity
+			static void   doSomething                (size_t i) {return;}
 			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
 			
 			//LANCZOS DEFAULTS

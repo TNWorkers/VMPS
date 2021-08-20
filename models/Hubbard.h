@@ -76,7 +76,7 @@ Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary, const
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-
+	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
@@ -91,13 +91,13 @@ Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary, const
 		this->set_name("U=∞-Hubbard");
 	}
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	HubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
 	add_operators(F, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
@@ -114,10 +114,10 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		
 		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
 		labellist[loc].push_back(Bx.label);
-
+		
 		param1d Fp = P.fill_array1d<double>("Fp", "Fporb", orbitals, loc%Lcell);
 		labellist[loc].push_back(Fp.label);
-
+		
 		// Can also implement superconductivity terms c*c & cdag*cdag here
 		
 		// ArrayXd  U_array  = F[loc].ZeroField();
@@ -127,11 +127,11 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		// ArrayXXd tperp_array = F[loc].ZeroHopping();
 		// ArrayXXd Vperp_array = F[loc].ZeroHopping();
 		// ArrayXXd Jperp_array = F[loc].ZeroHopping();
-
+		
 		auto H_Bx = F[loc].template coupling_Bx<double>(Bx.a);
 		auto H_Fp = F[loc].template coupling_singleFermion<double>(Fp.a);
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp));
-        pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 	}
 }
 
