@@ -1431,13 +1431,39 @@ vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 	return res;
 }
 
-vector<Param> Tinf_params_spins (size_t Ly, size_t maxPower=1ul, size_t D=2ul)
+vector<Param> Tinf_params_spins (size_t L, size_t Ly, size_t maxPower=1ul, size_t D=2ul, bool SOFT=false)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
 	res.push_back({"maxPower",maxPower});
 	res.push_back({"OPEN_BC",true});
-	res.push_back({"D",D});
+	if (SOFT and D==3)
+	{
+		if (Ly==2)
+		{
+			for (size_t l=1; l<L-1; ++l)
+			{
+				res.push_back({"D",D,l});
+			}
+			res.push_back({"D",2ul,0});
+			res.push_back({"D",2ul,L-1});
+		}
+		else if (Ly==1)
+		{
+			for (size_t l=2; l<2*L-2; ++l)
+			{
+				res.push_back({"D",D,l});
+			}
+			res.push_back({"D",2ul,0});
+			res.push_back({"D",2ul,1});
+			res.push_back({"D",2ul,L-2});
+			res.push_back({"D",2ul,L-1});
+		}
+	}
+	else
+	{
+		res.push_back({"D",D});
+	}
 	if (Ly == 2ul)
 	{
 		res.push_back({"J",0.});

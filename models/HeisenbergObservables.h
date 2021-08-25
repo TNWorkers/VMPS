@@ -243,7 +243,20 @@ make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 	{
 		if (STR==NOSTRING)
 		{
-			Mout.setLocal({locx1, locx2}, {(factor*Op1).template plain<double>(), Op2.template plain<double>()});
+			// Set dummySign carefully because basis might be site-dependent
+			if (int(locx2)-int(locx1)-1 != 0)
+			{
+				vector<SiteOperator<Symmetry,double> > dummySign(max(locx1,locx2)-min(locx1,locx2)-1);
+				for (int i=0; i<dummySign.size(); ++i)
+				{
+					dummySign[i] = B[min(locx1,locx2)+i+1].Id().template plain<double>();
+				}
+				Mout.setLocal(vector<size_t>{locx1, locx2}, vector<SiteOperator<Symmetry,double> >{(factor*Op1).template plain<double>(), Op2.template plain<double>()}, dummySign);
+			}
+			else
+			{
+				Mout.setLocal(vector<size_t>{locx1, locx2}, vector<SiteOperator<Symmetry,double> >{(factor*Op1).template plain<double>(), Op2.template plain<double>()});
+			}
 		}
 		else
 		{

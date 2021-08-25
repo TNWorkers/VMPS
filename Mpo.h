@@ -679,6 +679,7 @@ setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& 
     this->finalize(PROP::COMPRESS, 1);
 }
 
+// Warning: Needs homogenenous basis
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& ops, const OperatorType& signOp)
 {

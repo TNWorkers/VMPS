@@ -553,7 +553,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			chiz = chi/3.;
 			for (int l=0; l<dLphys*L; l+=dLphys)
 			{
-				chic += isReal(beta*avg(PhiT, Hprop.SdagS(l,L/2), PhiT))/3.;
+				chic += isReal(beta*avg(PhiT, Hprop.SdagS(l,dLphys*L/2), PhiT))/3.;
 			}
 			#else
 			chi =  0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SP,0,1.,dLphys), Hprop.Scomptot(SM,0,1.,dLphys), PhiT))/L;
@@ -562,7 +562,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			chi += chiz;
 			for (int l=0; l<dLphys*L; l+=dLphys)
 			{
-				chic += isReal(beta*avg(PhiT, Hprop.SzSz(l,L/2), PhiT));
+				chic += isReal(beta*avg(PhiT, Hprop.SzSz(l,dLphys*L/2), PhiT));
 			}
 			#endif
 			
@@ -577,7 +577,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << "S=" << PhiTtmp.entropy().transpose() << endl;
 			
 			VectorXd nphys(Lcell); for (int j=0; j<Lcell; ++j) nphys(j) = 0.;
-			VectorXd SdagSphys(Lcell); for (int j=0; j<Lcell; ++j) SdagSphys(j) = 0.;
+			//VectorXd SdagSphys(Lcell); for (int j=0; j<Lcell; ++j) SdagSphys(j) = 0.;
 			double nancl = 0.;
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
@@ -590,20 +590,20 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 					nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
 				}
 			}
-			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
-			{
-				for (int j=0, icell=0; j<dLphys*(L-1); j+=dLphys, icell+=1)
-				{
-					//cout << "j,j+dLphys=" << j << "," << j+dLphys << ", icell=" << icell << ", icellmodLcell=" << icell%Lcell << ", val=" <<  isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT)) << endl;
-					SdagSphys(icell%Lcell) += isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT));
-				}
-			}
+//			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+//			{
+//				for (int j=0, icell=0; j<dLphys*(L-1); j+=dLphys, icell+=1)
+//				{
+//					//cout << "j,j+dLphys=" << j << "," << j+dLphys << ", icell=" << icell << ", icellmodLcell=" << icell%Lcell << ", val=" <<  isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT)) << endl;
+//					SdagSphys(icell%Lcell) += isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT));
+//				}
+//			}
 			
 			nphys /= L;
 			double nphystot = nphys.sum();
 			nancl /= L;
 			
-			lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi << ", chiz=" << chiz << ", chic=" << chic << ", s=" << s;
+			lout << termcolor::bold << "β=" << beta << ", T=" << 1./beta << ", c=" << c << ", e=" << e << ", chi=" << chi << ", chiz=" << chiz << "(3x=" << 3.*chiz << ")" << ", chic=" << chic << ", s=" << s;
 			BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi << "\t" << chiz << "\t" << chic << "\t" << s;
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
