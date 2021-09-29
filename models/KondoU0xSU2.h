@@ -100,10 +100,10 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 const map<string,any> KondoU0xSU2::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
-	{"Dincr_abs",5ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
+	{"Mincr_abs",50ul}, {"Mincr_per",2ul}, {"Mincr_rel",1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",10ul},
-	{"Dinit",5ul}, {"Qinit",6ul}, {"Dlimit",200ul},
+	{"Minit",1ul}, {"Qinit",1ul}, {"Dlimit",10000ul},
 	{"tol_eigval",1e-6}, {"tol_state",1e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
@@ -119,28 +119,28 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, c
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("LyF",l%Lcell);		
+		N_phys += P.get<size_t>("LyF",l%Lcell);
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-	this->GOT_SEMIOPEN_LEFT  = P.get<bool>("SEMIOPEN_LEFT");
-	this->GOT_SEMIOPEN_RIGHT = P.get<bool>("SEMIOPEN_RIGHT");
+	//this->GOT_SEMIOPEN_LEFT  = P.get<bool>("SEMIOPEN_LEFT");
+	//this->GOT_SEMIOPEN_RIGHT = P.get<bool>("SEMIOPEN_RIGHT");
 	
 	this->set_name("Kondo");
-
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
-    set_operators(B, F, P, pushlist, labellist, boundary);
-    
-    this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	std::vector<std::vector<std::string>> labellist;
+	set_operators(B, F, P, pushlist, labellist, boundary);
+	
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>
 void KondoU0xSU2::
 set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+               PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = B.size();
@@ -277,12 +277,13 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		labellist[loc].push_back(Kz.label);
 		
 		ArrayXXd muPerp  = B[loc].ZeroHopping();
+		ArrayXXd nuPerp  = B[loc].ZeroHopping();
 		ArrayXXd Jxyperp = B[loc].ZeroHopping();
 		ArrayXXd Jzperp  = B[loc].ZeroHopping();
 		ArrayXXd DyPerp  = B[loc].ZeroHopping();
 		
 		//set Heisenberg part of Kondo Hamiltonian
-		auto KondoHamiltonian = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,muPerp,Kz.a,Kx.a,DyPerp), F[loc].Id());
+		auto KondoHamiltonian = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,muPerp,nuPerp,Kz.a,Kx.a,DyPerp), F[loc].Id());
 		
 		ArrayXXd Vperp      = F[loc].ZeroHopping();
 		ArrayXXd Jxysubperp = F[loc].ZeroHopping();
@@ -308,7 +309,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		}
 		pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(KondoHamiltonian), 1.));
 		
-		// NN terms		
+		// NN terms
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);

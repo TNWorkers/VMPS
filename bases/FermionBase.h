@@ -300,7 +300,8 @@ public:
 	                    const Array<Scalar_,Dynamic,Dynamic> &Vz,
 	                    const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
 	                    const Array<Scalar_,Dynamic,Dynamic> &Jz,
-	                    const Array<Scalar_,Dynamic,Dynamic> &Jxy) const;
+	                    const Array<Scalar_,Dynamic,Dynamic> &Jxy,
+	                    const Array<Scalar_,Dynamic,Dynamic> &C) const;
 	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type
@@ -813,7 +814,8 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
                     const Array<Scalar_,Dynamic,Dynamic> &Vz,
                     const Array<Scalar_,Dynamic,Dynamic> &Vxy,
                     const Array<Scalar_,Dynamic,Dynamic> &Jz,
-                    const Array<Scalar_,Dynamic,Dynamic> &Jxy) const
+                    const Array<Scalar_,Dynamic,Dynamic> &Jxy,
+                    const Array<Scalar_,Dynamic,Dynamic> &C) const
 {
 	auto Oout = HubbardHamiltonian<Scalar_>(Uph, t, ZeroHopping(), ZeroHopping());
 	
@@ -859,6 +861,15 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		if (Bz(i) != 0.)
 		{
 			Oout -= Bz(i) * Sz(i).template cast<Scalar_>();
+		}
+		if (C(i) != 0.)
+		{
+			// convention: cUP*cDN + cdagDN*cdagUP
+			// convention for cc, cdagcdag is opposite, therefore needs one commutation
+//			Oout -= C(i) * cc(i).template cast<Scalar_>();
+//			Oout -= C(i) * cdagcdag(i).template cast<Scalar_>();
+			Oout += C(i) * (c(UP,i)*c(DN,i)).template cast<Scalar_>();
+			Oout += C(i) * (cdag(DN,i)*cdag(UP,i)).template cast<Scalar_>();
 		}
 	}
 	Oout.label() = "Hloc";

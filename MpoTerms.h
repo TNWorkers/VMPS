@@ -2953,7 +2953,7 @@ scale (const Scalar factor, const Scalar offset, const std::size_t power, const 
     {
         //bool sign_offset = (offset < 0. ? true : false);
         //cout << boolalpha << "sign_offset=" << sign_offset << endl;
-        double offset_per_site = std::pow(std::abs(offset), 1./(1.*N_sites));
+        double offset_per_site = std::abs(offset)/(1.*N_sites);
         if(boundary_condition == BC::OPEN)
         {
             assert(qTot == qVac and "For adding an offset, the MPO needs to be a singlet.");

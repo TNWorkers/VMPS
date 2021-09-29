@@ -89,6 +89,12 @@ public:
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
 	cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrSpin (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
+	
 	///@{
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type d (size_t locx, size_t locy=0) const;
@@ -382,12 +388,21 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	return Mout;
 }
 
-//template<typename Symmetry, typename Scalar>
-//template<typename Dummy>
-//make_pushlist_from_pairingList (const vector<tuple<orbital,orbital,orbital,orbital,double,orbinfo>> &pairingList)
-//{
-//	
-//}
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+StringCorrSpin (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+StringCorrSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sz(locy1), F[locx2].Sz(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true
+}
 
 template<typename Symmetry, typename Scalar>
 template<typename Dummy>
@@ -681,8 +696,8 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	else
 	{
 		vector<Mpo<Symmetry,Scalar> > out(2);
-		out[0] = cdagc<UP>(locx1,locx2,locy1,locy2);
-		out[1] = cdagc<DN>(locx1,locx2,locy1,locy2);
+		out[0] = cdagc<UP,UP>(locx1,locx2,locy1,locy2);
+		out[1] = cdagc<DN,DN>(locx1,locx2,locy1,locy2);
 		return out;
 	}
 }

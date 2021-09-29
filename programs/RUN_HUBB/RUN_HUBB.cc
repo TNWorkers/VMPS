@@ -537,8 +537,8 @@ int main (int argc, char* argv[])
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam_fix.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
-	GlobParam_fix.Minit  = args.get<size_t>("Dinit",1ul);
-	GlobParam_fix.Mlimit = args.get<size_t>("Dlimit",1000ul);
+	GlobParam_fix.Minit  = args.get<size_t>("Minit",1ul);
+	GlobParam_fix.Mlimit = args.get<size_t>("Mlimit",1000ul);
 	GlobParam_fix.Qinit = args.get<size_t>("Qinit",1ul);
 	GlobParam_fix.min_halfsweeps = args.get<size_t>("Imin",1);
 	GlobParam_fix.max_halfsweeps = args.get<size_t>("Imax",22);
@@ -1120,12 +1120,12 @@ int main (int argc, char* argv[])
 				}
 				
 				if (target.HAS_GROUP(bond.str())) {return;}
-
-#ifdef USING_U0
+				
+				#ifdef USING_U0
 				Mpo<MODEL::Symmetry,complex<double>> Id = Mpo<MODEL::Symmetry,complex<double>>::Identity(g_foxy.state.locBasis());
 				auto domRL1 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  Id, true, false);
 				auto domLR1 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, Id, true, false);
-#endif
+				#endif
 				
 				#ifdef USING_U0
 				auto domRL1y = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
@@ -1216,15 +1216,22 @@ int main (int argc, char* argv[])
 				lout << "\tSTcorr=" << obs.STcorr << endl;
 				#endif
 				
-				#pragma omp parallel for
+				ofstream StringFiler(make_string("string_M=",bond.str(),".dat"));
+				//#pragma omp parallel for
 				for (int d=1; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+1,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+1,L),{{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					obs.SdagS1d(d,0) = d;
 					obs.SdagS1d(d,1) = avg(g_foxy.state, Htmp.SdagS(0,d), g_foxy.state);
 					obs.TdagT1d(d,0) = d;
 					obs.TdagT1d(d,1) = avg(g_foxy.state, Htmp.TdagT(0,d), g_foxy.state);
+					
+					#if defined(USING_SO4) or defined(USING_SU2xU1) or defined(USING_SU2)
+					lout << "d=" << d << ", string=" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
+					StringFiler << d << "\t" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
+					#endif
+					
 					#if !defined(USING_SO4)
 					obs.TzTz1d(d,0) = d;
 					obs.TzTz1d(d,1) = avg(g_foxy.state, Htmp.TzTz(0,d), g_foxy.state);
@@ -1245,15 +1252,15 @@ int main (int argc, char* argv[])
 				lout << endl;
 				
 				#if defined(USING_U1xU1) or defined(USING_U1SPIN) or defined(USING_U0)
-				#pragma omp parallel for
+				//#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT); Htmp.transform_base(Qc,false); // PRINT=false
 					
-					double val1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state);
-					double val2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), Htmp.cdagc<DN>(0,d), g_foxy.state);
-					double val3 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d),   Htmp.cdagc<UP>(0,d+1), g_foxy.state);
-					double val4 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d),   Htmp.cdagc<DN>(0,d+1), g_foxy.state);
+					double val1 = avg(g_foxy.state, Htmp.cdagc<DN,DN>(1,d+1), Htmp.cdagc<UP,UP>(0,d), g_foxy.state);
+					double val2 = avg(g_foxy.state, Htmp.cdagc<UP,UP>(1,d+1), Htmp.cdagc<DN,DN>(0,d), g_foxy.state);
+					double val3 = avg(g_foxy.state, Htmp.cdagc<DN,DN>(1,d),   Htmp.cdagc<UP,UP>(0,d+1), g_foxy.state);
+					double val4 = avg(g_foxy.state, Htmp.cdagc<UP,UP>(1,d),   Htmp.cdagc<DN,DN>(0,d+1), g_foxy.state);
 					
 					obs.triplet1d(d,0) = d;
 					obs.triplet1d(d,1) = val1+val2-val3-val4;
@@ -1261,10 +1268,10 @@ int main (int argc, char* argv[])
 					obs.singlet1d(d,0) = d;
 					obs.singlet1d(d,1) = val1+val2+val3+val4;
 					
-					double red1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d), g_foxy.state);
-					double red2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d), g_foxy.state);
-					double red3 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d+1), g_foxy.state);
-					double red4 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d+1), g_foxy.state);
+					double red1 = avg(g_foxy.state, Htmp.cdagc<DN,DN>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP,UP>(0,d), g_foxy.state);
+					double red2 = avg(g_foxy.state, Htmp.cdagc<UP,UP>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN,DN>(0,d), g_foxy.state);
+					double red3 = avg(g_foxy.state, Htmp.cdagc<DN,DN>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP,UP>(0,d+1), g_foxy.state);
+					double red4 = avg(g_foxy.state, Htmp.cdagc<UP,UP>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN,DN>(0,d+1), g_foxy.state);
 					
 					obs.triplet1dreduced(d,0) = d;
 					obs.triplet1dreduced(d,1) = obs.triplet1d(d,1)-red1-red2+red3+red4;
@@ -1287,7 +1294,12 @@ int main (int argc, char* argv[])
 //					lout << "partial val7=" << -avg(g_foxy.state, Htmp.cdagc<UP>(1,d), Htmp.cdagc<DN>(0,d+1), g_foxy.state) << endl;
 //					lout << "partial val8=" << avg(g_foxy.state, Htmp.cdagcdag<UP,DN>(1,0), Htmp.cc<UP,DN>(d,d+1), g_foxy.state) << endl;
 //					lout << endl;
+					
+					lout << "d=" << d << ", string=" << avg(g_foxy.state, Htmp.StringCorrSz(0,d), g_foxy.state) << endl;
+					StringFiler << d << "\t" << avg(g_foxy.state, Htmp.StringCorrSz(0,d), g_foxy.state) << endl;
 				}
+				StringFiler.close();
+				
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
 					lout << "d=" << d
@@ -1318,8 +1330,8 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
-					cout << "Htmp.length()=" << Htmp.length() << endl;
+					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT); Htmp.transform_base(Qc,false); // PRINT=false
+					//cout << "Htmp.length()=" << Htmp.length() << endl;
 					
 					obs.triplet1d(d,0) = d;
 					obs.triplet1d(d,1) = -sqrt(3.)/3*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state);
@@ -1590,10 +1602,10 @@ int main (int argc, char* argv[])
 		{
 			double triplet = 0;
 			double singlet = 0;
-			double val1 = avg(g_fix.state, H.cdagc<DN>(1,d+1), H.cdagc<UP>(0,d),   g_fix.state);
-			double val2 = avg(g_fix.state, H.cdagc<UP>(1,d+1), H.cdagc<DN>(0,d),   g_fix.state);
-			double val3 = avg(g_fix.state, H.cdagc<DN>(1,d),   H.cdagc<UP>(0,d+1), g_fix.state);
-			double val4 = avg(g_fix.state, H.cdagc<UP>(1,d),   H.cdagc<DN>(0,d+1), g_fix.state);
+			double val1 = avg(g_fix.state, H.cdagc<DN,DN>(1,d+1), H.cdagc<UP,UP>(0,d),   g_fix.state);
+			double val2 = avg(g_fix.state, H.cdagc<UP,UP>(1,d+1), H.cdagc<DN,DN>(0,d),   g_fix.state);
+			double val3 = avg(g_fix.state, H.cdagc<DN,DN>(1,d),   H.cdagc<UP,UP>(0,d+1), g_fix.state);
+			double val4 = avg(g_fix.state, H.cdagc<UP,UP>(1,d),   H.cdagc<DN,DN>(0,d+1), g_fix.state);
 			triplet = val1+val2-val3-val4;
 			singlet = val1+val2+val3+val4;
 			lout << "d=" << d << ", triplet=" << triplet << ", singlet=" << singlet << endl;

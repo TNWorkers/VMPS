@@ -29,6 +29,19 @@ public:
 	MAKE_TYPEDEFS(Hubbard)
 	
 	Hubbard() : Mpo() {};
+	
+	Hubbard(Mpo<Symmetry> &Mpo_input, const vector<Param> &params)
+	:Mpo<Symmetry>(Mpo_input),
+	 HubbardObservables(this->N_sites,params,Hubbard::defaults),
+	 ParamReturner()
+	{
+		ParamHandler P(params,Hubbard::defaults);
+		size_t Lcell = P.size();
+		N_phys = 0;
+		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->precalc_TwoSiteData();
+	};
+	
 	Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	static qarray<0> singlet (int N) {return qarray<0>{};};

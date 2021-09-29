@@ -8,10 +8,10 @@
 //include "DmrgExternal.h"
 #include "Permutations.h"
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar=double>
 class HeisenbergObservables
 {
-	typedef SiteOperatorQ<Symmetry,Eigen::MatrixXd> OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > OperatorType;
 
 public:
 	
@@ -23,66 +23,66 @@ public:
 
 		///@{
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type S (size_t locx, size_t locy=0, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type S (size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sz (size_t locx, size_t locy=0) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type QcompQcomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type QcompQcomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);}
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);}
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);}
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);}
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);}
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);}
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::NO_SPIN_SYM(), Mpo<Symmetry> >::type SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,1.);}
+	typename std::enable_if<Dummy::NO_SPIN_SYM(), Mpo<Symmetry,Scalar> >::type SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,1.);}
 	template<typename Dummy = Symmetry>
-	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	template<typename Dummy = Symmetry>
-	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type QdagQ (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type QdagQ (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	template<typename Dummy = Symmetry>
-	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1=0, size_t locy2=0, size_t locy3=0) const;
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1=0, size_t locy2=0, size_t locy3=0) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Stot (size_t locy1=0, double factor=1., int dLphys=1) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Stot (size_t locy1=0, double factor=1., int dLphys=1) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdagtot (size_t locy1=0, double factor=std::sqrt(3.), int dLphys=1) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sdagtot (size_t locy1=0, double factor=std::sqrt(3.), int dLphys=1) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomptot (SPINOP_LABEL Sa, size_t locy1=0, double factor=1., int dLphys=1) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomptot (SPINOP_LABEL Sa, size_t locy1=0, double factor=1., int dLphys=1) const;
 	
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Q (size_t locx, size_t locy=0, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Q (size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Qdag (size_t locx, size_t locy=0, double factor=std::sqrt(5.)) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Qdag (size_t locx, size_t locy=0, double factor=std::sqrt(5.)) const;
 
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry, complex<double> > >::type Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	///@}
 	
 	// ///@{
-	// Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
-	// Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	// Mpo<Symmetry,Scalar> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	// Mpo<Symmetry,Scalar> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	// Mpo<Symmetry,complex<double>> Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	// ///@}
 	
 	// ///@{
-	// Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
-	// Mpo<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
-	// Mpo<Symmetry> n  (size_t locx, size_t locy=0) const;
-	// Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
-	// Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
-	// Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
-	// Mpo<Symmetry> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,fac);};
-	// vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	// Mpo<Symmetry,Scalar> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
+	// Mpo<Symmetry,Scalar> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
+	// Mpo<Symmetry,Scalar> n  (size_t locx, size_t locy=0) const;
+	// Mpo<Symmetry,Scalar> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
+	// Mpo<Symmetry,Scalar> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
+	// Mpo<Symmetry,Scalar> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
+	// Mpo<Symmetry,Scalar> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,fac);};
+	// vector<Mpo<Symmetry,Scalar> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	// ///@}
 
 	template<typename Dummy = Symmetry>
@@ -92,10 +92,10 @@ public:
 	
 	///@{
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type String (STRING STR, size_t locx, size_t locy=0) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type String (STRING STR, size_t locx, size_t locy=0) const;
 	
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const
@@ -123,7 +123,7 @@ public:
 		return out;
 	}
 	
-    std::vector<Mpo<Symmetry>> make_spinPermutation (const Permutation& permutations) const;
+    std::vector<Mpo<Symmetry,Scalar>> make_spinPermutation (const Permutation& permutations) const;
 
     
     MpoTerms<Symmetry,double> spin_swap_operator_D2 (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1=0ul, const std::size_t locy2=0ul) const;
@@ -132,13 +132,13 @@ public:
 
 protected:
 	
-	Mpo<Symmetry> make_local (size_t locx, size_t locy,
+	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy,
 	                          const OperatorType &Op,
 	                          double factor =1.,
 	                          bool HERMITIAN=false,
 	                          STRING STR=NOSTRING) const;
-	Mpo<Symmetry> make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const;
-	Mpo<Symmetry> make_corr  (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+	Mpo<Symmetry,Scalar> make_localSum (const vector<OperatorType> &Op, vector<Scalar> factor, bool HERMITIAN) const;
+	Mpo<Symmetry,Scalar> make_corr  (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
 	                          double factor, bool HERMITIAN,
 	                          STRING STR=NOSTRING) const;
@@ -149,15 +149,15 @@ protected:
 	vector<SpinBase<Symmetry> > B;
 };
 
-template<typename Symmetry>
-HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+HeisenbergObservables<Symmetry,Scalar>::
 HeisenbergObservables (const size_t &L)
 {
 	B.resize(L);
 }
 
-template<typename Symmetry>
-HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+HeisenbergObservables<Symmetry,Scalar>::
 HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::map<string,std::any> &defaults)
 {
 	ParamHandler P(params,defaults);
@@ -170,8 +170,8 @@ HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::
 	}
 }
 
-template<typename Symmetry>
-Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
 make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, bool HERMITIAN, STRING STR) const
 {
 	assert(locx<B.size() and locy<B[locx].dim());
@@ -180,44 +180,45 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	if (factor != 1.) ss << ",factor=" << factor;
 	ss << ")";
 	
-	Mpo<Symmetry> Mout(B.size(), Op.Q(), ss.str(), HERMITIAN);
+	Mpo<Symmetry,Scalar> Mout(B.size(), Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
 	if (STR==NOSTRING)
 	{
-		Mout.setLocal(locx, (factor * Op).template plain<double>());
+		Mout.setLocal(locx, (factor * Op).template cast<Scalar>(). template plain<Scalar>());
 	}
 	else
 	{
-		Mout.setLocal(locx, (factor * Op).template plain<double>(), B[0].bead(STR).template plain<double>());
+		Mout.setLocal(locx, (factor * Op).template cast<Scalar>(). template plain<Scalar>(), 
+		              B[0].bead(STR).template cast<Scalar>(). template plain<Scalar>());
 	}
 	
 	return Mout;
 }
 
-template<typename Symmetry>
-Mpo<Symmetry> HeisenbergObservables<Symmetry>::
-make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
+make_localSum (const vector<OperatorType> &Op, vector<Scalar> factor, bool HERMITIAN) const
 {
 	assert(Op.size()==B.size() and factor.size()==B.size());
 	stringstream ss;
 	ss << Op[0].label() << "localSum";
 	
-	Mpo<Symmetry> Mout(B.size(), Op[0].Q(), ss.str(), HERMITIAN);
+	Mpo<Symmetry,Scalar> Mout(B.size(), Op[0].Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
-	vector<SiteOperator<Symmetry,double>> Op_plain;
+	vector<SiteOperator<Symmetry,Scalar>> Op_plain;
 	for (int i=0; i<Op.size(); ++i)
 	{
-		Op_plain.push_back(Op[i].template plain<double>());
+		Op_plain.push_back(Op[i].template cast<Scalar>().template plain<Scalar>());
 	}
 	Mout.setLocalSum(Op_plain, factor);
 	
 	return Mout;
 }
 
-template<typename Symmetry>
-Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
 make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
            const OperatorType &Op1, const OperatorType &Op2,
            qarray<Symmetry::Nq> Qtot,
@@ -229,15 +230,17 @@ make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 	
 	stringstream ss;
 	ss << Op1.label() << "(" << locx1 << "," << locy1 << ")"
-	   << Op2.label() << "(" << locx2 << "," << locy2 << ")";
+	   << Op2.label() << "(" << locx2 << "," << locy2;
+	if (factor != 1.) {ss << ",fac=" << factor;}
+	ss << ")";
 	
-	Mpo<Symmetry> Mout(B.size(), Qtot, ss.str(), HERMITIAN);
+	Mpo<Symmetry,Scalar> Mout(B.size(), Qtot, ss.str(), HERMITIAN);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
 	if (locx1 == locx2)
 	{
 		auto product = factor*OperatorType::prod(Op1, Op2, Qtot);
-		Mout.setLocal(locx1, product.template plain<double>());
+		Mout.setLocal(locx1, product.template cast<Scalar>().template plain<Scalar>());
 	}
 	else
 	{
@@ -246,29 +249,38 @@ make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 			// Set dummySign carefully because basis might be site-dependent
 			if (int(locx2)-int(locx1)-1 != 0)
 			{
-				vector<SiteOperator<Symmetry,double> > dummySign(max(locx1,locx2)-min(locx1,locx2)-1);
+				vector<SiteOperator<Symmetry,Scalar> > dummySign(max(locx1,locx2)-min(locx1,locx2)-1);
 				for (int i=0; i<dummySign.size(); ++i)
 				{
-					dummySign[i] = B[min(locx1,locx2)+i+1].Id().template plain<double>();
+					dummySign[i] = B[min(locx1,locx2)+i+1].Id().template cast<Scalar>().template plain<Scalar>();
 				}
-				Mout.setLocal(vector<size_t>{locx1, locx2}, vector<SiteOperator<Symmetry,double> >{(factor*Op1).template plain<double>(), Op2.template plain<double>()}, dummySign);
+				Mout.setLocal(vector<size_t>{locx1, locx2}, 
+				              vector<SiteOperator<Symmetry,Scalar> >{
+				                  (factor*Op1).template cast<Scalar>().template plain<Scalar>(), 
+				                          Op2 .template cast<Scalar>().template plain<Scalar>()},
+				              dummySign);
 			}
 			else
 			{
-				Mout.setLocal(vector<size_t>{locx1, locx2}, vector<SiteOperator<Symmetry,double> >{(factor*Op1).template plain<double>(), Op2.template plain<double>()});
+				Mout.setLocal(vector<size_t>{locx1, locx2}, 
+				              vector<SiteOperator<Symmetry,Scalar> >{
+				                  (factor*Op1).template cast<Scalar>().template plain<Scalar>(), 
+				                          Op2 .template cast<Scalar>().template plain<Scalar>()});
 			}
 		}
 		else
 		{
-			Mout.setLocal({locx1, locx2}, {(factor*Op1).template plain<double>(), Op2.template plain<double>()}, B[0].bead(STR).template plain<double>());
+			Mout.setLocal({locx1, locx2}, {(factor*Op1).template cast<Scalar>().template plain<Scalar>(), 
+			                                       Op2 .template cast<Scalar>().template plain<Scalar>()}, 
+			              B[0].bead(STR).template cast<Scalar>().template plain<Scalar>());
 		}
 	}
 	
 	return Mout;
 }
 
-template<typename Symmetry>
-Mpo<Symmetry,complex<double> > HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,complex<double> > HeisenbergObservables<Symmetry,Scalar>::
 make_FourierYSum (string name, const vector<OperatorType> &Ops, 
                   double factor, bool HERMITIAN, const vector<complex<double> > &phases) const
 {
@@ -294,7 +306,7 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
 	for (int l=0; l<OpsPlain.size(); ++l)
 	{
-		OpsPlain[l] = Ops[l].template plain<double>().template cast<complex<double> >();
+		OpsPlain[l] = Ops[l].template cast<complex<double> >(). template plain<double>();
 	}
 	
 	Mout.setLocalSum(OpsPlain, phases_x_factor);
@@ -304,18 +316,18 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 
 //-------------
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(locx,locy, B[locx].Scomp(Sa,locy), factor, HERMITIAN);
+	return make_local(locx,locy, B[locx].Scomp(Sa,locy).template cast<Scalar>(), factor, HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry,Scalar>::
 Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -338,72 +350,76 @@ Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	return Mout;
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
-	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Scomp(Sa1,locy1), B[locx2].Scomp(Sa2,locy2), getQ_ScompScomp(Sa1,Sa2), fac, PROP::HERMITIAN);
+	bool HERMITIAN = false;
+	if ((Sa1 == SZ and Sa2 == SZ) or (Sa1 == SX and Sa2 == SX)) HERMITIAN = true;
+	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Scomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Scomp(Sa2,locy2).template cast<Scalar>(), getQ_ScompScomp(Sa1,Sa2), fac, HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 QcompQcomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
-	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Qcomp(Sa1,locy1), B[locx2].Qcomp(Sa2,locy2), getQ_ScompScomp(Sa1,Sa2), fac, PROP::HERMITIAN);
+	bool HERMITIAN = false;
+	if (Sa1 == QZ and Sa2 == QZ) HERMITIAN = true;
+	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Qcomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Qcomp(Sa2,locy2).template cast<Scalar>(), getQ_ScompScomp(Sa1,Sa2), fac, HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 S (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, B[locx].S(locy), factor, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Sdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, B[locx].Sdag(locy), factor, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Q (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, B[locx].Q(locy), factor, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Qdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local(locx,locy, B[locx].Qdag(locy), factor, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Sz (size_t locx, size_t locy) const
 {
 	return Scomp(SZ,locx,locy);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
 {
 	vector<OperatorType> Ops(B.size());
-	vector<double> factors(B.size());
+	vector<Scalar> factors(B.size());
 	for (int l=0; l<B.size(); ++l)
 	{
-		Ops[l] = B[l].Scomp(Sa,locy);
+		Ops[l] = B[l].Scomp(Sa,locy).template cast<Scalar>();
 		factors[l] = 0.;
 	}
 	for (int l=0; l<B.size(); l+=dLphys)
@@ -413,16 +429,16 @@ Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
 	return make_localSum(Ops, factors, (Sa==SZ)?PROP::HERMITIAN:PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Stot (size_t locy, double factor, int dLphys) const
 {
 	vector<OperatorType> Ops(B.size());
-	vector<double> factors(B.size());
+	vector<Scalar> factors(B.size());
 	for (int l=0; l<B.size(); ++l)
 	{
-		Ops[l] = B[l].S(locy);
+		Ops[l] = B[l].S(locy).template cast<Scalar>();
 		factors[l] = 0.;
 	}
 	for (int l=0; l<B.size(); l+=dLphys)
@@ -432,9 +448,9 @@ Stot (size_t locy, double factor, int dLphys) const
 	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 Sdagtot (size_t locy, double factor, int dLphys) const
 {
 	vector<OperatorType> Ops(B.size());
@@ -451,9 +467,9 @@ Sdagtot (size_t locy, double factor, int dLphys) const
 	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type HeisenbergObservables<Symmetry>::
+typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HeisenbergObservables<Symmetry,Scalar>::
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
@@ -462,7 +478,7 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else
 	{
-		vector<Mpo<Symmetry> > out(3);
+		vector<Mpo<Symmetry,Scalar> > out(3);
 		out[0] = SzSz(locx1,locx2,locy1,locy2);
 		out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
 		out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
@@ -470,9 +486,9 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type HeisenbergObservables<Symmetry>::
+typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HeisenbergObservables<Symmetry,Scalar>::
 QdagQ (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
@@ -481,7 +497,7 @@ QdagQ (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else
 	{
-		vector<Mpo<Symmetry> > out(5);
+		vector<Mpo<Symmetry,Scalar> > out(5);
 		out[0] = QcompQcomp(QZ,QZ,locx1,locx2,locy1,locy2);
 		out[1] = QcompQcomp(QP,QM,locx1,locx2,locy1,locy2,0.5);
 		out[2] = QcompQcomp(QM,QP,locx1,locx2,locy1,locy2,0.5);
@@ -491,9 +507,9 @@ QdagQ (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type HeisenbergObservables<Symmetry>::
+typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HeisenbergObservables<Symmetry,Scalar>::
 SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1, size_t locy2, size_t locy3) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
@@ -547,9 +563,9 @@ SdagSxS (size_t locx1, size_t locx2, size_t locx3, size_t locy1, size_t locy2, s
 	}
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry,Scalar>::
 S_ky (vector<complex<double> > phases) const
 {
 	vector<OperatorType> Ops(B.size());
@@ -560,9 +576,9 @@ S_ky (vector<complex<double> > phases) const
 	return make_FourierYSum("S", Ops, 1., false, phases);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry,Scalar>::
 Sdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(B.size());
@@ -573,17 +589,17 @@ Sdag_ky (vector<complex<double> > phases, double factor) const
 	return make_FourierYSum("S†", Ops, 1., false, phases);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 String (STRING STR, size_t locx, size_t locy) const
 {
 	return make_local(locx, locy, B[locx].Scomp(STRING_TO_SPINOP(STR),locy), 1., false, STR);
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
 StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	SPINOP_LABEL Sa = STRING_TO_SPINOP(STR);
@@ -592,8 +608,8 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 	return make_corr(locx1, locx2, locy1, locy2, B[locx1].Scomp(Sa,locy1), B[locx2].Scomp(Sa,locy2), Qtot, -1., false, STR);
 }
 
-// template<typename Symmetry>
-// Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+// template<typename Symmetry, typename Scalar>
+// Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
 // Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 // {
 // 	assert(locx<B.size() and locy<B[locx].dim());
@@ -604,15 +620,15 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 	
 // 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	
-// 	Mpo<Symmetry> Mout(B.size(), Op.Q, ss.str(), HERMITIAN);
+// 	Mpo<Symmetry,Scalar> Mout(B.size(), Op.Q, ss.str(), HERMITIAN);
 // 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 // 	Mout.setLocal(locx,Op);
 // 	return Mout;
 // }
 
-// template<typename Symmetry>
-// Mpo<Symmetry,complex<double>> HeisenbergObservables<Symmetry>::
+// template<typename Symmetry, typename Scalar>
+// Mpo<Symmetry,complex<double>> HeisenbergObservables<Symmetry,Scalar>::
 // Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 // {
 // 	assert(locx<B.size() and locy<B[locx].dim());
@@ -635,8 +651,8 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 // 	return Mout;
 // }
 
-// template<typename Symmetry>
-// Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+// template<typename Symmetry, typename Scalar>
+// Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
 // n (size_t locx, size_t locy) const
 // {
 // 	assert(locx<B.size() and locy<B[locx].dim());
@@ -645,15 +661,15 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 	
 // 	OperatorType Op = B[locx].n(locy);
 	
-// 	Mpo<Symmetry> Mout(B.size(), Op.Q, ss.str(), true);
+// 	Mpo<Symmetry,Scalar> Mout(B.size(), Op.Q, ss.str(), true);
 // 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 // 	Mout.setLocal(locx,Op);
 // 	return Mout;
 // }
 
-// template<typename Symmetry>
-// Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+// template<typename Symmetry, typename Scalar>
+// Mpo<Symmetry,Scalar> HeisenbergObservables<Symmetry,Scalar>::
 // ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 // {
 // 	assert(locx1<B.size() and locx2<B.size() and locy1<B[locx1].dim() and locy2<B[locx2].dim());
@@ -665,18 +681,18 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 	
 // 	bool HERMITIAN = (Sa1==Sa2 and (Sa1==SZ or Sa1==SX) and locx1==locx2 and locy1==locy2)? true:false;
 	
-// 	Mpo<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
+// 	Mpo<Symmetry,Scalar> Mout(B.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
 // 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 // 	Mout.setLocal({locx1,locx2}, {fac*Op1,Op2});
 // 	return Mout;
 // }
 
-// template<typename Symmetry>
-// vector<Mpo<Symmetry> >HeisenbergObservables<Symmetry>::
+// template<typename Symmetry, typename Scalar>
+// vector<Mpo<Symmetry,Scalar> >HeisenbergObservables<Symmetry,Scalar>::
 // SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 // {
-// 	vector<Mpo<Symmetry> > out(3);
+// 	vector<Mpo<Symmetry,Scalar> > out(3);
 // 	out[0] = SzSz(locx1,locx2,locy1,locy2);
 // 	out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
 // 	out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
@@ -684,8 +700,8 @@ StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1, size_t locy2) 
 // }
 
 
-template<typename Symmetry>
-std::vector<Mpo<Symmetry>> HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+std::vector<Mpo<Symmetry,Scalar>> HeisenbergObservables<Symmetry,Scalar>::
 make_spinPermutation (const Permutation& permutations) const
 {
     auto check_locs = [this](std::size_t& locx1, std::size_t& locx2, std::size_t& locy1, std::size_t& locy2)
@@ -708,7 +724,7 @@ make_spinPermutation (const Permutation& permutations) const
     Stopwatch<> watch;
     std::vector<std::vector<Transposition>> transpositions = permutations.independentTranspositions();
     std::size_t divisions = transpositions.size();
-    std::vector<Mpo<Symmetry>> Mout(divisions);
+    std::vector<Mpo<Symmetry,Scalar>> Mout(divisions);
     for(std::size_t div=0; div<divisions; ++div)
     {
         std::size_t locx1 = transpositions[div][0].source;
@@ -741,8 +757,8 @@ make_spinPermutation (const Permutation& permutations) const
     return Mout;
 }
 
-template<typename Symmetry>
-MpoTerms<Symmetry,double> HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+MpoTerms<Symmetry,double> HeisenbergObservables<Symmetry,Scalar>::
 spin_swap_operator_D2 (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1, const std::size_t locy2) const
 {
     MpoTerms<Symmetry,double> Tout(B.size());
@@ -810,8 +826,8 @@ spin_swap_operator_D2 (const std::size_t locx1, const std::size_t locx2, const s
     return Tout;
 }
 
-template<typename Symmetry>
-MpoTerms<Symmetry,double> HeisenbergObservables<Symmetry>::
+template<typename Symmetry, typename Scalar>
+MpoTerms<Symmetry,double> HeisenbergObservables<Symmetry,Scalar>::
 spin_swap_operator_D3 (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1, const std::size_t locy2) const
 {
     MpoTerms<Symmetry,double> Tout(B.size());

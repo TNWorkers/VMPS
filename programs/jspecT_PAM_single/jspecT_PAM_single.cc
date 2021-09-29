@@ -263,7 +263,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (states.size() > 0)
 				{
 					MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-					Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
+					Compadre.lincomboCompress(states, factors, res[s], Psi, Psi.calc_Mmax(), 50ul, Mlimit, 1e-6, 32);
 				}
 				else
 				{
@@ -463,7 +463,7 @@ apply_J (int j0, string spec, int L, int dLphys, double tol_OxV, const MODELC &H
 				if (states.size() > 0)
 				{
 					MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(CVERB);
-					Compadre.lincomboCompress(states, factors, res[s], Psi, Mlimit, 1e-6, 32);
+					Compadre.lincomboCompress(states, factors, res[s], Psi, Psi.calc_Mmax(), 50ul, Mlimit, 1e-6, 32);
 				}
 				else
 				{
@@ -520,7 +520,7 @@ int main (int argc, char* argv[])
 	
 	qarray<MODELC::Symmetry::Nq> Q = MODELC::singlet(2*N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
-	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
+	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nc*nf
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
@@ -542,20 +542,21 @@ int main (int argc, char* argv[])
 	
 	double dbeta = args.get<double>("dbeta",0.1);
 	double beta = args.get<double>("beta",1.);
-	double tol_compr_beta = args.get<double>("tol_compr_beta",1e-5);
+	double tol_compr_beta = args.get<double>("tol_compr_beta",1e-6);
 	bool SAVE_BETA = args.get<bool>("SAVE_BETA",true);
 	bool LOAD_BETA = args.get<bool>("LOAD_BETA",false);
+	size_t maxPower = args.get<int>("maxPower",2ul);
 	
 	string spec1 = args.get<string>("spec1","JC"); // JC, JE
 	string spec2 = args.get<string>("spec2","JC"); // JC, JE
 	string spec = spec1+spec2;
-	size_t Mstart = args.get<size_t>("Mstart",200ul); // anfaengliche Bonddimension fuer Dynamik
+	size_t Mstart = args.get<size_t>("Mstart",400ul); // anfaengliche Bonddimension fuer Dynamik
 	size_t Mlimit = args.get<size_t>("Mlimit",800ul); // max. Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",0.025);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",5e-3);
 	double tmax = args.get<double>("tmax",4.);
 	int Nt = tmax/dt+1;
-	double tol_compr = args.get<double>("tol_compr",1e-4);
+	double tol_compr = args.get<double>("tol_compr",1e-5);
 	
 	double wmin = args.get<double>("wmin",-10.);
 	double wmax = args.get<double>("wmax",+10.);
@@ -568,7 +569,7 @@ int main (int argc, char* argv[])
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
 	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U,"_V=",V); // Dateiname
 	param_base += make_string("_beta=",beta);
-	string base = make_string("j0=",j0,"_L=",L,"_N=",N,"_",param_base); // Dateiname
+	string base = make_string("j0=",j0,"_L=",L,"_Ncells=",L/Lcell,"_Lprop=",dLphys*L,"_N=",N,"_",param_base); // Dateiname
 	string tbase = make_string("tmax=",tmax,"_dt=",dt);
 	string wbase = make_string("wmin=",wmin,"_wmax=",wmax,"_wpoints=",wpoints);
 	lout << base << endl;
@@ -588,7 +589,7 @@ int main (int argc, char* argv[])
 	// Hopping
 	ArrayXXcd tFull = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,false); // ANCILLA_HOPPING=false
 	params_Tfin.push_back({"tFull",tFull});
-	params_Tfin.push_back({"maxPower",2ul}); // hoechste Potenz von H
+	params_Tfin.push_back({"maxPower",maxPower}); // hoechste Potenz von H
 	
 	// Parameter fuer die t-Propagation mit beta: Rueckpropagation der Badplaetze
 	vector<Param> pparams;
@@ -602,7 +603,7 @@ int main (int argc, char* argv[])
 	pparams.push_back({"t0",-Ef,3}); // bath(f)
 	ArrayXXcd tFull_ancilla = hopping_PAM_T(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty,true,0.); // ANCILLA_HOPPING=true
 	pparams.push_back({"tFull",tFull_ancilla});
-	pparams.push_back({"maxPower",2ul});
+	pparams.push_back({"maxPower",maxPower});
 	
 	// Aufbau des Modells bei β=0
 	MODEL H_Tinf(dLphys*L,Tinf_params_fermions(Ly));
@@ -617,23 +618,41 @@ int main (int argc, char* argv[])
 	lout << endl << "propagation Hamiltonian " << Hp.info() << endl << endl;
 	
 	SpectralManager<MODELC> SpecMan({spec},Hp); // spec ist Dummy, brauchen nur die beta-Propagation hieraus
-	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mlimit, Q, log(4), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB); // betaswitch=2
+	SpecMan.beta_propagation<MODEL>(H_Tfin, H_Tinf, Lcell, dLphys, beta, dbeta, tol_compr_beta, Mstart, Q, log(4), 2., "thermodyn", base, LOAD_BETA, SAVE_BETA, VERB); // betaswitch=2
 	
 	Stopwatch<> JappWatch;
 	lout << endl << "Applying J to ground state for j0..." << endl;
 	double tol_OxV = 2.; // val>1 = do not compress
 	auto PhiT = SpecMan.get_PhiT();
+	
+	// test that PhiT is an eigenstate:
+	auto avgHp = avg(PhiT, Hp, PhiT);
+	auto avgHpHp = (maxPower==2)? avg(PhiT, Hp, PhiT, 2) : avg(PhiT, Hp, Hp, PhiT);
+	double test = abs(avgHpHp-avgHp);
+	if (test < 1e-4)
+	{
+		lout << termcolor::green;
+	}
+	else
+	{
+		lout << termcolor::red;
+	}
+	lout << "avgHpHp=" << avgHpHp << endl;
+	lout << "avgHp=" << avgHp << ", avgHp^2=" << avgHp*avgHp << endl;
+	lout << "eigenstate test for PhiT: " << abs(avgHpHp-avgHp*avgHp) << termcolor::reset << endl;
+	/////////////////////
+	
 	auto [Psi1, Op1, Fac1] = apply_J(2*j0, spec1, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	auto [Psi2, Op2, Fac2] = apply_J(2*j0, spec2, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 	
 	lout << endl;
 	lout << "Op.size()=" << Op1.size() << "\t" << Op2.size() << endl;
 	lout << "Fac.size()=" << Fac1.size() << "\t" << Fac2.size() << endl;
-	lout << "avg<spec1>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L) << "\t"
-	     << "avg<spec2>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L)
+	lout << "avg<spec1>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit) << "\t"
+	     << "avg<spec2>=" << calc_Joverlap(PhiT, {PhiT}, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)
 	     << endl;
 	lout << endl;
-	lout << JappWatch.info("Applying J to ground state for j0 sites done!") << endl << endl;
+	lout << JappWatch.info("Applying J to ground state for j0 done!") << endl << endl;
 	
 	for (int i=0; i<Psi2.size(); ++i)
 	{
@@ -655,7 +674,7 @@ int main (int argc, char* argv[])
 	Sobs[0] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
 	TWO_SITE[0] = Sobs[0].TWO_SITE(0, Psi2[0], 1.);
 	
-	Sobs[1] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, DMRG::VERBOSITY::SILENT, tol_DeltaS);
+	Sobs[1] = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
 	TWO_SITE[1] = Sobs[1].TWO_SITE(0, PhiT, 1.);
 	
 	vector<MatrixXcd> Joverlap(Nt);
@@ -666,28 +685,32 @@ int main (int argc, char* argv[])
 	for (t=t.begin(2); t!=t.end(); ++t)
 	{
 		lout << "t=" << *t << endl;
-		Stopwatch<> StepTimer;
+		Stopwatch<> StepTimerTotal;
 		
-		JoverlapSum(t.index()) =  calc_Joverlap(PhiT, Psi2, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit)/(0.5*L);
+		JoverlapSum(t.index()) = calc_Joverlap(PhiT, Psi2, Op1, Fac1, Hp, spec, L, dLphys, tol_OxV, tcc, tff, tfc, Ec, Ef-0.5*U, U, Mlimit);
 		
 		t << JoverlapSum(t.index());
 		lout << "save results at t=" << *t << ", res=" << JoverlapSum(t.index()) << endl;
-		t.save(make_string(spec+"t_",base,"_",tbase,".dat"));
+		t.save(make_string(wd,spec+"t_",base,"_",tbase,".dat"));
 	
 		if (t.index() != t.end()-1)
 		{
 			#pragma omp parallel for
-			for (int i=0; i<1; ++i)
+			for (int i=0; i<=1; ++i)
 			{
 				if (i==0)
 				{
+					Stopwatch<> StepTimer;
 					//-----------------------------------------------------------
 					TDVP[i].t_step_adaptive(Hp, Psi2[i], -1.i*dt, TWO_SITE[i], 1);
 					//-----------------------------------------------------------
 					
-					lout << "propagated to t=" << *t << endl;
-					lout << TDVP[i].info() << endl;
-					lout << Psi2[i].info() << endl;
+					#pragma omp critical
+					{
+						lout << StepTimer.info("time ket") << endl;
+						lout << "ket: " << TDVP[i].info() << endl;
+						lout << "ket: " << Psi2[i].info() << endl;
+					}
 					
 					if (Psi2[i].get_truncWeight().sum() > 0.5*tol_compr)
 					{
@@ -707,9 +730,17 @@ int main (int argc, char* argv[])
 				}
 				else
 				{
+					Stopwatch<> StepTimer;
 					//-----------------------------------------------------------
 					TDVP[i].t_step_adaptive(Hp, PhiT, -1.i*dt, TWO_SITE[i], 1);
 					//-----------------------------------------------------------
+					
+					#pragma omp critical
+					{
+						lout << StepTimer.info("time bra") << endl;
+						lout << "bra: " << TDVP[i].info() << endl;
+						lout << "bra: " << PhiT.info() << endl;
+					}
 					
 					if (PhiT.get_truncWeight().sum() > 0.5*tol_compr)
 					{
@@ -721,27 +752,33 @@ int main (int argc, char* argv[])
 					}
 				}
 			}
-			lout << StepTimer.info("time step") << endl;
+			lout << "propagated to t=" << *t  << endl;
 			
 			#pragma omp parallel for
-			for (int i=0; i<1; ++i)
+			for (int i=0; i<=1; ++i)
 			{
 				if (i==0)
 				{
 					auto PsiTmp = Psi2[i]; PsiTmp.entropy_skim();
-					TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
+					#pragma omp critical
+					{
+						lout << "ket: ";
+						TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp);
+					}
 				}
 				else
 				{
 					auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
-					TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PhiTtmp);
+					#pragma omp critical
+					{
+						lout << "bra: ";
+						TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PhiTtmp);
+					}
 				}
 			}
-			
-			if (VERB >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
 		}
 		
-		lout << TpropTimer.info("total running time",false) << endl;
+		lout << StepTimerTotal.info("total running time",false) << endl;
 		lout << endl;
 	}
 	
@@ -752,9 +789,9 @@ int main (int argc, char* argv[])
 	{
 		lout << "t=" << tvals(i) << "\t" << JoverlapSum(i) << endl;
 	}
-	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=GAUSS",".dat"), GAUSS);
-	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=LORENTZ",".dat"), LORENTZ);
-	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=NO",".dat"), NODAMPING);
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(wd+spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=GAUSS",".dat"), GAUSS);
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(wd+spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=LORENTZ",".dat"), LORENTZ);
+	FT_and_save(tvals, tmax, JoverlapSum, wmin, wmax, wpoints, make_string(wd+spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=NO",".dat"), NODAMPING);
 
 	lout << endl << "saved to: " << make_string(spec+"w_",base,"_",tbase,"_",wbase,"_DAMPING=[...].dat") << endl;
 }

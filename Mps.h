@@ -3460,7 +3460,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	
 	for (size_t l=0; l<distance+1; ++l)
 	{
-		contract_L(L, A[loc1], O.W_at(loc1), O.IS_HAMILTONIAN(), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
+		contract_L(L, A[loc1], O.W_at(loc1), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
 		L = Lnext;
 		Lnext.clear();
 	}

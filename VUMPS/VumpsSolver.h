@@ -112,13 +112,13 @@ public:
 	\param Omult : Operator to multiply the state with
 	*/
 	vector<Mps<Symmetry,Scalar>> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-	                                         const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult);
+	                                         const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, double tol_OxV=2.);
 	
 	/**
 	Variant of create_Mps without a vector, with a single MPO/MPS.
 	*/
 	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult);
+	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, double tol_OxV=2.);
 	
 	void set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool LEFT=false, bool RIGHT=true);
 	
@@ -127,6 +127,10 @@ public:
 	
 	/**Builds environments for each site of the unit cell.*/
 	void build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t power=1);
+	
+	double get_err_eigval() const {return err_eigval;};
+	double get_err_state() const {return err_state;};
+	double get_err_var() const {return err_var;};
 	
 //private:
 	
@@ -2173,7 +2177,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 vector<Mps<Symmetry,Scalar>> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-            const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult)
+            const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, double tol_OxV)
 {
 	N_sites = V.state.length();
 	size_t Lhetero = Ncells * N_sites;
@@ -2306,7 +2310,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	for (size_t l=0; l<Omult.size(); ++l)
 	{
 		DMRG::VERBOSITY::OPTION VERB = (Omult.size()>4)? DMRG::VERBOSITY::SILENT : DMRG::VERBOSITY::ON_EXIT;
-		OxV_exact(Omult[l], Mtmp, Mres[l], 2., VERB);
+		OxV_exact(Omult[l], Mtmp, Mres[l], tol_OxV, VERB);
 	}
 	return Mres;
 };
@@ -2314,7 +2318,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-            const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult)
+            const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, double tol_OxV)
 {
 	size_t Lhetero = Ncells * N_sites;
 	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
@@ -2390,7 +2394,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	
 	Mps<Symmetry,Scalar> Mres;
 	DMRG::VERBOSITY::OPTION VERB = DMRG::VERBOSITY::ON_EXIT;
-	OxV_exact(Omult, Mtmp, Mres, 2., VERB);
+	OxV_exact(Omult, Mtmp, Mres, tol_OxV, VERB);
 	return Mres;
 };
 

@@ -28,6 +28,7 @@ public:
 	{
 		ParamHandler P(params,HubbardU1::defaults);
 		size_t Lcell = P.size();
+		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
 		this->precalc_TwoSiteData();
 	};

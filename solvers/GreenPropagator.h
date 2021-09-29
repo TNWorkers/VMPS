@@ -162,6 +162,8 @@ public:
 		calc_intweights();
 	}
 	
+	void set_Lcell (int Lcell_input) {Lcell = Lcell_input;};
+	
 	// LOADING CONSTRUCTORS FOLLOW:
 	
 	// LOAD: MATRIX, NO CELL
@@ -328,8 +330,9 @@ public:
 		{
 			MatrixXd MtmpRe, MtmpIm;
 			HDF5Interface Reader(file+".h5",READ);
-			Reader.load_matrix(MtmpRe,"txRe",make_string("G",i,j));
-			Reader.load_matrix(MtmpIm,"txIm",make_string("G",i,j));
+			string Gstring = (i<10 and j<10)?make_string("G",i,j):make_string("G",i,"_",j);
+			Reader.load_matrix(MtmpRe,"txRe",Gstring);
+			Reader.load_matrix(MtmpIm,"txIm",Gstring);
 			Reader.close();
 			
 			if (GtxCell[i][j].size() == 0)
@@ -392,7 +395,7 @@ public:
 	\param COUNTERPROPAGATE : If \p true, use the more efficient propagations forwards and backwards in time (not for finite MPS)
 	*/
 	void compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, 
-	                   bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true);
+	                   bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true, int x0=0);
 	
 	void compute_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS = true);
 	
@@ -430,6 +433,8 @@ public:
 	
 	/**Saves the real and imaginary parts of the Green's function into plain text files.*/
 	void save (bool IGNORE_TX = false) const;
+	
+	void save_GtqCell() const;
 	
 	/**Integrates the QDOS up to a given chemical potential μ (or the Fermi energy, since T=0). 
 	   Can be used to find the right μ which gives the chosen filling n.
@@ -472,6 +477,7 @@ public:
 	string winfo() const; // w=ω
 	string xt_info() const;
 	string xtINTqw_info() const;
+	string xtq_info() const;
 	void print_starttext() const;
 	
 	ArrayXd ncell;
@@ -487,6 +493,10 @@ public:
 	
 	vector<vector<MatrixXcd>> get_GwqCell() const {return GwqCell;};
 	
+	void FTcell_xq (bool TRANSPOSE = false);
+	
+	void set_Oshift (vector<MpoScalar> Oshift_input) {Oshift = Oshift_input;};
+	
 private:
 	
 	string label;
@@ -500,8 +510,8 @@ private:
 	int j0 = -1;
 	
 	double tol_compr = 1e-4; // compression tolerance during time propagation
-	double tol_Lanczos = 1e-7; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
-	double tol_DeltaS = 1e-3; // 1e-3 seems good for DIRECT (initially small timesteps); 1e-2 seems good for INTERP (equidistant timesteps)
+	double tol_Lanczos = 1e-7; // 1e-7 seems sufficient; increase to 1e-8 for higher accuracy
+	double tol_DeltaS = 1e-3; // 1e-3 seems good, maybe 1e-2 still okay
 	size_t lim_Nsv = 500ul;
 	double h_ooura = 0.001; // stepsize for Ooura integration if GREENINT_CHOICE == OOURA; smaller = more accurate & slower
 	GREEN_INTEGRATION GREENINT_CHOICE = OOURA;
@@ -523,6 +533,7 @@ private:
 	vector<int> dcellFT;
 	
 	vector<Mps<Symmetry,complex<double>>> OxPhiFull;
+	vector<MpoScalar> Oshift;
 	
 	MatrixXcd Gtx, Gwx, Gtq, Gwq;
 	VectorXcd Gloct, Glocw, G0q, G0x;
@@ -537,13 +548,16 @@ private:
 	
 	void calc_Green (const int &tindex, const complex<double> &phase, 
 	                 const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi);
+	
 	void calc_GreenCell (const int &tindex, const complex<double> &phase, 
-	                     const vector<Mps<Symmetry,complex<double>>> &OxPhi, const vector<Mps<Symmetry,complex<double>>> &Psi);
+	                     const vector<Mps<Symmetry,complex<double>>> &OxPhi, const vector<Mps<Symmetry,complex<double>>> &Psi, int x0=0);
+	
 	void calc_GreenCell (const int &tindex, const complex<double> &phase, 
 	                     const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi);
 	
 	void calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, 
 	                         const Mps<Symmetry,complex<double>> &Phi, const Mps<Symmetry,complex<double>> &Psi);
+	
 	void calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const vector<Mps<Symmetry,complex<double>>> &Psi);
 	
 	void calc_intweights();
@@ -552,7 +566,7 @@ private:
 	
 //	void propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
 //	                double Eg, bool TIME_FORWARDS);
-	void propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
+	void propagate_cell (int x0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	void propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	void counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	
@@ -562,7 +576,6 @@ private:
 	                             vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS);
 	
 //	void FT_xq (const MatrixXcd &Gtx, MatrixXcd &Gtq);
-	void FTcell_xq();
 	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw);
 	void FTcell_tw();
 	
@@ -926,13 +939,22 @@ private:
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE)
+compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE, int x0)
 {
 	print_starttext();
 	
-	Lcell = OxPhi.size();
-	Lhetero = H.length();
-	Ncells = Lhetero/Lcell;
+	if (!OxPhi[0].Boundaries.IS_TRIVIAL()) // IBC
+	{
+		Lcell = OxPhi.size();
+		Lhetero = H.length();
+		Ncells = Lhetero/Lcell;
+	}
+	else // OBC: Ncells must be set!
+	{
+		Lhetero = H.length();
+		Ncells = Lhetero/Lcell;
+	}
+	lout << "Lcell=" << Lcell << ", Lhetero=" << Lhetero << ", Ncells=" << Ncells << ", Ns=" << Ns << endl;
 	
 	assert(Lhetero%Lcell == 0);
 	
@@ -960,7 +982,14 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 	
 	if (OxPhi[0].Boundaries.IS_TRIVIAL() or COUNTERPROPAGATE == false)
 	{
-		propagate_cell(H, OxPhi, Eg, TIME_FORWARDS);
+		#pragma omp critical
+		{
+			lout << termcolor::blue << label << ": using usual propagation algorithm, best with Lcell=" << Lcell << " threads" << termcolor::reset << endl;
+			#ifdef _OPENMP
+			lout << termcolor::blue << "current OMP threads=" << omp_get_max_threads() << termcolor::reset << endl;
+			#endif
+		}
+		propagate_cell(x0, H, OxPhi, Eg, TIME_FORWARDS);
 	}
 	else
 	{
@@ -982,16 +1011,16 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
+propagate_cell (int x0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 	
 	vector<Mps<Symmetry,complex<double>>> Psi(Lcell);
 	for (int i=0; i<Lcell; ++i)
 	{
-		Psi[i] = OxPhi[i];
+		Psi[i] = OxPhi[x0+i];
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),500ul);
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),lim_Nsv);
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell);
@@ -1025,7 +1054,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
-		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi);
+		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi, x0);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << StepTimer.info("G(t,x) calculation") << endl;
@@ -1070,7 +1099,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 		
 		// 2. measure
 		// 2.1. Green's function
-		calc_GreenCell(t.index(), -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi);
+		calc_GreenCell(t.index(), -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi, x0);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
 		// 2.2. measure wavepacket at t
 		if (Measure.size() != 0)
@@ -1149,7 +1178,7 @@ propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 	Mps<Symmetry,complex<double>> Psi;
 	Psi = OxPhi[j0];
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Mmax(),500ul);
+	Psi.max_Nsv = max(Psi.calc_Mmax(),lim_Nsv);
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP;
 	TDVP = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H, Psi);
@@ -1263,7 +1292,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		{
 			Psi[z][i] = OxPhi[i];
 			Psi[z][i].eps_svd = tol_compr;
-			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),500ul);
+			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),lim_Nsv);
 		}
 	}
 	
@@ -1482,7 +1511,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	{
 		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),min(500ul,lim_Nsv));
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),lim_Nsv);
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell+1);
@@ -1716,7 +1745,8 @@ void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_GreenCell (const int &tindex,
                 const complex<double> &phase, 
                 const vector<Mps<Symmetry,complex<double>>> &OxPhi,
-                const vector<Mps<Symmetry,complex<double>>> &Psi)
+                const vector<Mps<Symmetry,complex<double>>> &Psi,
+                int x0)
 {
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
 //	if (Psi[0].Boundaries.IS_TRIVIAL())
@@ -1728,6 +1758,11 @@ calc_GreenCell (const int &tindex,
 		for (size_t j=0; j<Lcell; ++j)
 		{
 			GtxCell[i][j](tindex,n) = phase * dot(OxPhiFull[n*Lcell+i], Psi[j]);
+			
+//			if (Oshift.size() != 0)
+//			{
+//				GtxCell[i][j](tindex,n) += Oshift[n*Lcell+i] * Oshift[x0+j];
+//			}
 		}
 	}
 	// variant: Use cell shift
@@ -2060,10 +2095,12 @@ calc_intweights()
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-FTcell_xq()
+FTcell_xq (bool TRANSPOSE)
 {
 	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd qvals = q.get_abscissa();
+	
+	int Ls = Lcell/Ns;
 	
 	GtqCell.resize(Lcell);
 	for (int i=0; i<Lcell; ++i) GtqCell[i].resize(Lcell);
@@ -2078,7 +2115,15 @@ FTcell_xq()
 		for (int iq=0; iq<Nq; ++iq)
 		for (int n=0; n<Ncells; ++n)
 		{
-			GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			//GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			if (TRANSPOSE)
+			{
+				GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(+1.i*qvals(iq)*double(dcellFT[n*Lcell]+(j-i)/Ls));
+			}
+			else
+			{
+				GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcellFT[n*Lcell]+(i-j)/Ls));
+			}
 		}
 	}
 	
@@ -2855,6 +2900,13 @@ xtINTqw_info() const
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+string GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+xtq_info() const
+{
+	return xinfo() + "_" + tinfo() + "_" + qinfo();
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 print_starttext() const
 {
@@ -2919,10 +2971,10 @@ save (bool IGNORE_TX) const
 				for (int i=0; i<Lcell; ++i)
 				for (int j=0; j<Lcell; ++j)
 				{
-					string Gstring = make_string("G",i,j);
+					string Gstring = (i<10 and j<10)? make_string("G",i,j) : make_string("G",i,"_",j);
 					#ifdef GREENPROPAGATOR_USE_HDF5
-					if (PRINT) lout << label << " saving " << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] " << endl;
-					target_tx.create_group(make_string("G",i,j));
+					if (PRINT) lout << label << " saving " << Gstring << "[txRe], " << Gstring << "[txIm] " << endl;
+					target_tx.create_group(Gstring);
 					target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
 					target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
 					#else
@@ -2938,9 +2990,9 @@ save (bool IGNORE_TX) const
 				{
 					string Gstring = make_string("G",i);
 					#ifdef GREENPROPAGATOR_USE_HDF5
-					target_tx.create_group(make_string("G",i));
-					target_tx.save_vector(VectorXd(GloctCell[i].real()),"t0Re",make_string("G",i));
-					target_tx.save_vector(VectorXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
+					target_tx.create_group(Gstring);
+					target_tx.save_vector(VectorXd(GloctCell[i].real()),"t0Re",Gstring);
+					target_tx.save_vector(VectorXd(GloctCell[i].imag()),"t0Im",Gstring);
 					#else
 					save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
 					#endif
@@ -3094,10 +3146,10 @@ save (bool IGNORE_TX) const
 			for (int i=0; i<Lcell/Ns; ++i)
 			for (int j=0; j<Lcell/Ns; ++j)
 			{
-				string Gstring = make_string("G",i,j);
+				string Gstring = (i<10 and j<10)?make_string("G",i,j):make_string("G",i,"_",j);
 				#ifdef GREENPROPAGATOR_USE_HDF5
-				if (PRINT) lout << label << " saving " << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] " << endl;
-				target_wq.create_group(make_string("G",i,j));
+				if (PRINT) lout << label << " saving " << Gstring << "[ωqRe], " << Gstring << "[ωqIm] " << endl;
+				target_wq.create_group(Gstring);
 				target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
 				target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
 				if (G0qCell.size() > 0)
@@ -3126,8 +3178,8 @@ save (bool IGNORE_TX) const
 				#ifdef GREENPROPAGATOR_USE_HDF5
 				if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
 				if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
-				target_wq.create_group(make_string("G",i));
-				target_wq.save_vector(VectorXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
+				target_wq.create_group(Gstring);
+				target_wq.save_vector(VectorXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",Gstring);
 				#else
 				save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtINTqw_info(),".dat"), PRINT);
 				#endif
@@ -3173,6 +3225,41 @@ save (bool IGNORE_TX) const
 		#ifdef GREENPROPAGATOR_USE_HDF5
 		target_wq.close();
 		#endif
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+save_GtqCell() const
+{
+	#pragma omp critical
+	{
+		bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
+		
+		IntervalIterator w(wmin,wmax,Nw);
+		ArrayXd wvals = w.get_abscissa();
+		
+		lout << "tq-file: " << label+"_"+xtq_info()+".h5" << endl;
+		HDF5Interface target_tq(label+"_"+xtq_info()+".h5",WRITE);
+		target_tq.create_group("G");
+		
+		if (GtqCell.size() > 0)
+		{
+			for (int i=0; i<Lcell; ++i)
+			for (int j=0; j<Lcell; ++j)
+			{
+				string Gstring = (i<10 and j<10)?make_string("G",i,j):make_string("G",i,"_",j);
+				#ifdef GREENPROPAGATOR_USE_HDF5
+				if (PRINT) lout << label << " saving " << Gstring << "[tqRe], " << Gstring << "[tqIm] " << endl;
+				target_tq.create_group(Gstring);
+				target_tq.save_matrix(MatrixXd(GtqCell[i][j].real()),"tqRe",Gstring);
+				target_tq.save_matrix(MatrixXd(GtqCell[i][j].imag()),"tqIm",Gstring);
+				#else
+				saveMatrix(GtqCell[i][j].real(), make_string(label,"_G=tqRe_i=",i,"_j=",j,"_",xtq_info(),".dat"), PRINT);
+				saveMatrix(GtqCell[i][j].imag(), make_string(label,"_G=tqIm_i=",i,"_j=",j,"_",xtq_info(),".dat"), PRINT);
+				#endif
+			}
+		}
 	}
 }
 

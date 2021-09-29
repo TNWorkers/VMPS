@@ -56,6 +56,7 @@ public:
 	{
 		ParamHandler P(params,Heisenberg::defaults);
 		size_t Lcell = P.size();
+		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
 		this->precalc_TwoSiteData();
 	};
@@ -296,7 +297,7 @@ refEnergy Heisenberg::
 ref (const vector<Param> &params, double L)
 {
 	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",0.},{"Jz",0.},
-	                       {"Jprime",0.},{"Bz",0.},{"Bx",0.},{"Kx",0.},{"Kz",0.},{"Dy",0.},{"Dyprime",0.}});
+	                       {"Jprime",0.},{"Bz",0.},{"Bx",0.},{"Kx",0.},{"Kz",0.},{"Dy",0.},{"Dyprime",0.},{"R",0.}});
 	refEnergy out;
 	
 	size_t Ly = P.get<size_t>("Ly");
@@ -305,9 +306,10 @@ ref (const vector<Param> &params, double L)
 	double Jxy = P.get<double>("Jxy");
 	double Jz = P.get<double>("Jz");
 	double Jprime = P.get<double>("Jprime");
+	double R = P.get<double>("R");
 	
 	// Heisenberg chain and ladder
-	if (isinf(L) and J > 0. and P.ARE_ALL_ZERO<double>({"m","Jprime","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	if (isinf(L) and J > 0. and P.ARE_ALL_ZERO<double>({"m","Jprime","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime","R"}))
 	{
 		// out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		out.source = "F. B. Ramos and J. C. Xavier, N-leg spin-S Heisenberg ladders, Phys. Rev. B 89, 094424 (2014)";
@@ -362,17 +364,29 @@ ref (const vector<Param> &params, double L)
 		out.value *= J;
 	}
 	// XX chain
-	else if (isinf(L) and D == 2 and Jxy > 0. and P.ARE_ALL_ZERO<double>({"m","J","Jprime","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	else if (isinf(L) and D == 2 and Jxy > 0. and P.ARE_ALL_ZERO<double>({"m","J","Jprime","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime","R"}))
 	{
 		out.value = -M_1_PI*Jxy;
 		out.source = "S. Paul, A. K. Ghosh, Ground state properties of the bond alternating spin-1/2 anisotropic Heisenberg chain, Condensed Matter Physics, 2017, Vol. 20, No 2, 23701: 1–16";
 		out.method = "analytical";
 	}
 	// Majumdar-Ghosh chain
-	else if (D == 2 and J > 0. and Jprime == 0.5*J and P.ARE_ALL_ZERO<double>({"m","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	else if (D == 2 and J > 0. and Jprime == 0.5*J and P.ARE_ALL_ZERO<double>({"m","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime","R"}))
 	{
 		out.value = -0.375*J;
 		out.source = "https://en.wikipedia.org/wiki/Majumdar-Ghosh_model";
+		out.method = "analytical";
+	}
+	if (isinf(L) and D==3 and abs(J-0.5)<1e-14 and abs(R+0.5)<1e-14)
+	{
+		double x = 0.5*(7.+3.*sqrt(5.));
+		double sumres = 0.;
+		for (int n=1; n<10000; ++n)
+		{
+			sumres += 1./(1.+pow(x,n));
+		}
+		out.value = -1.-sqrt(5)/2.*(1.+4.*sumres) + 8./3.;
+		out.source = "Barber & Batchelor (1989), Parkinson (1988)";
 		out.method = "analytical";
 	}
 	

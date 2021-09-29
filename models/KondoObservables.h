@@ -1015,10 +1015,10 @@ typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmet
 SimpSsub (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
-				 {
-					 return make_corr(IMPSUB,locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::BOSONIC, PROP::HERMITIAN);
-					 // return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
-				 }
+	{
+		return make_corr(IMPSUB,locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::BOSONIC, PROP::HERMITIAN);
+		// return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	}
 	else
 	{
 		vector<Mpo<Symmetry> > out(3);
@@ -1111,8 +1111,24 @@ template<typename Symmetry>
 typename Symmetry::qType KondoObservables<Symmetry>::getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const
 {
 	typename Symmetry::qType out;
-	if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
-	else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in KondoObservables::getQ_ScompScomp");}
+	
+	// if no spin symmetry:
+	if (!Symmetry::IS_SPIN_SU2() and !Symmetry::IS_SPIN_U1())
+	{
+		out = Symmetry::qvacuum();
+	}
+	else
+	{
+		if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) )
+		{
+			out = Symmetry::qvacuum();
+		}
+		else
+		{
+			lout << "Sa1=" << Sa1 << ", Sa2=" << Sa2 << endl;
+			assert(false and "Quantum number for the chosen ScompScomp is not computed. Add in KondoObservables::getQ_ScompScomp");
+		}
+	}
 	return out;
 }
 

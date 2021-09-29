@@ -57,6 +57,36 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	return res;
 }
 
+ArrayXXd create_1D_PBC_AB (size_t L, double lambda1A=1., double lambda1B=1., double lambda2A=0., double lambda2B=0., bool COMPRESSED=true)
+{
+	ArrayXXd res(L,L);
+	res.setZero();
+	
+	for (int i=0; i<L; i+=2)
+	{
+		res(i,  (i+1)%L) = lambda1A;
+		res(i+1,(i+2)%L) = lambda1B;
+	}
+	
+	for (int i=0; i<L; i+=2)
+	{
+		res(i,  (i+2)%L) = lambda2A;
+		res(i+1,(i+3)%L) = lambda2B;
+	}
+	
+	res += res.transpose().eval();
+	
+//	cout << "res=" << endl << res << endl;
+	
+	if (COMPRESSED)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	
+	return res;
+}
+
 ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
 	ArrayXXd res;
@@ -1017,7 +1047,7 @@ ArrayXXd hopping_triangular (int L, int VARIANT=0, double lambda1=1.)
 		res(1,2) = lambda1;
 		res(0,2) = lambda1;
 	}
-	else if (L==3)
+	else if (L==5)
 	{
 		res(0,1) = lambda1;
 		res(1,2) = lambda1;
@@ -1431,14 +1461,14 @@ vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 	return res;
 }
 
-vector<Param> Tinf_params_spins (size_t L, size_t Ly, size_t maxPower=1ul, size_t D=2ul, bool SOFT=false)
+vector<Param> Tinf_params_spins (size_t L, size_t Ly, size_t maxPower=1ul, size_t DA=2ul, size_t DB=2ul, bool SOFT=false)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
 	res.push_back({"maxPower",maxPower});
-	res.push_back({"OPEN_BC",true});
-	if (SOFT and D==3)
+	if (SOFT and DA==3ul and DB==3ul)
 	{
+		size_t D = 3ul;
 		if (Ly==2)
 		{
 			for (size_t l=1; l<L-1; ++l)
@@ -1462,7 +1492,24 @@ vector<Param> Tinf_params_spins (size_t L, size_t Ly, size_t maxPower=1ul, size_
 	}
 	else
 	{
-		res.push_back({"D",D});
+		if (Ly == 2ul)
+		{
+			for (size_t l=0; l<L; l+=2)
+			{
+				res.push_back({"D",DA,l});
+				res.push_back({"D",DB,l+1});
+			}
+		}
+		else
+		{
+			for (size_t l=0; l<L; l+=4)
+			{
+				res.push_back({"D",DA,l});
+				res.push_back({"D",DA,l+1});
+				res.push_back({"D",DB,l+2});
+				res.push_back({"D",DB,l+3});
+			}
+		}
 	}
 	if (Ly == 2ul)
 	{
@@ -1621,10 +1668,20 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 // returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
 // H = J*S_i*S_{i+1} - beta*(S_i*S_{i+1})^2
 //   = (J+beta/2)*S_i*S_{i+1} - beta/2 Q_i*Q_{i+1}
-tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_input = boost::rational<int>(-1,3))
+tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_rational = boost::rational<int>(-1,3), double J_input=1.)
 {
-	double beta = boost::rational_cast<double>(beta_input);
-	double J = 1.+0.5*beta;
+	double beta = boost::rational_cast<double>(beta_rational);
+	double J = J_input+0.5*beta;
+	double R = -0.5*beta;
+	double offset = -4./3.*beta;
+	return make_tuple(J,R,offset);
+}
+
+// H = cos(theta)*S_i*S_{i+1} + sin(theta)*(S_i*S_{i+1})^2
+tuple<double,double,double> params_bilineraBiquadratic (double theta)
+{
+	double beta = -sin(theta);
+	double J = cos(theta)+0.5*beta;
 	double R = -0.5*beta;
 	double offset = -4./3.*beta;
 	return make_tuple(J,R,offset);

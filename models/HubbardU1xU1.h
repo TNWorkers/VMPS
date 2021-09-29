@@ -65,6 +65,7 @@ public:
 	{
 		ParamHandler P(params,HubbardU1xU1::defaults);
 		size_t Lcell = P.size();
+		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
 		this->precalc_TwoSiteData();
 	};
@@ -206,8 +207,8 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		if (P.HAS("tFull"))
 		{
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cUP_sign_local    = F[loc].c(UP,0)    * F[loc].sign();
-			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagUP_sign_local = F[loc].cdag(UP,0) * F[loc].sign();
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cDN_sign_local    = F[loc].c(DN,0)    * F[loc].sign();
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagUP_sign_local = F[loc].cdag(UP,0) * F[loc].sign();
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagDN_sign_local = F[loc].cdag(DN,0) * F[loc].sign();
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cUP_ranges(N_sites);    for (size_t i=0; i<N_sites; ++i) {cUP_ranges[i]    = F[i].c(UP,0);}
@@ -258,13 +259,14 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		labellist[loc].push_back(tperp.label);
 		labellist[loc].push_back(Vperp.label);
 		labellist[loc].push_back(Jperp.label);
+		ArrayXd  C_array = F[loc].ZeroField();
 		
-		ArrayXd Vxy_array = F[loc].ZeroHopping();
-		ArrayXd Vz_array = F[loc].ZeroHopping();
+		//ArrayXd Vxy_array = F[loc].ZeroHopping();
+		//ArrayXd Vz_array = F[loc].ZeroHopping();
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction
 		(
-			F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, Bz.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a)
+			F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, Bz.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a, C_array)
 		);
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
