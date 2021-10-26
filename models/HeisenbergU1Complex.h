@@ -64,7 +64,7 @@ public:
 
 const std::map<string,std::any> HeisenbergU1Complex::defaults = 
 {
-	{"J",1.i}, {"Jprime",0.}, {"Jrung",1.},
+	{"J",0.}, {"Jprime",0.}, {"Jrung",0.},
 	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
 	{"Jxy3site",0.}, {"Jxy4site",0.},
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
@@ -159,21 +159,23 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		labellist[loc].push_back(ss1.str());
 		labellist[loc].push_back(ss2.str());
 		
-		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
-		param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", orbitals, loc%Lcell);
-		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jzperp  = P.fill_array2d<double>("Jzrung",  "Jz",  "Jzperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Jperp  = P.fill_array2d<double>("Jrung",  "J",  "Jperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
 		param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
 		param1d nu = P.fill_array1d<double>("nu", "nuorb", orbitals, loc%Lcell);
+		param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", orbitals, loc%Lcell);
 		
 		labellist[loc].push_back(Bz.label);
-		labellist[loc].push_back(Kz.label);
-		labellist[loc].push_back(Jperp.label);
-		labellist[loc].push_back(Jxyperp.label);
-		labellist[loc].push_back(Jzperp.label);
 		labellist[loc].push_back(mu.label);
 		labellist[loc].push_back(nu.label);
+		labellist[loc].push_back(Kz.label);
+		
+		labellist[loc].push_back(Jxyperp.label);
+		labellist[loc].push_back(Jzperp.label);
+		labellist[loc].push_back(Jperp.label);
 		
 		auto sum_array = [] (const ArrayXXd& a1, const ArrayXXd& a2)
 		{
@@ -187,8 +189,32 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		};
 		
 		auto Hloc = Mpo<Symmetry,complex<double> >::get_N_site_interaction(
-		            B[loc].HeisenbergHamiltonian(sum_array(Jperp.a,Jxyperp.a), sum_array(Jperp.a,Jzperp.a), Bz.a, mu.a, nu.a, Kz.a).template cast<complex<double> >());
+		            B[loc].HeisenbergHamiltonian(Jxyperp.a+Jperp.a, Jzperp.a+Jperp.a, Bz.a, mu.a, nu.a, Kz.a).template cast<complex<double> >());
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.+0.i));
+		
+//		// Nearest-neighbour terms: Jxy, Jz, J
+//		param2d Jxypara = P.fill_array2d<complex<double> >("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);
+//		param2d Jzpara  = P.fill_array2d<complex<double> >("Jz",  "Jzpara",  {orbitals, next_orbitals}, loc%Lcell);
+//		labellist[loc].push_back(Jxypara.label);
+//		labellist[loc].push_back(Jzpara.label);
+//		
+//		if (loc < N_sites-1 or !static_cast<bool>(boundary))
+//		{
+//			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+//			for (std::size_t beta=0; beta < next_orbitals; ++beta)
+//			{
+//				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Scomp(SP,alfa),
+//				                                                                                     B[lp1].Scomp(SM,beta)),
+//				                                                                                     0.5*Jxypara(alfa,beta)));
+//				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Scomp(SM,alfa),
+//				                                                                                     B[lp1].Scomp(SP,beta)),
+//				                                                                                     0.5*Jxypara(alfa,beta)));
+//				
+//				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Scomp(SZ,alfa),
+//				                                                                                     B[lp1].Scomp(SZ,beta)),
+//				                                                                                     Jzpara(alfa,beta)));
+//			}
+//		}
 		
 		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] 
 		(string xxxFull, string label,

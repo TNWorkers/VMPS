@@ -201,13 +201,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {c_ranges,cdag_ranges};
 			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, {false, true}, PROP::FERMIONIC);
 		}
-//		if (P.HAS("Vzfull"))
-//		{
-//			vector<SiteOperatorQ<Symmetry_,MatrixType> > first {F[loc].Tz(0)};
-//			vector<SiteOperatorQ<Symmetry_,MatrixType> > Tz_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Tz_ranges[i] = F[i].Tz(0);}
-//			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {Tz_ranges};
-//			push_full("Vzfull", "Vzᵢⱼ", first, last, {1.}, PROP::BOSONIC);			
-//		}
+		if (P.HAS("Vzfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > first {F[loc].Tz(0).template cast<complex<double>>()};
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > Tz_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Tz_ranges[i] = F[i].Tz(0).template cast<complex<double>>();}
+			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {Tz_ranges};
+			push_full("Vzfull", "Vzᵢⱼ", first, last, {1.}, {false}, PROP::BOSONIC);
+		}
 //		if (P.HAS("Vxyfull"))
 //		{
 //			auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));

@@ -1801,6 +1801,12 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			assert(DynParam.iteration(i) == UMPS_ALG::H2SITE and "iteration H2SITE can not be mixed with other iterations");
 		}
 		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, GlobParam.Minit, GlobParam.Qinit, USE_STATE);
+//		// if cast to complex is needed:
+//		auto H2site_tmp = H.H2site(0,true);
+//		TwoSiteHamiltonian H2site_cast;
+//		H2site_cast.resize(boost::extents[H2site_cast.shape()[0]][H2site_cast.shape()[1]][H2site_cast.shape()[2]][H2site_cast.shape()[3]]);
+//		H2site_cast = H2site_tmp;
+//		prepare_h2site(H2site_cast, H.locBasis(0), Vout, Qtot, GlobParam.Minit, GlobParam.Qinit, USE_STATE);
 	}
 	else
 	{

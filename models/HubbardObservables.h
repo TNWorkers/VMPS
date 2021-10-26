@@ -93,6 +93,15 @@ public:
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrSpin (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
 	
 	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrTpm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrTz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
+	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrId (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
+	
+	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
 	
 	///@{
@@ -393,7 +402,31 @@ template<typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 StringCorrSpin (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true!
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+StringCorrTpm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Tp(locy1), F[locx2].Tm(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true!
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+StringCorrTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Tz(locy1), F[locx2].Tz(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true!
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+StringCorrId (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Id(locy1), F[locx2].Id(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true!
 }
 
 template<typename Symmetry, typename Scalar>
@@ -401,7 +434,7 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 StringCorrSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sz(locy1), F[locx2].Sz(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].Sz(locy1), F[locx2].Sz(locy2), Symmetry::qvacuum(), +1., true, false); // FERMIONIC=true!
 }
 
 template<typename Symmetry, typename Scalar>

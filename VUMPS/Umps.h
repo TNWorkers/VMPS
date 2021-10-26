@@ -247,8 +247,8 @@ public:
 	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > 
 	calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R1, const Mpo<Symmetry,complex<double>> &R2) const;
 	
-	vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>>
-	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15) const;
+	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > >
+	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1) const;
 	
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -2732,56 +2732,50 @@ truncate (bool SET_AC_RANDOM)
 }
 
 template<typename Symmetry, typename Scalar>
-vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>> Umps<Symmetry,Scalar>::
-calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol) const
+vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > Umps<Symmetry,Scalar>::
+calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK) const
 {
-	assert(N==1 or N==2 and "Can only calculate N=1 or N=2 dominant eigenvectors!");
-	
-	vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>> res(N);
+	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > res(N);
 	
 	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
 	complex<double> lambda1;
 	
 	TransferMatrix<Symmetry,complex<double> > T;
-//	TransferMatrix<Symmetry,double> Tr;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
 		T = TransferMatrix<Symmetry,complex<double> >
 		    (VMPS::DIRECTION::RIGHT, Compl.A[g], Compl.A[g], locBasis());
-//		Tr = TransferMatrix<Symmetry,double>
-//		    (VMPS::DIRECTION::RIGHT, A[g], A[g], locBasis());
 	}
 	else
 	{
 		T = TransferMatrix<Symmetry,complex<double> >
 		    (VMPS::DIRECTION::LEFT, Compl.A[g], Compl.A[g], locBasis());
-//		Tr = TransferMatrix<Symmetry,double>
-//		    (VMPS::DIRECTION::LEFT, A[g], A[g], locBasis());
 	}
 	
 	Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > RandBiped;
-//	Biped<Symmetry,Matrix<double,Dynamic,Dynamic> > RandBipedr;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
 		RandBiped.setRandom(inBasis(0), inBasis(0));
-//		RandBipedr.setRandom(inBasis(0), inBasis(0));
 	}
 	else
 	{
 		RandBiped.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
-//		RandBipedr.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
 	}
 	RandBiped = 1./RandBiped.norm() * RandBiped;
-//	RandBipedr = 1./RandBipedr.norm() * RandBipedr;
 	TransferVector<Symmetry,complex<double> > x(RandBiped);
 	
-	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John(T,x,lambda1,tol);
+	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John(N,tol);
+	if (dimK != -1)
+	{
+		John.set_dimK(dimK);
+	}
+	John.calc_dominant(T,x);
 	lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
 	//Normalize the Fixed point and try to make it real.
 //	x.data = exp(-1.i*arg(x.data.block[0](0,0))) * (1./x.data.norm()) * x.data;
 	
-	res[0].state = x.data;
-	res[0].energy = lambda1.real();
+	res[0].first = John.get_lambda(0);
+	res[0].second = x.data;
 	
 	if (abs(lambda1.imag()) > 1e1*tol)
 	{
@@ -2789,7 +2783,7 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol) 
 		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda1 << ", |λ|=" << abs(lambda1) << termcolor::reset << endl;
 	}
 	
-	lout << "norm1 test=" << x.data.norm() << endl;
+	lout << "norm test=" << x.data.norm() << endl;
 	
 //	LanczosSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,double>,double> Lutz(LANCZOS::REORTHO::FULL);
 //	Eigenstate<TransferVector<Symmetry,double>> z;
@@ -2800,30 +2794,36 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol) 
 //	cout << "z.energy=" << z.energy << endl;
 //	lout << "z.norm test=" << z.state.data.norm() << endl;
 	
-	if (N==2)
+	for (int n=1; n<N; ++n)
 	{
-		T.TopEigvec = x.data;
-		T.TopEigval = lambda1;
-		T.PROJECT_OUT_TOPEIGVEC = true;
-		
-		complex<double> lambda2;
-		TransferVector<Symmetry,complex<double> > y(RandBiped);
-		ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > Jane(T,y,lambda2,tol);
-		lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Jane.info()  << endl;
-		
-//		y.data = exp(-1.i*arg(y.data.block[0](0,0))) * (1./y.data.norm()) * y.data;
-		res[1].state = y.data;
-		res[1].energy = lambda2.real();
-		
-		lout << "norm2 test=" << y.data.norm() << endl;
-		lout << "orthogonality test=" << abs(x.data.adjoint().contract(y.data).trace()) << endl;
-		
-		if (abs(lambda2.imag()) > 1e1*tol)
-		{
-			lout << John.info() << endl;
-			lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda2 << ", |λ|=" << abs(lambda2) << termcolor::reset << endl;
-		}
+		res[n].first = John.get_lambda(n);
 	}
+	
+	// project out explicitly
+//	if (N==2)
+//	{
+//		T.TopEigvec = x.data;
+//		T.TopEigval = lambda1;
+//		T.PROJECT_OUT_TOPEIGVEC = true;
+//		
+//		complex<double> lambda2;
+//		TransferVector<Symmetry,complex<double> > y(RandBiped);
+//		ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > Jane(T,y,lambda2,tol);
+//		lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Jane.info()  << endl;
+//		
+////		y.data = exp(-1.i*arg(y.data.block[0](0,0))) * (1./y.data.norm()) * y.data;
+//		res[1].first = lambda2;
+//		res[1].second = y.data;
+//		
+//		lout << "norm2 test=" << y.data.norm() << endl;
+//		lout << "orthogonality test=" << abs(x.data.adjoint().contract(y.data).trace()) << endl;
+//		
+//		if (abs(lambda2.imag()) > 1e1*tol)
+//		{
+//			lout << John.info() << endl;
+//			lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda2 << ", |λ|=" << abs(lambda2) << termcolor::reset << endl;
+//		}
+//	}
 	
 	lout << endl;
 	// Note: corr.length ξ=-L/ln(|lambda2|")

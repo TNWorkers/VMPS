@@ -193,6 +193,9 @@ public:
 	                                                                                          const ArrayXd &Bz, const ArrayXd &mu, const ArrayXd &nu,
 	                                                                                          const ArrayXd &Kz) const;
 	
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXcd &Jxy, const ArrayXXcd &Jz) const;
+	
 	/**
 	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	 * \param Jxy : \f$J^{xy}\f$
@@ -564,6 +567,29 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, const ArrayXd &B
 	for (int i=0; i<N_orbitals; ++i)
 	{
 		if (Kz(i)!=0.) {Mout += Kz(i) * Scomp(SZ,i) * Scomp(SZ,i);}
+	}
+	Mout.label() = "Hloc";
+	return Mout;
+}
+
+template<typename Symmetry_, size_t order>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,-1,-1> > >::type SpinBase<Symmetry_,order>::
+HeisenbergHamiltonian (const ArrayXXcd &Jxy, const ArrayXXcd &Jz) const
+{
+	OperatorType Mout(Symmetry::qvacuum(),TensorBasis);
+	
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<N_orbitals; ++j)
+	{
+		if (abs(Jxy(i,j)) != 0.)
+		{
+			Mout += 0.5 * (Jxy(i,j) * Scomp(SP,i) * Scomp(SM,j) + conj(Jxy(i,j)) * Scomp(SM,i) * Scomp(SP,j));
+		}
+		if (abs(Jz(i,j)) != 0.)
+		{
+			Mout += Jz(i,j) * Scomp(SZ,i) * Scomp(SZ,j);
+		}
 	}
 	Mout.label() = "Hloc";
 	return Mout;

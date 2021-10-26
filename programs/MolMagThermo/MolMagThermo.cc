@@ -235,6 +235,8 @@ map<string,int> make_Lmap()
 	m["SOD32"] = 32; // NOT IMPLEMENTED
 	m["SOD50"] = 50; // icosidodecahedron decorated with P04
 	m["SOD60"] = 60; // rectified truncated octahedron decorated with P04
+	
+	m["Mn32"] = 32;
 	return m;
 }
 
@@ -262,6 +264,23 @@ int main (int argc, char* argv[])
 	double U = args.get<double>("U",0.);
 	double J = args.get<double>("J",1.);
 	double Jprime = args.get<double>("Jprime",0.);
+	
+	double Jq = args.get<double>("Jq",0.);
+	double R = 0.;
+	double offset = 0.;
+	if (Jq != 0.)
+	{
+		auto JRo = params_bilineraBiquadratic_beta(-Jq,J);
+		J = get<0>(JRo);
+		R = get<1>(JRo);
+		offset = get<2>(JRo);
+	}
+	
+	// for Mn32
+	double Jcap = args.get<double>("Jcap",1.);
+	double Jcorner = args.get<double>("Jcorner",0.);
+	double Jedge = args.get<double>("Jedge",1.);
+	
 	double Bz = args.get<double>("Bz",0.);
 	int S = args.get<int>("S",0);
 	int M = args.get<int>("M",0);
@@ -427,6 +446,11 @@ int main (int argc, char* argv[])
 		{
 			base += make_string("_Jprime=",Jprime);
 		}
+		if (MOL == "Mn32")
+		{
+			base += make_string("_Jcap=",Jcap,"_Jcorner=",Jcorner,"_Jedge=",Jedge);
+		}
+		
 	}
 	if (MOL=="C60" and VARIANT==0)
 	{
@@ -462,7 +486,8 @@ int main (int argc, char* argv[])
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
 	size_t end_2site = args.get<size_t>("end_2site",20ul);
-	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%2==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	int period_2site = args.get<int>("period_2site",2ul);
+	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	double eps_svd = args.get<double>("eps_svd",1e-10);
 	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
@@ -486,7 +511,7 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	
-	lout.set(make_string(base,"_Mlimit=",GlobParam.Mlimit,".log"), wd+"log", true);
+	lout.set(make_string(base,".log"), wd+"log", true);
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
@@ -495,6 +520,8 @@ int main (int argc, char* argv[])
 	#else
 	lout << "not parallelized" << endl;
 	#endif
+	
+	vector<int> Mn4spins;
 	
 	ArrayXXd hopping;
 	if (MOL=="RING")
@@ -526,6 +553,23 @@ int main (int argc, char* argv[])
 	{
 		hopping = J*hopping_triangular(L,VARIANT);
 	}
+	else if (MOL == "Mn32")
+	{
+		hopping = hopping_Mn32(Jcap,Jcorner,Jedge,VARIANT);
+		CuthillMcKeeCompressor CMK(hopping_Mn32(Jcap,Jcorner,Jedge,1));
+		auto transform = CMK.get_transform();
+		if (VARIANT==0)
+		{
+			Mn4spins.push_back(transform[3]);
+			Mn4spins.push_back(transform[7]);
+			Mn4spins.push_back(transform[11]);
+			Mn4spins.push_back(transform[15]);
+			Mn4spins.push_back(transform[19]);
+			Mn4spins.push_back(transform[23]);
+			Mn4spins.push_back(transform[27]);
+			Mn4spins.push_back(transform[31]);
+		}
+	}
 	else
 	{
 		lout << "Unknown molecule!" << endl;
@@ -533,17 +577,17 @@ int main (int argc, char* argv[])
 	}
 	
 	// change hopping along the ring for C60
-	bool RING = args.get<bool>("RING",false);
-	double J2 = args.get<double>("J2",0.9);
-	if (RING and VARIANT==0 and MOL=="C60")
-	{
-		vector<int> ringsites = {16,17,27,30,20, 21,31,38,28,29, 39,42,32,33,43, 35,25,24,34,26};
-		for (int i=0; i<ringsites.size(); ++i)
-		{
-			hopping(ringsites[i],ringsites[(i+1)%20]) = J2;
-			hopping(ringsites[(i+1)%20],ringsites[i]) = J2;
-		}
-	}
+	//bool RING = args.get<bool>("RING",false);
+	//double J2 = args.get<double>("J2",0.9);
+	//if (RING and VARIANT==0 and MOL=="C60")
+	//{
+	//	vector<int> ringsites = {16,17,27,30,20, 21,31,38,28,29, 39,42,32,33,43, 35,25,24,34,26};
+	//	for (int i=0; i<ringsites.size(); ++i)
+	//	{
+	//		hopping(ringsites[i],ringsites[(i+1)%20]) = J2;
+	//		hopping(ringsites[(i+1)%20],ringsites[i]) = J2;
+	//	}
+	//}
 	
 	/*bool PERMUTE = args.get<int>("PERMUTE",false);
 	if (PERMUTE)
@@ -590,7 +634,30 @@ int main (int argc, char* argv[])
 		else
 		{
 			params.push_back({"Jfull",hopping});
-			params.push_back({"D",D});
+			if (R!=0.)
+			{
+				ArrayXXd hoppingR = R*hopping/J;
+				params.push_back({"Rfull",hoppingR});
+			}
+			if (MOL=="Mn32")
+			{
+				for (size_t l=0; l<L; ++l)
+				{
+					auto it = find(Mn4spins.begin(), Mn4spins.end(), l);
+					if (it != Mn4spins.end())
+					{
+						params.push_back({"D",4ul,l});
+					}
+					else
+					{
+						params.push_back({"D",6ul,l});
+					}
+				}
+			}
+			else
+			{
+				params.push_back({"D",D});
+			}
 			#ifdef USING_SU2
 			{
 				Q = {2*S+1};
@@ -606,6 +673,7 @@ int main (int argc, char* argv[])
 		params.push_back({"maxPower",maxPower});
 		
 		MODEL H(size_t(L),params);
+		if (offset!=0.) H.scale(1.,offset*L);
 		lout << H.info() << endl;
 		
 		Eigenstate<MODEL::StateXd> g;

@@ -34,6 +34,7 @@ Logger lout;
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
+#include "RootFinder.h" // from ALGS
 
 //#include "models/HubbardSU2xU1.h"
 //typedef VMPS::HubbardSU2xU1 MODEL; // reell

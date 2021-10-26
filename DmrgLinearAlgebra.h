@@ -483,7 +483,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	
 	if (Vin.calc_Dmax() <= 4)
 	{
-		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1);
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1);
 	}
 	else
 	{
@@ -662,7 +662,7 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
-                int max_halfsweeps = 200, int min_halfsweeps = 1)
+                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1)
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
@@ -722,7 +722,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Mmax(),size_t(OXV_EXACT_INIT_M)), 100, 10000, tol_compr, max_halfsweeps, min_halfsweeps);
+		Compadre.stateCompress(Vout, Vtmp, (Minit==-1)?Vin.calc_Mmax():Minit, 100, 10000, tol_compr, max_halfsweeps, min_halfsweeps);
 		Vtmp.max_Nsv = Vtmp.calc_Mmax();
 		
 //		lout << "Vtmp.calc_Mmax()=" << Vtmp.calc_Mmax() << endl;

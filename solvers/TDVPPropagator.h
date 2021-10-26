@@ -72,6 +72,8 @@ private:
 	double t_ohead = 0; // precalc
 	double t_contr = 0; // contract & sweep
 	double t_tot   = 0; // full time step
+	
+	TimeScalar last_dt;
 };
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -80,7 +82,8 @@ info() const
 {
 	stringstream ss;
 	ss << "TDVPPropagator: ";
-	ss << "max(dist)=" << dist_max << ", ";
+	ss << " dt=" << last_dt;
+	ss << ", max(dist)=" << dist_max << ", ";
 //	ss << "max(dimK)=" << dimK_max << ", ";
 	if (dimK2_log.size() > 0)
 	{
@@ -237,6 +240,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, double tol_Lanczos)
 {
+	last_dt = dt;
 	assert(N_stages==1 or N_stages==2 or N_stages==3 and "Only N_stages=1,2,3 implemented for TDVPPropagator::t_step!");
 	dist_max = 0.;
 	dimK_max = 0;
@@ -440,6 +444,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, double tol_Lanczos)
 {
+	last_dt = dt;
 	dist_max = 0.;
 	dimK_max = 0.;
 	N_stages_last = N_stages;
@@ -548,6 +553,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos)
 {
+	last_dt = dt;
 	turnaround(pivot, N_sites, CURRENT_DIRECTION);
 	
 	// 2-site propagation
@@ -624,6 +630,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos, bool TURN_FIRST)
 {
+	last_dt = dt;
 	if (TURN_FIRST) turnaround(pivot, N_sites, CURRENT_DIRECTION);
 	
 	// 1-site propagation
@@ -743,6 +750,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const vector<bool> &TWO_STEP_AT, int N_stages, double tol_Lanczos)
 {
+	last_dt = dt;
 	assert(N_stages==1 and "Only N_stages=1 implemented for TDVPPropagator::t_step_adaptive!");
 	dist_max = 0.;
 	dimK_max = 0;

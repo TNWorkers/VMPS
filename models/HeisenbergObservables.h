@@ -29,6 +29,8 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Qcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
@@ -323,6 +325,15 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	return make_local(locx,locy, B[locx].Scomp(Sa,locy).template cast<Scalar>(), factor, HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HeisenbergObservables<Symmetry,Scalar>::
+Qcomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
+{
+	bool HERMITIAN = (Sa==QZ)? true:false;
+	return make_local(locx,locy, B[locx].Qcomp(Sa,locy).template cast<Scalar>(), factor, HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

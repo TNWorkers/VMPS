@@ -38,7 +38,8 @@ public:
 	                       double betamax_input, double dbeta_input, double tol_compr_beta_input, size_t Mlim, qarray<Symmetry::Nq> Q, 
 	                       double s_betainit, double betaswitch, 
 	                       string wd, string th_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
-	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE);
+	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
+	                       int Ntaylor=0);
 	
 	void apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK=true);
 	
@@ -357,7 +358,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
                   double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
                   double s_betainit, double betaswitch, 
                   string wd, string th_label, bool LOAD_BETA, bool SAVE_BETA,
-                  DMRG::VERBOSITY::OPTION VERB)
+                  DMRG::VERBOSITY::OPTION VERB, int Ntaylor)
 {
 	for (const auto &spec:specs)
 	{
@@ -370,10 +371,11 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 	{
 		lout << "loading beta result from: " << make_string(wd,"/betaRes_",th_label) << endl;
 		PhiT.load(make_string(wd,"/betaRes_",th_label));
+		lout << "loaded: " << PhiT.info() << endl;
 	}
 	else
 	{
-		typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::SILENT);
+		typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::HALFSWEEPWISE);
 		Eigenstate<Mps<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> > th;
 		
 		DMRG::CONTROL::GLOB GlobParam;
@@ -463,11 +465,12 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		
 		int Nbeta = static_cast<int>(betamax/dbeta);
 		
+		vector<double> lnZvec;
+		
 		vector<double> betavals;
 		vector<double> betasteps;
 		betavals.push_back(0.01);
 		betasteps.push_back(0.01);
-		vector<double> lnZvec;
 //		double s_betainit = log((dLphys==2)?Hprop.locBasis(0).size():Hprop.locBasis(0).size()/2);
 		
 		for (int i=1; i<22; ++i)
@@ -536,17 +539,59 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //		lout << "Hchi: " << Hchi.info() << endl;
 //		lout << endl;
 		
+		Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hpropsq;
+		if (Ntaylor>0)
+		{
+			lout << "computing H^2..." << endl;
+			Hpropsq = prod(Hprop,Hprop);
+			lout << "H^2 done!"  << endl;
+		}
+		
 		for (int i=0; i<betasteps.size(); ++i)
 		{
 			Stopwatch<> betaStepper;
 			double beta = betavals[i];
-			if (beta>betaswitch)
+			
+			//if (i<min(Ntaylor,20))
+			if (i<Ntaylor)
 			{
-				TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
+				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Id = Hprop.Identity(PhiT.locBasis());
+				
+				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo1 = Hprop;
+				Hmpo1.scale(-0.5*betasteps[i]); // -1/2*dβ*H
+				
+				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo2 = Hpropsq;
+				Hmpo2.scale(0.125*betasteps[i]*betasteps[i]); // 1/8*(dβ*H)^2
+				
+				lout << "computing 1-1/2*dβ*H+1/8*(dβ*H)^2..." << endl;
+				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> U = sum(Id,sum(Hmpo1,Hmpo2));
+				
+				Mps<Symmetry,Scalar> PhiTmp;
+				lout << "applying 1-1/2*dβ*H+1/8*(dβ*H)^2 and compressing..." << endl;
+				//OxV_exact(U,PhiT,PhiTmp,1e-9,DMRG::VERBOSITY::ON_EXIT,200,1,Mlim);
+				HxV(U,PhiT,PhiTmp);
+				PhiT = PhiTmp;
+				
+				if (i==Ntaylor-1)
+				{
+					TDVPT = TDVPPropagator<Hamiltonian,
+				           typename Hamiltonian::Symmetry,
+				           typename Hamiltonian::Mpo::Scalar_,
+				           typename Hamiltonian::Mpo::Scalar_,
+				           Mps<Symmetry,typename Hamiltonian::Mpo::Scalar_>
+				           >(Hprop,PhiT);
+				}
 			}
 			else
 			{
-				TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
+				if (beta>betaswitch)
+				{
+					TDVPT.t_step0(Hprop, PhiT, -0.5*betasteps[i], 1);
+				}
+				else
+				{
+					TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
+				}
 			}
 			double norm = isReal(dot(PhiT,PhiT));
 			lnZvec.push_back(log(norm));

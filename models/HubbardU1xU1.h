@@ -238,6 +238,14 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
 		}
 		
+		if (P.HAS("VextFull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].n(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > n_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {n_ranges[i] = F[i].n(0);}
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {n_ranges};
+			push_full("VextFull", "Vextᵢⱼ", first, last, {1.}, PROP::BOSONIC);
+		}
+		
 		// local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂, X⟂
 		
 		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);

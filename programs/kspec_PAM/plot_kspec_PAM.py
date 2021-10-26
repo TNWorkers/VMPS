@@ -58,11 +58,11 @@ parser.add_argument('-V', action='store', type=int, default=0)
 parser.add_argument('-Ef', action='store', type=float, default=-2)
 parser.add_argument('-Ec', action='store', type=float, default=0)
 
-parser.add_argument('-tfc', action='store', type=float, default=0.5)
+parser.add_argument('-tfc', action='store', type=float, default=1)
 parser.add_argument('-tcc', action='store', type=float, default=1)
 parser.add_argument('-tff', action='store', type=float, default=0)
 parser.add_argument('-Retx', action='store', type=float, default=0)
-parser.add_argument('-Imtx', action='store', type=float, default=0.5)
+parser.add_argument('-Imtx', action='store', type=float, default=0)
 parser.add_argument('-Rety', action='store', type=float, default=0)
 parser.add_argument('-Imty', action='store', type=float, default=0)
 

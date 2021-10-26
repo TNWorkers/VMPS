@@ -926,8 +926,25 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 		res(2,5) = lambda1;
 		res(3,5) = lambda1;
 	}
+	else if (L == 8) // cube
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(2,3) = lambda1;
+		res(0,3) = lambda1;
+		
+		res(4,5) = lambda1;
+		res(5,6) = lambda1;
+		res(6,7) = lambda1;
+		res(4,7) = lambda1;
+		
+		res(0,4) = lambda1;
+		res(1,5) = lambda1;
+		res(2,6) = lambda1;
+		res(3,7) = lambda1;
+	}
 	// reference: Phys. Rev. B 72, 064453 (2005)
-	else if (L == 12)
+	else if (L == 12) // icosahedron
 	{
 //		res(0,1) = lambda1;
 //		res(1,2) = lambda1;
@@ -1253,6 +1270,78 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 		int i = edges[e].first;
 		int j = edges[e].second;
 		res(i,j) = lambda1;
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
+	
+	return res;
+}
+
+ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lambda_edge=1., int VARIANT=0)
+{
+	std::vector<std::pair<std::size_t, std::size_t>> edges;
+	
+	ArrayXXd res(32,32); res.setZero();
+	
+	// outer circle:
+	add_tetrahedron(0,1,2,3,edges);
+	add_tetrahedron(4,5,6,7,edges);
+	add_tetrahedron(8,9,10,11,edges);
+	add_tetrahedron(12,13,14,15,edges);
+	// inner circle:
+	add_tetrahedron(16,17,18,19,edges);
+	add_tetrahedron(20,21,22,23,edges);
+	add_tetrahedron(24,25,26,27,edges);
+	add_tetrahedron(28,29,30,31,edges);
+	
+	vector<int> caps = {3,7,11,15, 19,23,27,31};
+	
+	for (int e=0; e<edges.size(); ++e)
+	{
+		int i = edges[e].first;
+		int j = edges[e].second;
+		
+		auto it_i = find(caps.begin(), caps.end(), i);
+		auto it_j = find(caps.begin(), caps.end(), j);
+		
+		if (it_i!=caps.end() or it_j!=caps.end())
+		{
+			res(i,j) = lambda_cap;
+		}
+		else
+		{
+			res(i,j) = lambda_corner;
+		}
+	}
+	
+	edges.clear();
+	
+	// outer circle:
+	edges.push_back(pair<size_t,size_t>(1,4));
+	edges.push_back(pair<size_t,size_t>(5,8));
+	edges.push_back(pair<size_t,size_t>(9,12));
+	edges.push_back(pair<size_t,size_t>(0,13));
+	// connection:
+	edges.push_back(pair<size_t,size_t>(2,16));
+	edges.push_back(pair<size_t,size_t>(6,21));
+	edges.push_back(pair<size_t,size_t>(10,26));
+	edges.push_back(pair<size_t,size_t>(14,29));
+	// inner circle:
+	edges.push_back(pair<size_t,size_t>(17,20));
+	edges.push_back(pair<size_t,size_t>(22,24));
+	edges.push_back(pair<size_t,size_t>(25,28));
+	edges.push_back(pair<size_t,size_t>(18,30));
+	
+	for (int e=0; e<edges.size(); ++e)
+	{
+		int i = edges[e].first;
+		int j = edges[e].second;
+		res(i,j) = lambda_edge;
 	}
 	
 	res += res.transpose().eval();
@@ -1665,20 +1754,29 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 	return res;
 }
 
-// returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
-// H = J*S_i*S_{i+1} - beta*(S_i*S_{i+1})^2
-//   = (J+beta/2)*S_i*S_{i+1} - beta/2 Q_i*Q_{i+1}
-tuple<double,double,double> params_bilineraBiquadratic (boost::rational<int> beta_rational = boost::rational<int>(-1,3), double J_input=1.)
+tuple<double,double,double> params_bilineraBiquadratic_beta (double beta, double J_input=1.)
 {
-	double beta = boost::rational_cast<double>(beta_rational);
 	double J = J_input+0.5*beta;
 	double R = -0.5*beta;
 	double offset = -4./3.*beta;
 	return make_tuple(J,R,offset);
 }
 
+// returns J, R and offset for bilinear-biquadratic Hamiltonian with J1=1 and J2=beta
+// H = J*S_i*S_{i+1} - beta*(S_i*S_{i+1})^2
+//   = (J+beta/2)*S_i*S_{i+1} - beta/2 Q_i*Q_{i+1}
+tuple<double,double,double> params_bilineraBiquadratic_beta (boost::rational<int> beta_rational = boost::rational<int>(-1,3), double J_input=1.)
+{
+//	double beta = boost::rational_cast<double>(beta_rational);
+//	double J = J_input+0.5*beta;
+//	double R = -0.5*beta;
+//	double offset = -4./3.*beta;
+//	return make_tuple(J,R,offset);
+	return params_bilineraBiquadratic_beta(boost::rational_cast<double>(beta_rational), J_input);
+}
+
 // H = cos(theta)*S_i*S_{i+1} + sin(theta)*(S_i*S_{i+1})^2
-tuple<double,double,double> params_bilineraBiquadratic (double theta)
+tuple<double,double,double> params_bilineraBiquadratic_theta (double theta)
 {
 	double beta = -sin(theta);
 	double J = cos(theta)+0.5*beta;
