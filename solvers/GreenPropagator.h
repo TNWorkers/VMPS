@@ -3206,6 +3206,10 @@ save (bool IGNORE_TX) const
 			#endif
 		}
 		
+		#ifdef GREENPROPAGATOR_USE_HDF5
+		target_wq.close();
+		#endif
+		
 		if (Measure.size() != 0)
 		{
 			#ifdef GREENPROPAGATOR_USE_HDF5
@@ -3221,10 +3225,6 @@ save (bool IGNORE_TX) const
 			target_measurment.close();
 			#endif
 		}
-		
-		#ifdef GREENPROPAGATOR_USE_HDF5
-		target_wq.close();
-		#endif
 	}
 }
 
