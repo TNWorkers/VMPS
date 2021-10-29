@@ -1,49 +1,16 @@
-#ifdef BLAS
-#include "util/LapackManager.h"
-#pragma message("LapackManager")
-#endif
-
-#include <iostream>
-#include <fstream>
-#include <complex>
-
-#include "Logger.h"
-Logger lout;
-#include "ArgParser.h"
-
-#include "GrandSpinfulFermions.h"
-#include "LanczosWrappers.h"
-#include "LanczosSolver.h"
-#include "Photo.h"
-#include "IntervalIterator.h"
-
-#include "ParamHandler.h"
-
-#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
-#include "InterpolGSL.h"
-
-#include "models/ParamCollection.h"
-//#include "OrthPolyGreen.h" // for Chebyshev
-#include "EigenFiles.h"
-#include "LanczosPropagator.h"
-
-typedef ED::GrandSpinfulFermions MODEL;
-
 using namespace std;
 
-// For Chebyshev:
-//double dot_green (const VectorXd &V1, const VectorXd &V2)
-//{
-//	return V1.dot(V2);
-//}
-
 enum DAMPING {GAUSS, LORENTZ, NODAMPING};
+
+size_t L;
+double tmax, dt;
+int tpoints;
 
 // continuous Fourier transform using Ooura integration, with t=tvals, and a complex column of data
 // wmin: minimal frequency
 // wmax: maximal frequency
 // wpoints: number of frequency points
-void FT_and_save (const VectorXd &tvals, double tmax, const VectorXcd &data, double wmin, double wmax, int wpoints, string filename, DAMPING DAMPING_input)
+VectorXcd FT (const VectorXd &tvals, double tmax, const VectorXcd &data, double wmin, double wmax, int wpoints, DAMPING DAMPING_input=LORENTZ, string filename="")
 {
 	boost::math::quadrature::ooura_fourier_sin<double> OouraSin = boost::math::quadrature::ooura_fourier_sin<double>();
 	boost::math::quadrature::ooura_fourier_cos<double> OouraCos = boost::math::quadrature::ooura_fourier_cos<double>();
@@ -98,41 +65,431 @@ void FT_and_save (const VectorXd &tvals, double tmax, const VectorXcd &data, dou
 		}
 		w << dataw;
 	}
-	w.save(filename);
+	if (filename!="")
+	{
+		w.save(filename);
+	}
 	InterpRe.kill_splines();
 	InterpIm.kill_splines();
+	
+	return w.get_data().col(1)+1.i*w.get_data().col(2);
 }
 
-VectorXcd get_G_timeslice (int i0, int j0, const vector<MatrixXcd> &G)
+vector<vector<VectorXcd> > Gt_norm00;
+vector<vector<VectorXcd> > Gt_norm11;
+vector<vector<VectorXcd> > Gt_anom01;
+vector<vector<VectorXcd> > Gt_anom10;
+
+void compute_G (const MODEL &Hbra_annihilate, const MODEL &Hbra_create, const MODEL &Hket, const Eigenstate<RealVector> &g, double tmax, int tpoints)
 {
-	VectorXcd res(G.size());
-	for (int it=0; it<G.size(); ++it)
+	vector<DECONSTRUCTION> D_TYPES = {ANNIHILATE, CREATE};
+	vector<double> t_dir = {+1.,-1.}; // +1:forwards, -1:backwards
+	
+	Gt_norm00.resize(L);
+	Gt_norm11.resize(L);
+	Gt_anom01.resize(L);
+	Gt_anom10.resize(L);
+	for (int i=0; i<L; ++i)
 	{
-		res[it] = G[it](i0,j0);
+		Gt_norm00[i].resize(L);
+		Gt_norm11[i].resize(L);
+		Gt_anom01[i].resize(L);
+		Gt_anom10[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gt_norm00[i][j].resize(tpoints); Gt_norm00[i][j].setZero();
+			Gt_norm11[i][j].resize(tpoints); Gt_norm11[i][j].setZero();
+			Gt_anom01[i][j].resize(tpoints); Gt_anom01[i][j].setZero();
+			Gt_anom10[i][j].resize(tpoints); Gt_anom10[i][j].setZero();
+		}
 	}
+	
+	vector<ComplexVector> init_cUP(L);
+	vector<ComplexVector> init_cdagUP(L);
+	
+	vector<ComplexVector> init_cDN(L);
+	vector<ComplexVector> init_cdagDN(L);
+	
+	// apply creator/annihilator to the initial state
+	#pragma omp parallel for collapse(2)
+	for (int i=0; i<L; ++i)
+	for (int d=0; d<D_TYPES.size(); ++d)
+	{
+		DECONSTRUCTION D_TYPE = D_TYPES[d];
+		
+		if (D_TYPE == ANNIHILATE)
+		{
+			RealVector Vtmp1, Vtmp2;
+			#if defined(USING_ED)
+			{
+				ED::Photo PhUP(i,UP,ANNIHILATE,Hbra_annihilate,Hket);
+				OxV(PhUP,g.state,Vtmp1);
+				
+				ED::Photo PhDN(i,DN,ANNIHILATE,Hbra_create,Hket);
+				OxV(PhDN,g.state,Vtmp2);
+			}
+			#elif defined(USING_U1)
+			{
+				OxV_exact(Hbra_annihilate.c<UP>(i), g.state, Vtmp1, 2., DMRG::VERBOSITY::SILENT);
+				OxV_exact(Hbra_annihilate.c<DN>(i), g.state, Vtmp2, 2., DMRG::VERBOSITY::SILENT);
+			}
+			#endif
+			init_cUP[i] = Vtmp1.cast<complex<double> >();
+			init_cDN[i] = Vtmp2.cast<complex<double> >();
+		}
+		else if (D_TYPE == CREATE)
+		{
+			RealVector Vtmp1, Vtmp2;
+			#if defined(USING_ED)
+			{
+				ED::Photo PhUP(i,UP,CREATE,Hbra_create,Hket);
+				OxV(PhUP,g.state,Vtmp1);
+				
+				ED::Photo PhDN(i,DN,CREATE,Hbra_annihilate,Hket);
+				OxV(PhDN,g.state,Vtmp2);
+			}
+			#elif defined(USING_U1)
+			{
+				OxV_exact(Hbra_annihilate.cdag<UP>(i), g.state, Vtmp1, 2., DMRG::VERBOSITY::SILENT);
+				OxV_exact(Hbra_annihilate.cdag<DN>(i), g.state, Vtmp2, 2., DMRG::VERBOSITY::SILENT);
+			}
+			#endif
+			init_cdagUP[i] = Vtmp1.cast<complex<double> >();
+			init_cdagDN[i] = Vtmp2.cast<complex<double> >();
+		}
+	}
+	
+	#pragma omp parallel for collapse(3)
+	for (int j=0; j<L; ++j)
+	for (int d=0; d<D_TYPES.size(); ++d)
+	for (int z=0; z<t_dir.size(); ++z)
+	{
+		DECONSTRUCTION D_TYPE = D_TYPES[d];
+		double tsign = t_dir[z];
+		
+		ComplexVector PsiUPj = (D_TYPE==ANNIHILATE)? init_cUP[j] : init_cdagUP[j];
+		#if not defined(USING_ED)
+		TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,ComplexVector> Lutz(Hbra_annihilate,PsiUPj);
+		#endif
+		
+		IntervalIterator t(0.,tmax,tpoints);
+		for (t=t.begin(); t!=t.end(); ++t)
+		{
+			complex<double> phase = -1.i * exp(+1.i*tsign*g.energy*(*t));
+			
+			// compute Green's function
+			for (int i=0; i<L; ++i)
+			{
+				if (D_TYPE == CREATE and z==0) // create, forwards in time
+				{
+					Gt_norm00[i][j](t.index()) += phase * dot(init_cdagUP[i],PsiUPj); // <ci(t),c†j>
+					Gt_anom10[i][j](t.index()) += phase * dot(init_cDN   [i],PsiUPj); // <c†i(t),c†j>
+				}
+				else if (D_TYPE == CREATE and z==1) // create, backwards in time
+				{
+					Gt_norm11[j][i](t.index()) += phase * dot(init_cdagUP[i],PsiUPj); // <ci(-t),c†j> & i<->j
+					Gt_anom10[j][i](t.index()) += phase * dot(init_cDN   [i],PsiUPj); // <c†i(-t),c†j> & i<->j
+				}
+				else if (D_TYPE == ANNIHILATE and z==0) // annihilate, forwards in time
+				{
+					Gt_norm11[i][j](t.index()) += phase * dot(init_cUP   [i],PsiUPj); // <c†i(t),cj>
+					Gt_anom01[i][j](t.index()) += phase * dot(init_cdagDN[i],PsiUPj); // <ci(t),cj>
+				}
+				else if (D_TYPE == ANNIHILATE and z==1) // annihilate, backwards in time
+				{
+					Gt_norm00[j][i](t.index()) += phase * dot(init_cUP   [i],PsiUPj); // <c†i(-t),cj> & i<->j
+					Gt_anom01[j][i](t.index()) += phase * dot(init_cdagDN[i],PsiUPj); // <c†i(-t),cj> & i<->j 
+				}
+			}
+			
+			// propagate
+			Stopwatch<> Timer;
+			// measure time of one MVM to test:
+//			VectorXcd Vtmp;
+//			(D_TYPE == ANNIHILATE)? HxV(Hbra_annihilate,PsiUPj,Vtmp):HxV(Hbra_create,PsiUPj,Vtmp);
+//			lout << Timer.info("MVM") << endl;
+			#if defined(USING_ED)
+			{
+				LanczosPropagator<MODEL,ComplexVector,complex<double> > Lutz(1e-5); // can set higher tolerance, but leads to more computational effort
+				(D_TYPE == ANNIHILATE)? Lutz.t_step(Hbra_annihilate, PsiUPj, -1.i*tsign*dt):
+				                        Lutz.t_step(Hbra_create,     PsiUPj, -1.i*tsign*dt);
+				if (j==0 and d==0 and z==0)
+				{
+					lout << Timer.info("timestep") << endl;
+					lout << *t << "\t" << Lutz.info() << endl;
+				}
+			}
+			#else
+			{
+				Lutz.t_step(Hbra_annihilate, PsiUPj, -1.i*tsign*dt);
+				if (j==0 and d==0 and z==0)
+				{
+					lout << Timer.info("timestep") << endl;
+					lout << *t << "\t" << Lutz.info() << endl;
+					lout << PsiUPj.info() << endl;
+				}
+			}
+			#endif
+		}
+	}
+}
+
+vector<vector<VectorXcd> > Gw_norm00;
+vector<vector<VectorXcd> > Gw_norm11;
+vector<vector<VectorXcd> > Gw_anom01;
+vector<vector<VectorXcd> > Gw_anom10;
+
+void Fourier_G00 (double tmax, int tpoints, double wmin, double wmax, int wpoints, bool SAVE=true, DAMPING DAMPING_input=LORENTZ)
+{
+	IntervalIterator t(0., tmax, tpoints);
+	VectorXd tvals = t.get_abscissa();
+	
+	Gw_norm00.resize(L);
+	for (int i=0; i<L; ++i)
+	{
+		Gw_norm00[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_norm00[i][j].resize(tpoints); Gw_norm00[i][j].setZero();
+		}
+	}
+	
+	#pragma omp parallel for collapse(2)
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		Gw_norm00[i][j] = FT(tvals, tmax, Gt_norm00[i][j], wmin, wmax, wpoints, DAMPING_input, (SAVE)?make_string("norm00","_i=",i,"_j=",j,"_DAMPING=LORENTZ",".dat"):"");
+	}
+}
+
+void Fourier_G11 (double tmax, int tpoints, double wmin, double wmax, int wpoints, bool SAVE=true, DAMPING DAMPING_input=LORENTZ)
+{
+	IntervalIterator t(0., tmax, tpoints);
+	VectorXd tvals = t.get_abscissa();
+	
+	Gw_norm11.resize(L);
+	for (int i=0; i<L; ++i)
+	{
+		Gw_norm11[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_norm11[i][j].resize(tpoints); Gw_norm11[i][j].setZero();
+		}
+	}
+	
+	#pragma omp parallel for collapse(2)
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		Gw_norm11[i][j] = FT(tvals, tmax, Gt_norm11[i][j], wmin, wmax, wpoints, DAMPING_input, (SAVE)?make_string("norm11","_i=",i,"_j=",j,"_DAMPING=LORENTZ",".dat"):"");
+	}
+}
+
+void Fourier_G01 (double tmax, int tpoints, double wmin, double wmax, int wpoints, bool SAVE=true, DAMPING DAMPING_input=LORENTZ)
+{
+	IntervalIterator t(0., tmax, tpoints);
+	VectorXd tvals = t.get_abscissa();
+	
+	Gw_anom01.resize(L);
+	for (int i=0; i<L; ++i)
+	{
+		Gw_anom01[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_anom01[i][j].resize(tpoints); Gw_anom01[i][j].setZero();
+		}
+	}
+	
+	#pragma omp parallel for collapse(2)
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		Gw_anom01[i][j] = FT(tvals, tmax, Gt_anom01[i][j], wmin, wmax, wpoints, DAMPING_input, (SAVE)?make_string("anom01","_i=",i,"_j=",j,"_DAMPING=LORENTZ",".dat"):"");
+	}
+}
+
+void Fourier_G10 (double tmax, int tpoints, double wmin, double wmax, int wpoints, bool SAVE=true, DAMPING DAMPING_input=LORENTZ)
+{
+	IntervalIterator t(0., tmax, tpoints);
+	VectorXd tvals = t.get_abscissa();
+	
+	Gw_anom10.resize(L);
+	for (int i=0; i<L; ++i)
+	{
+		Gw_anom10[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_anom10[i][j].resize(tpoints); Gw_anom10[i][j].setZero();
+		}
+	}
+	
+	#pragma omp parallel for collapse(2)
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		Gw_anom10[i][j] = FT(tvals, tmax, Gt_anom10[i][j], wmin, wmax, wpoints, DAMPING_input, (SAVE)?make_string("anom10","_i=",i,"_j=",j,"_DAMPING=LORENTZ",".dat"):"");
+	}
+}
+
+vector<vector<ComplexInterpol> > Gw_norm00_interpol;
+vector<vector<ComplexInterpol> > Gw_norm11_interpol;
+vector<vector<ComplexInterpol> > Gw_anom01_interpol;
+vector<vector<ComplexInterpol> > Gw_anom10_interpol;
+
+void set_splines00 (double wmin, double wmax, int wpoints)
+{
+	IntervalIterator w(wmin, wmax, wpoints);
+	VectorXd wvals = w.get_abscissa();
+	
+	Gw_norm00_interpol.resize(L);
+	
+	for (int i=0; i<L; ++i)
+	{
+		Gw_norm00_interpol[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_norm00_interpol[i][j] = ComplexInterpol(wvals);
+			Gw_norm00_interpol[i][j] = Gw_norm00[i][j];
+			Gw_norm00_interpol[i][j].set_splines();
+		}
+	}
+}
+
+void set_splines11 (double wmin, double wmax, int wpoints)
+{
+	IntervalIterator w(wmin, wmax, wpoints);
+	VectorXd wvals = w.get_abscissa();
+	
+	Gw_norm11_interpol.resize(L);
+	
+	for (int i=0; i<L; ++i)
+	{
+		Gw_norm11_interpol[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_norm11_interpol[i][j] = ComplexInterpol(wvals);
+			Gw_norm11_interpol[i][j] = Gw_norm11[i][j];
+			Gw_norm11_interpol[i][j].set_splines();
+		}
+	}
+}
+
+void set_splines01 (double wmin, double wmax, int wpoints)
+{
+	IntervalIterator w(wmin, wmax, wpoints);
+	VectorXd wvals = w.get_abscissa();
+	
+	Gw_anom01_interpol.resize(L);
+	
+	for (int i=0; i<L; ++i)
+	{
+		Gw_anom01_interpol[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_anom01_interpol[i][j] = ComplexInterpol(wvals);
+			Gw_anom01_interpol[i][j] = Gw_anom01[i][j];
+			Gw_anom01_interpol[i][j].set_splines();
+		}
+	}
+}
+
+void set_splines10 (double wmin, double wmax, int wpoints)
+{
+	IntervalIterator w(wmin, wmax, wpoints);
+	VectorXd wvals = w.get_abscissa();
+	
+	Gw_anom10_interpol.resize(L);
+	
+	for (int i=0; i<L; ++i)
+	{
+		Gw_anom10_interpol[i].resize(L);
+		
+		for (int j=0; j<L; ++j)
+		{
+			Gw_anom10_interpol[i][j] = ComplexInterpol(wvals);
+			Gw_anom10_interpol[i][j] = Gw_anom10[i][j];
+			Gw_anom10_interpol[i][j].set_splines();
+		}
+	}
+}
+
+MatrixXcd Gfull (double omega)
+{
+	MatrixXcd res00(L,L); res00.setZero();
+	MatrixXcd res11(L,L); res11.setZero();
+	MatrixXcd res01(L,L); res01.setZero();
+	MatrixXcd res10(L,L); res10.setZero();
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res00(i,j) = Gw_norm00_interpol[i][j](omega);
+		res11(i,j) = Gw_norm11_interpol[i][j](omega);
+		res01(i,j) = Gw_anom01_interpol[i][j](omega);
+		res10(i,j) = Gw_anom10_interpol[i][j](omega);
+	}
+	
+	MatrixXcd res(2*L,2*L);
+	res.topLeftCorner(L,L) = res00;
+	res.bottomRightCorner(L,L) = res11;
+	res.topRightCorner(L,L) = res01;
+	res.bottomLeftCorner(L,L) = res10;
+	
 	return res;
+}
+
+MatrixXcd G (double omega)
+{
+	MatrixXcd res00(L,L); res00.setZero();
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res00(i,j) = Gw_norm00_interpol[i][j](omega);
+	}
+	
+	return res00;
+}
+
+MatrixXcd F (double omega)
+{
+	MatrixXcd res01(L,L); res01.setZero();
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		res01(i,j) = Gw_anom01_interpol[i][j](omega);
+	}
+	
+	return res01;
 }
 
 int main (int argc, char* argv[]) 
 {
 	ArgParser args(argc,argv);
-	size_t L = args.get<size_t>("L",12);
-	double U = args.get<double>("U",0.);
+	L = args.get<size_t>("L",12);
+	double U = args.get<double>("U",4.);
 	double mu = args.get<double>("mu",0.5*U);
-	int j0 = args.get<int>("j0",L/2);
-	string MOL = args.get<string>("MOL","RING");
+	double C0 = args.get<double>("C0",0.); // onsite superconducting field
+	string MOL = args.get<string>("MOL","CHAIN");
+	int i = args.get<int>("i",L/2);
 	
 	double wmin = args.get<double>("wmin",-20.);
 	double wmax = args.get<double>("wmin",+20.);
 	int wpoints = args.get<int>("wpoints",501);
 	
-	double tmax = args.get<double>("tmax",8.);
-	double dt = args.get<double>("dt",0.1);
-	int tpoints = tmax/dt+1;
+	tmax = args.get<double>("tmax",8.);
+	dt = args.get<double>("dt",0.1);
+	tpoints = tmax/dt+1;
 	
-	string spec = args.get<string>("spec","PES");
-	assert(spec=="PES" or spec=="IPE");
-	double tsign = (spec=="PES")? -1.:+1.;
 	string wd = args.get<string>("wd","./"); correct_foldername(wd);
 	string base = make_string("MOL=",MOL,"_L=",L,"_U=",U,"_mu=",mu);
 	
@@ -141,203 +498,165 @@ int main (int argc, char* argv[])
 	{
 		tFull = create_1D_PBC(L);
 	}
+	if (MOL == "CHAIN") // for testing
+	{
+		tFull = create_1D_OBC(L);
+	}
 	else if (MOL == "C12")
 	{
 		tFull = hopping_fullerene(L);
 	}
 	lout << "tFull=" << endl << tFull << endl;
+	ArrayXXd Cfull(L,L); // superconducting field
+	Cfull.setZero();
+	#if defined(USING_ED)
+	Cfull.matrix().diagonal().setConstant(C0);
+	#endif
 	vector<Param> params;
 	params.push_back({"tFull",tFull});
 	params.push_back({"U",U});
 	params.push_back({"mu",mu});
+	params.push_back({"Cfull",Cfull});
 	
-	MODEL Hket(L,params,ED::N_EVN_M0);
-	lout << "Hket=" << endl << Hket.info() << endl;
+	MODEL Hket, Hbra_annihilate, Hbra_create;
 	
-	MODEL Hbra(L,params, (spec=="PES")? ED::N_ODD_MM1 : ED::N_ODD_MP1);
-	lout << "Hbra=" << endl << Hbra.info() << endl;
-	
-	//-------------Get groundstate in the ket space (for Chebyshev: also the ground & roof state in the bra space)-------------
-	Stopwatch<> Timer;
-	Eigenstate<VectorXd> g;
-	double Emin, Emax;
+	#if defined(USING_ED)
 	{
-		Eigenstate<VectorXd> min, max;
-//		LanczosSolver<MODEL,VectorXd,double> Lucy(LANCZOS::REORTHO::FULL);
-//		LanczosSolver<MODEL,VectorXd,double> Lena(LANCZOS::REORTHO::FULL);
-		LanczosSolver<MODEL,VectorXd,double> Lutz(LANCZOS::REORTHO::FULL);
-		//#pragma omp parallel sections
+		#pragma omp parallel sections
 		{
-//			#pragma omp section
-//			{
-//				Lucy.ground(Hbra,min,1e-7,1e-4);
-//				#pragma omp critical
-//				{
-//					lout << "Emin done!" << endl;
-//				}
-//			}
-//			#pragma omp section
-//			{
-//				Lena.roof(Hbra,max,1e-7,1e-4);
-//				#pragma omp critical
-//				{
-//					lout << "Emax done!" << endl;
-//				}
-//			}
-//			#pragma omp section
+			#pragma omp section
 			{
-				Lutz.ground(Hket,g,1e-7,1e-4);
-				//#pragma omp critical
+				Hket = MODEL(L,params,ED::N_EVN_M0);
+				#pragma omp critical
 				{
-					lout << "E0 done!" << endl;
+					lout << "Hket=" << endl << Hket.info() << endl;
+				}
+			}
+			#pragma omp section
+			{
+				Hbra_annihilate = MODEL(L,params,ED::N_ODD_MM1); // odd particle number with M=-1 (annihilating UP electron)
+				#pragma omp critical
+				{
+					lout << "Hbra_annihilate=" << endl << Hbra_annihilate.info() << endl;
+				}
+			}
+			#pragma omp section
+			{
+				Hbra_create = MODEL(L,params,ED::N_ODD_MP1); // odd particle number with M=+1 (creating UP electron)
+				#pragma omp critical
+				{
+					lout << "Hbra_create=" << endl << Hbra_create.info() << endl;
 				}
 			}
 		}
-		Emin = min.energy;
-		Emax = max.energy;
-//		lout << Lucy.info() << endl;
-//		lout << Lena.info() << endl;
+	}
+	#elif defined(USING_U1)
+	{
+		params.push_back({"t",0.});
+		params.push_back({"C",C0});
+		Hket = MODEL(L,params);
+		lout << "Hket=" << endl << Hket.info() << endl;
+		Hbra_annihilate = Hket;
+		Hbra_create = Hket;
+	}
+	#endif
+	
+	//-------------Get groundstate in the ket space-------------
+	Stopwatch<> Timer;
+	Eigenstate<RealVector> g;
+	#if defined(USING_ED)
+	{
+		LanczosSolver<MODEL,RealVector,double> Lutz(LANCZOS::REORTHO::FULL);
+		Lutz.ground(Hket, g, 1e-7, 1e-4);
 		lout << Lutz.info() << endl;
-	}
-	lout << Timer.info("ground state") << endl;
-	lout << "Emin=" << Emin << ", Emax=" << Emax << ", E0=" << g.energy << endl;
-	
-	// list of site indices
-	vector<int> jlist = {j0};
-	
-	// Phi will become the bra state
-	vector<VectorXcd> Phi(L);
-	for (int i=0; i<L; ++i)
-	{
-		ED::Photo Ph;
-		if (spec=="PES")
-		{
-			Ph = ED::Photo(i,UP,ANNIHILATE,Hbra,Hket); // annihilates UP electron
-		}
-		else if (spec == "IPE")
-		{
-			Ph = ED::Photo(i,UP,CREATE,Hbra,Hket); // creates UP electron
-		}
-		VectorXd Vtmp;
-		OxV(Ph,g.state,Vtmp);
-		lout << "i=" << i << ", dot=" << Vtmp.dot(Vtmp) << endl;
-		Phi[i] = Vtmp.cast<complex<double> >();
-	}
-	
-	// Psi is the ket state that will be propagated
-	vector<VectorXcd> Psi(jlist.size());
-	for (int j=0; j<jlist.size(); ++j)
-	{
-		Psi[j] = Phi[jlist[j]];
-	}
-	
-	// Green's function
-	vector<MatrixXcd> G(tpoints);
-	for (int it=0; it<tpoints; ++it)
-	{
-		G[it].resize(L,L);
-		G[it].setZero();
-	}
-	
-	// Create the propagator
-	vector<LanczosPropagator<MODEL,VectorXcd,complex<double> > > Lutz(jlist.size());
-	for (int j=0; j<jlist.size(); ++j)
-	{
-		Lutz[j] = LanczosPropagator<MODEL,VectorXcd,complex<double> >(1e-5);
-	}
-	
-	IntervalIterator t(0., tmax, tpoints);
-	for (t=t.begin(); t!=t.end(); ++t)
-	{
-		for (int i=0; i<L; ++i)
-		for (int j=0; j<jlist.size(); ++j)
-		{
-			G[t.index()](i,jlist[j]) = -1.i * exp(+1.i*tsign*g.energy*(*t)) * Phi[i].dot(Psi[j]);
-		}
 		
-		Stopwatch<> Timer;
-		#pragma omp parallel for // parallelize all propagations?
-		for (int j=0; j<jlist.size(); ++j)
-		{
-			Lutz[j].t_step(Hbra, Psi[j], -1.i*tsign*dt);
-		}
-		
-		lout << Timer.info("timestep") << endl;
-		for (int j=0; j<jlist.size(); ++j)
-		{
-			lout << *t << "\t" << Lutz[j].info() << endl;
-		}
-	}
-	
-	VectorXd tvals = t.get_abscissa();
-	// Fourier transform and save to disk
-	string filename = make_string(spec+"_i=",j0,"_j=",j0,"_",base,"_DAMPING=LORENTZ",".dat");
-	lout << "save result to: " << filename << endl;
-	FT_and_save(tvals, tmax, get_G_timeslice(jlist[0],jlist[0],G), wmin, wmax, wpoints, filename, LORENTZ);
-	
-//	
-//	bool USE_IDENTITIES = args.get<bool>("USE_IDENTITIES",true);
-//	vector<double> dE = args.get_list<double>("dE",{0.2});
-//	sort(dE.rbegin(), dE.rend());
-//	vector<int> Msave;
-//	int Mmax;
-//	double spillage = args.get<double>("spillage",10.);
-//	bool VERBOSE = true;
-//	
-//	OrthPolyGreen<MODEL,VectorXd,double,CHEBYSHEV> KPS(Emin-spillage,Emax+spillage,VERBOSE);
-//	
-//	for (size_t i=0; i<dE.size(); ++i)
-//	{
-//		int Mval = (KPS.get_Emax()-KPS.get_Emin()+2.*spillage)/dE[i];
-//		if (USE_IDENTITIES and Mval%2==1) Mval += 1;
-//		Msave.push_back(Mval);
-//		lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
-//	}
-//	
-//	Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
-//	lout << KPS.info() << endl;
-//	
-//	string momfile, datfile;
-//	
-//	for (int i=0; i<Msave.size(); ++i)
-//	{
-//		momfile = make_string("moments/","moments.dat");
-//		datfile = make_string("spec.dat");
+//		Eigenstate<RealVector> g2;
+//		RealVector Vtmp;
+//		LanczosSolver<MODEL,RealVector,double> Lutz2(LANCZOS::REORTHO::FULL);
+//		Lutz2.ground(Hbra_annihilate, g2, 1e-7, 1e-4);
+//		lout << "E=" << setprecision(16) << g2.energy << endl;
+//		ED::Photo PhUP(i,UP,ANNIHILATE,Hbra_annihilate,Hket);
+//		OxV(PhUP,g.state,Vtmp);
+//		cout << "<cUP>=" << g2.state.dot(Vtmp) << endl;
+//		cout << "<ni>=" << Vtmp.dot(Vtmp) << endl;
+//		cout << "dot=" <<  g2.state.dot(g2.state) << "\t" << g.state.dot(g.state) << endl;
+//		cout << endl;
+//		cout << g2.state << endl;
+////		cout << endl;
+////		cout << g.state << endl;
 //		
-//		if (spec == "PES")
-//		{
-//			ArrayXd Eoffset(1); Eoffset << KPS.get_Emax();
-//			KPS.add_savepoint(Msave[i], wd+momfile, wd+datfile, Eoffset, true, LORENTZ); // REVERSE = true
-//		}
-//		else if (spec == "IPE")
-//		{
-//			ArrayXd Eoffset(1); Eoffset << KPS.get_Emin();
-//			KPS.add_savepoint(Msave[i], wd+momfile, wd+datfile, Eoffset, false, LORENTZ); // REVERSE = false
-//		}
-//	}
-//	
-//	KPS.calc_ImAB(Hbra, initA, initA[i0], Mmax);
-//	
-//	MatrixXcd G(wpoints,L);
-//	G.setZero();
-//	IntervalIterator iw(wmin,wmax,wpoints);
-//	for (iw=iw.begin(); iw<iw.end(); ++iw)
-//	for (int l=0; l<L; ++l)
-//	{
-//		double w = *iw;
-//		double Re =         KPS.evaluate_ReGAB(l,w,-1,KPS.get_Emax(),true,LORENTZ);
-//		double Im = -M_PI * KPS.evaluate_ImAB (l,w,-1,KPS.get_Emax(),true,LORENTZ);
-//		G(iw.index(),l) = complex<double>(Re,Im);
-//	}
-//	
-//	MatrixXd DOS(wpoints,2);
-//	for (iw=iw.begin(); iw<iw.end(); ++iw)
-//	{
-//		DOS(iw.index(),0) = *iw;
-//		DOS(iw.index(),1) = -M_1_PI * G(iw.index(),i0).imag();
-//	}
-//	
-//	saveMatrix(DOS,"DOS.dat");
+//		RealVector v(Hbra_annihilate.dim());
+//		v.setRandom();
+//		normalize(v);
+//		RealVector w(Hbra_annihilate.dim()); w.setZero();
+//		HxV(Hbra_annihilate,v,w);
+//		cout << endl << w << endl;
+	}
+	#else
+	{
+		DMRG::CONTROL::GLOB GlobParams;
+		GlobParams.Minit = args.get<size_t>("Minit",2ul);
+		GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
+		GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
+		GlobParams.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
+		GlobParams.CALC_S_ON_EXIT = false;
+		
+		MODEL::Solver Lutz(DMRG::VERBOSITY::ON_EXIT);
+		Lutz.userSetGlobParam();
+		Lutz.GlobParam = GlobParams;
+		Lutz.edgeState(Hket, g, {0});
+		lout << Lutz.info() << endl;
+//		
+//		Eigenstate<RealVector> g2;
+//		MODEL::Solver Lutz2(DMRG::VERBOSITY::ON_EXIT);
+//		Lutz2.userSetGlobParam();
+//		Lutz2.GlobParam = GlobParams;
+//		Lutz2.edgeState(Hket, g2, {-1});
+//		
+//		MODEL::Solver Lutz3(DMRG::VERBOSITY::ON_EXIT);
+//		Lutz3.userSetGlobParam();
+//		Lutz3.GlobParam = GlobParams;
+//		Lutz3.push_back(g2.state);
+//		Lutz3.edgeState(Hket, g2, {-1});
+//		
+//		cout << "<cUP>=" << avg(g2.state, Hket.c<UP>(i), g.state) << endl;
+//		cout << "<nUP>=" << avg(g.state, Hket.n<UP>(i), g.state) << endl;
+	}
+	#endif
+	lout << Timer.info("ground state") << endl;
+	lout << "E0=" << setprecision(16) << g.energy << setprecision(6) << endl;
 	
+	compute_G(Hbra_annihilate, Hbra_create, Hket, g, tmax, tpoints);
+	lout << Timer.info("compute G") << endl;
+	
+	Fourier_G00(tmax, tpoints, wmin, wmax, wpoints, true); // SAVE=true
+	Fourier_G11(tmax, tpoints, wmin, wmax, wpoints, true); // SAVE=true
+	Fourier_G01(tmax, tpoints, wmin, wmax, wpoints, true); // SAVE=true
+	Fourier_G10(tmax, tpoints, wmin, wmax, wpoints, true); // SAVE=true
+	
+	set_splines00(wmin, wmax, wpoints);
+	set_splines11(wmin, wmax, wpoints);
+	set_splines01(wmin, wmax, wpoints);
+	set_splines10(wmin, wmax, wpoints);
+	
+//	MatrixXcd Test1 = Gfull(0.5).topLeftCorner(L,L);
+//	MatrixXcd Test2 = Gfull(0.5).bottomRightCorner(L,L);
+	MatrixXcd Test1 = Gfull(0.5).topRightCorner(L,L);
+	MatrixXcd Test2 = -Gfull(-0.5).adjoint().bottomLeftCorner(L,L);
+	
+//	for (int i=0; i<L; ++i)
+//	for (int j=0; j<L; ++j)
+//	{
+//		Test2 *= pow(-1.,i+j);
+//	}
+	
+//	MatrixXcd Test1 = Gfull(0.5).bottomRightCorner(L,L);
+//	MatrixXcd Test2 = -G(-0.5).adjoint();
+	
+	lout << endl << Test1 << endl;
+	lout << endl << Test2 << endl;
+	lout << "diffnorm=" << (Test1-Test2).norm() << endl;
+	
+	lout << Timer.info("Fourier transform") << endl;
 	
 }
