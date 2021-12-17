@@ -21,8 +21,9 @@ struct TransferMatrix
 	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Abra_input, 
 	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Aket_input, 
 	                const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
-	                bool SHIFTED_input = false)
-	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input)
+	                bool SHIFTED_input = false,
+	                qarray<Symmetry::Nq> Qtot_input = Symmetry::qvacuum())
+	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input), Qtot(Qtot_input)
 	{}
 	
 	VMPS::DIRECTION::OPTION DIR;
@@ -37,6 +38,7 @@ struct TransferMatrix
 	bool SHIFTED = false; // true for solve_linear with 2-site Hamiltonian, code commented out and needs review
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
+	qarray<Symmetry::Nq> Qtot;
 	
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic>> TopEigvec;
 	Scalar TopEigval;
@@ -84,7 +86,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 	
 	if (H.SHIFTED == false)
 	{
-		if (H.DIR == VMPS::DIRECTION::RIGHT)
+		if (H.DIR == VMPS::DIRECTION::RIGHT) // contract from right to left
 		{
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Rnext;
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data;
@@ -97,7 +99,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 			}
 			Vout.data = R;
 		}
-		else if (H.DIR == VMPS::DIRECTION::LEFT)
+		else if (H.DIR == VMPS::DIRECTION::LEFT) // contract from left to right
 		{
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Lnext;
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data;

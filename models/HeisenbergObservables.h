@@ -33,6 +33,10 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type iSy (size_t locx, size_t locy=0) const {return Scomp(iSY,locx,locy);};
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};

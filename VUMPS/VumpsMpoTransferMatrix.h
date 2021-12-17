@@ -75,8 +75,7 @@ struct MpoTransferVector
 			{
 				if (data.mid(q) == ab.first)
 				{
-					data.block[q][ab.second][0] -= LRdotY * Matrix<Scalar,Dynamic,Dynamic>::Identity(data.block[q][ab.second][0].rows(),
-																							  data.block[q][ab.second][0].cols());
+					data.block[q][ab.second][0] -= LRdotY * Matrix<Scalar,Dynamic,Dynamic>::Identity(data.block[q][ab.second][0].rows(), data.block[q][ab.second][0].cols());
 				}
 			}
 		}
@@ -391,7 +390,7 @@ struct GaussianRandomVector<MpoTransferVector<Symmetry,Scalar>,Scalar>
 			for (size_t i=0; i<Vout.data.block[q][Vout.ab.second][0].rows(); ++i)
 			for (size_t j=0; j<Vout.data.block[q][Vout.ab.second][0].cols(); ++j)
 			{
-				Vout.data.block[q][Vout.ab][0](i,j) = threadSafeRandUniform<Scalar>(-1.,1.);
+				Vout.data.block[q][Vout.ab.second][0](i,j) = threadSafeRandUniform<Scalar>(-1.,1.);
 			}
 		}
 		normalize(Vout);

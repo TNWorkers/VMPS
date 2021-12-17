@@ -35,6 +35,8 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
+#include <libwalrus.hpp>
+
 #include "solvers/DmrgSolver.h"
 #include "solvers/MpsCompressor.h"
 #include "DmrgLinearAlgebra.h"
@@ -231,10 +233,15 @@ map<string,int> make_Lmap()
 	m["ASD"] = 60; // snub dodecahedron
 	// sodalite cages:
 	m["SOD15"] = 15; // NOT IMPLEMENTED
+	m["SOD16"] = 16; // SOD60 pole
+	m["SOD28"] = 28; // SOD60 equator
 	m["SOD20"] = 20; // cuboctahedron decorated with P04
 	m["SOD32"] = 32; // NOT IMPLEMENTED
 	m["SOD50"] = 50; // icosidodecahedron decorated with P04
 	m["SOD60"] = 60; // rectified truncated octahedron decorated with P04
+	// square plaquette:
+	m["SQR16"] = 16;
+	m["SQR20"] = 20;
 	
 	m["Mn32"] = 32;
 	return m;
@@ -288,6 +295,7 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
+	bool HAFNIAN = args.get<bool>("HAFNIAN",false);
 	bool PRINT_FREE = args.get<bool>("PRINT_FREE",false);
 	if constexpr (MODEL::FAMILY == HUBBARD) PRINT_FREE = true;
 	string MOL = args.get<string>("MOL","C60");
@@ -553,6 +561,10 @@ int main (int argc, char* argv[])
 	{
 		hopping = J*hopping_triangular(L,VARIANT);
 	}
+	else if (MOL.at(0)=='S' and MOL.at(1)=='Q' and MOL.at(2)=='R')
+	{
+		hopping = J*hopping_square(L,VARIANT);
+	}
 	else if (MOL == "Mn32")
 	{
 		hopping = hopping_Mn32(Jcap,Jcorner,Jedge,VARIANT);
@@ -605,6 +617,18 @@ int main (int argc, char* argv[])
 			lout << "d=" << d << ", #bonds=" << bond_indices(d,distanceMatrix).size() << endl;
 		}
 		lout << endl;
+	}
+	if (HAFNIAN)
+	{
+		Stopwatch<> HafnianWatch;
+		vector<double> M(L*L);
+		for (int i=0; i<L; ++i)
+		for (int j=0; j<L; ++j)
+		{
+			M[i+L*j]= hopping(i,j);
+		}
+		lout << "Hafnian=" << static_cast<size_t>(libwalrus::hafnian_recursive(M)) << endl;
+		lout << HafnianWatch.info("Hafnian") << endl;
 	}
 	
 	// free fermions

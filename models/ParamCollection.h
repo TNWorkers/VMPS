@@ -1111,6 +1111,11 @@ void add_tetrahedron (int i, int j, int k, int l, vector<pair<size_t,size_t>> &t
 //	std::cout << std::endl;
 }
 
+void add_edge (int i, int j, vector<pair<size_t,size_t>> &target)
+{
+	(i<j)? target.push_back(pair<size_t,size_t>(i,j)) : target.push_back(pair<size_t,size_t>(j,i));
+}
+
 ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 {
 	std::vector<std::pair<std::size_t, std::size_t>> edges;
@@ -1264,6 +1269,38 @@ ArrayXXd hopping_sodaliteCage (int L=60, int VARIANT=0, double lambda1=1.)
 			add_tetrahedron(7,8,11,19,edges);
 		}
 	}
+	else if (L==16)
+	{
+		add_tetrahedron(1,2,3,4,edges);
+		add_tetrahedron(4,6,7,8,edges);
+		add_tetrahedron(8,9,10,11,edges);
+		add_tetrahedron(3,9,14,15,edges);
+		
+		add_edge(0,1,edges);
+		add_edge(5,6,edges);
+		add_edge(11,12,edges);
+		add_edge(13,14,edges);
+	}
+	else if (L==28)
+	{
+		add_tetrahedron(0,1,2,3,edges);
+		add_tetrahedron(3,4,5,6,edges);
+		add_tetrahedron(7,8,9,10,edges);
+		add_tetrahedron(10,11,12,13,edges);
+		add_tetrahedron(14,15,16,17,edges);
+		add_tetrahedron(17,18,19,20,edges);
+		add_tetrahedron(21,22,23,24,edges);
+		add_tetrahedron(24,25,26,27,edges);
+		
+		add_edge(0,26,edges);
+		add_edge(1,27,edges);
+		add_edge(5,8,edges);
+		add_edge(6,7,edges);
+		add_edge(12,15,edges);
+		add_edge(13,14,edges);
+		add_edge(19,22,edges);
+		add_edge(20,21,edges);
+	}
 	
 	for (int e=0; e<edges.size(); ++e)
 	{
@@ -1342,6 +1379,67 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 		int i = edges[e].first;
 		int j = edges[e].second;
 		res(i,j) = lambda_edge;
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
+	
+	return res;
+}
+
+ArrayXXd hopping_square (int L, int VARIANT=0, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L==16)
+	{
+		for (int i=0; i<3; ++i) res(i,i+1) = lambda;
+		for (int i=4; i<7; ++i) res(i,i+1) = lambda;
+		for (int i=8; i<11; ++i) res(i,i+1) = lambda;
+		for (int i=12; i<15; ++i) res(i,i+1) = lambda;
+		
+		for (int i=0; i<=2; ++i) res(4*i,4*i+4) = lambda;
+		for (int i=0; i<=2; ++i) res(1+4*i,1+4*i+4) = lambda;
+		for (int i=0; i<=2; ++i) res(2+4*i,2+4*i+4) = lambda;
+		for (int i=0; i<=2; ++i) res(3+4*i,3+4*i+4) = lambda;
+		
+//		res(0,3) = lambda;
+//		res(4,7) = lambda;
+//		res(8,11) = lambda;
+//		res(12,15) = lambda;
+//		
+//		res(0,12) = lambda;
+//		res(1,13) = lambda;
+//		res(2,14) = lambda;
+//		res(3,15) = lambda;
+	}
+	if (L==20)
+	{
+		for (int i=0; i<3; ++i) res(i,i+1) = lambda;
+		for (int i=4; i<7; ++i) res(i,i+1) = lambda;
+		for (int i=8; i<11; ++i) res(i,i+1) = lambda;
+		for (int i=12; i<15; ++i) res(i,i+1) = lambda;
+		for (int i=16; i<19; ++i) res(i,i+1) = lambda;
+		
+		for (int i=0; i<=3; ++i) res(4*i,4*i+4) = lambda;
+		for (int i=0; i<=3; ++i) res(1+4*i,1+4*i+4) = lambda;
+		for (int i=0; i<=3; ++i) res(2+4*i,2+4*i+4) = lambda;
+		for (int i=0; i<=3; ++i) res(3+4*i,3+4*i+4) = lambda;
+		
+		res(0,3) = lambda;
+		res(4,7) = lambda;
+		res(8,11) = lambda;
+		res(12,15) = lambda;
+		res(16,19) = lambda;
+		
+		res(0,16) = lambda;
+		res(1,17) = lambda;
+		res(2,18) = lambda;
+		res(3,19) = lambda;
 	}
 	
 	res += res.transpose().eval();
@@ -1751,6 +1849,36 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 		res(i+1,i) += bugfix;
 	}
 	
+	return res;
+}
+
+ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=0., bool PBC=false)
+{
+	ArrayXXd res(L,L);
+	res.setZero();
+	if (!PBC)
+	{
+		for (int l=0; l<L; ++l)
+		{
+			if (l+1<L) res(l,l+1) = (l%2==0)? tPerp:0.;
+			if (l+2<L) res(l,l+2) = tPara;
+			
+			if (l%2==0 and l+3<L) res(l,l+3) = tPrime;
+			if (l%2==1 and l+1<L) res(l,l+1) = tPrime;
+		}
+	}
+	else
+	{
+		for (int l=0; l<L; ++l)
+		{
+			res(l,(l+1)%L) = (l%2==0)? tPerp:0.;
+			res(l,(l+2)%L) = tPara;
+			
+			if (l%2==0) res(l,(l+3)%L) = tPrime;
+			if (l%2==1) res(l,(l+1)%L) = tPrime;
+		}
+	}
+	res += res.transpose().eval();
 	return res;
 }
 

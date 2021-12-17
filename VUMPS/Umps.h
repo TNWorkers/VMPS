@@ -17,6 +17,7 @@
 #include "VumpsContractions.h"
 #include "Blocker.h"
 #include "VumpsTransferMatrixSF.h"
+#include "VumpsTransferMatrixQ.h"
 #include "Mps.h"
 
 #ifdef USE_HDF5_STORAGE
@@ -248,7 +249,11 @@ public:
 	calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R1, const Mpo<Symmetry,complex<double>> &R2) const;
 	
 	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > >
-	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1) const;
+	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1, qarray<Symmetry::Nq> Qtot=Symmetry::qvacuum()) const;
+	
+	template<typename MpoScalar>
+	vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > >
+	calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1) const;
 	
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -2733,7 +2738,7 @@ truncate (bool SET_AC_RANDOM)
 
 template<typename Symmetry, typename Scalar>
 vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > Umps<Symmetry,Scalar>::
-calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK) const
+calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK, qarray<Symmetry::Nq> Qtot) const
 {
 	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > res(N);
 	
@@ -2744,12 +2749,12 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, 
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
 		T = TransferMatrix<Symmetry,complex<double> >
-		    (VMPS::DIRECTION::RIGHT, Compl.A[g], Compl.A[g], locBasis());
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], Compl.A[g], locBasis(), false, Qtot);
 	}
 	else
 	{
 		T = TransferMatrix<Symmetry,complex<double> >
-		    (VMPS::DIRECTION::LEFT, Compl.A[g], Compl.A[g], locBasis());
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], Compl.A[g], locBasis(), false, Qtot);
 	}
 	
 	Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > RandBiped;
@@ -2777,6 +2782,12 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, 
 	res[0].first = John.get_lambda(0);
 	res[0].second = x.data;
 	
+	for (int n=0; n<N-1; ++n)
+	{
+		res[n+1].first = John.get_lambda(n+1);
+		res[n+1].second = John.get_excited(n).data;
+	}
+	
 	if (abs(lambda1.imag()) > 1e1*tol)
 	{
 		lout << John.info() << endl;
@@ -2799,34 +2810,98 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, 
 		res[n].first = John.get_lambda(n);
 	}
 	
-	// project out explicitly
-//	if (N==2)
-//	{
-//		T.TopEigvec = x.data;
-//		T.TopEigval = lambda1;
-//		T.PROJECT_OUT_TOPEIGVEC = true;
-//		
-//		complex<double> lambda2;
-//		TransferVector<Symmetry,complex<double> > y(RandBiped);
-//		ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > Jane(T,y,lambda2,tol);
-//		lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Jane.info()  << endl;
-//		
-////		y.data = exp(-1.i*arg(y.data.block[0](0,0))) * (1./y.data.norm()) * y.data;
-//		res[1].first = lambda2;
-//		res[1].second = y.data;
-//		
-//		lout << "norm2 test=" << y.data.norm() << endl;
-//		lout << "orthogonality test=" << abs(x.data.adjoint().contract(y.data).trace()) << endl;
-//		
-//		if (abs(lambda2.imag()) > 1e1*tol)
-//		{
-//			lout << John.info() << endl;
-//			lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda2 << ", |λ|=" << abs(lambda2) << termcolor::reset << endl;
-//		}
-//	}
+	lout << endl;
+	// Note: corr.length ξ=-L/ln(|lambda[1]|")
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename MpoScalar>
+vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > Umps<Symmetry,Scalar>::
+calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK) const
+{
+	vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > res(N);
+	
+	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
+	complex<double> lambda1;
+	
+	auto Obs = O;
+	Obs.transform_base(Qtarget(),false);
+	
+	TransferMatrixQ<Symmetry,complex<double> > T;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		T = TransferMatrixQ<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], Compl.A[g], locBasis(), Obs.Qtarget()); // contract from right to left
+	}
+	else
+	{
+		T = TransferMatrixQ<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], Compl.A[g], locBasis(), Obs.Qtarget()); // contract from left to right
+	}
+	
+	Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > Lid;
+	Lid.setIdentity(Obs.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, inBasis(0));
+	
+	Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > Rid;
+	Rid.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, outBasis(Obs.length()-1));
+	
+	Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > TripodInit;
+	Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > TripodInitTmp;
+	
+	if (DIR == DMRG::DIRECTION::LEFT) // contract from right to left
+	{
+		contract_R(Rid, A[GAUGE::R][N_sites-1], Obs.W_at(N_sites-1), A[GAUGE::R][N_sites-1], Obs.locBasis(N_sites-1), Obs.opBasis(N_sites-1), TripodInitTmp);
+		//lout << TripodInitTmp.print() << endl;
+		// shift backward in cell
+		for (int l=N_sites-2; l>=0; --l)
+		{
+			contract_R(TripodInitTmp, A[GAUGE::R][l], Obs.W_at(l), A[GAUGE::R][l], Obs.locBasis(l), Obs.opBasis(l), TripodInit);
+			TripodInitTmp = TripodInit;
+			//lout << TripodInitTmp.print() << endl;
+		}
+	}
+	else // contract from left to right
+	{
+		contract_L(Lid, A[GAUGE::L][0], Obs.W_at(0), A[GAUGE::L][0], Obs.locBasis(0), Obs.opBasis(0), TripodInitTmp);
+		// shift forward in cell
+		for (size_t l=1; l<N_sites; ++l)
+		{
+			contract_L(TripodInitTmp, A[GAUGE::L][l], Obs.W_at(l), A[GAUGE::L][l], Obs.locBasis(l), Obs.opBasis(l), TripodInit);
+			TripodInitTmp = TripodInit;
+		}
+	}
+	
+	MpoTransferVector<Symmetry,complex<double> > x(TripodInit, make_pair(Obs.Qtarget(),0));
+	
+	ArnoldiSolver<TransferMatrixQ<Symmetry,complex<double> >,MpoTransferVector<Symmetry,complex<double> > > Arnie(N,tol);
+	if (dimK != -1) Arnie.set_dimK(dimK);
+	Arnie.calc_dominant(T,x);
+	lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Arnie.info()  << endl;
+	
+	res[0].first = Arnie.get_lambda(0);
+	res[0].second = x.data;
+	
+	for (int n=0; n<N-1; ++n)
+	{
+		res[n+1].first = Arnie.get_lambda(n+1);
+		res[n+1].second = Arnie.get_excited(n).data;
+	}
+	
+	if (abs(lambda1.imag()) > 1e1*tol)
+	{
+		lout << Arnie.info() << endl;
+		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda1 << ", |λ|=" << abs(lambda1) << termcolor::reset << endl;
+	}
+	
+	for (int n=1; n<N; ++n)
+	{
+		res[n].first = Arnie.get_lambda(n);
+	}
 	
 	lout << endl;
-	// Note: corr.length ξ=-L/ln(|lambda2|")
+	// Note: corr.length ξ=-L/ln(|lambda[1]|")
 	
 	return res;
 }
@@ -3057,7 +3132,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	}
 	
 	// wrap bmalfa, bpalfa by MpoTransferVector for GMRES
-	// Note: the Tripods has only a single qunatum number with inner dimension 1 on their mid leg. We need to pass this information to MpoTransferVector.
+	// Note: the Tripods has only a single quantum number with inner dimension 1 on their mid leg. We need to pass this information to MpoTransferVector.
 	assert(bpalfaTripod[0].size() > 0);
 	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >(), make_pair(bmalfaTripod[N_sites-1].mid(0),0));
 	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>(), make_pair(bpalfaTripod[0].mid(0),0));

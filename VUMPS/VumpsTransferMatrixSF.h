@@ -15,7 +15,7 @@ struct TransferMatrixSF
 	                  const Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > &Reigen_input, 
 	                  const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                  double k_input,
-					  const typename Symmetry::qType& Q = Symmetry::qvacuum())
+	                  const typename Symmetry::qType& Q = Symmetry::qvacuum())
 	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), 
 	 qloc(qloc_input), k(k_input)
 	{

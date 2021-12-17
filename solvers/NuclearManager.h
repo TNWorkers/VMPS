@@ -180,6 +180,31 @@ void load_nuclearData (string el, string set, string rootfolder, NuclearInfo &in
 			Vijnocgc[J/2] = Vij*6.;
 		}
 	}
+	else if (el == "Richardson50" and set == "benchmark")
+	{
+		V0 = 3.;
+		info.Nclosed = 0;
+		info.Zsingle = 0;
+		
+		info.Nlev = 50;
+		deg.resize(info.Nlev); deg.setConstant(1);
+		
+		eps0.resize(info.Nlev);
+		for (int j=0; j<info.Nlev; ++j)
+		{
+			eps0[j] = j;
+		}
+		
+		Vij.resize(info.Nlev,info.Nlev);
+		Vij.setConstant(1.);
+		
+		int Jmax = 0;
+		Vijnocgc.resize(Jmax/2+1);
+		for (int J=0; J<=Jmax; J+=2)
+		{
+			Vijnocgc[J/2] = Vij;
+		}
+	}
 	// From: Zelevinsky, Volya: Physics of Atomic Nuclei (2017), pp. 218-220
 	else if (el == "f7shell" and set == "benchmark")
 	{

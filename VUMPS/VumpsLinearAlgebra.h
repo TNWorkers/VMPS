@@ -2,6 +2,54 @@
 #define VUMPSLINEARALGEBRA
 
 #include "tensors/Multipede.h"
+#include "tensors/DmrgContractions.h"
+
+template<typename Symmetry, typename MpoScalar>
+complex<double> calc_formfactor_L (const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > &Teigen, 
+                                   const Mpo<Symmetry,MpoScalar> &O, 
+                                   const Umps<Symmetry,double> &V)
+{
+	Tripod<Symmetry,Matrix<double,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<double,Dynamic,Dynamic> > Bnext;
+	
+	auto Obs = O;
+	Obs.transform_base(V.Qtarget(),false);
+	
+	B.setIdentity(Obs.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, V.inBasis(0));
+	for (size_t l=0; l<Obs.length(); ++l)
+	{
+		contract_L(B, V.A_at(GAUGE::L,l), Obs.W_at(l), V.A_at(GAUGE::L,l), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+		B.clear();
+		B = Bnext;
+		Bnext.clear();
+	}
+	
+	return contract_LR(std::make_pair(Symmetry::qvacuum(),0ul), B.template cast<Matrix<complex<double>,Dynamic,Dynamic> >(), Teigen);
+}
+
+template<typename Symmetry, typename MpoScalar>
+complex<double> calc_formfactor_R (const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > &Teigen, 
+                                   const Mpo<Symmetry,MpoScalar> &O, 
+                                   const Umps<Symmetry,double> &V)
+{
+	Tripod<Symmetry,Matrix<double,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<double,Dynamic,Dynamic> > Bnext;
+	
+	auto Obs = O;
+	Obs.transform_base(V.Qtarget(),false);
+	
+	B.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, V.outBasis((Obs.length()-1)%V.length()));
+	for (size_t l=0; l<Obs.length(); ++l)
+	{
+		GAUGE::OPTION g = (l==Obs.length()-1)? GAUGE::C : GAUGE::L;
+		contract_R(B, V.A_at(g,l), Obs.W_at(l), V.A_at(g,l), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+		B.clear();
+		B = Bnext;
+		Bnext.clear();
+	}
+	
+	return contract_LR(std::make_pair(Symmetry::qvacuum(),0ul), Teigen, B.template cast<Matrix<complex<double>,Dynamic,Dynamic> >());
+}
 
 /**Calculates the matrix element between two Umps and an Mpo. Goes from the left and uses \f$A_C\f$ and \f$A_R\f$.*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
@@ -47,7 +95,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 	}
-
+	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
 	
@@ -127,14 +175,14 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		Vbra_copy.adjustQN(Ncells);
 		Vket_copy.adjustQN(Ncells);
 	}
-
+	
 	B.setIdentity(Obs1.outBasis(Obs1.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs1.length()-1)%Vket.length()));
-
+	
 	for (size_t l=O1.length()-1; l!=-1; --l)
 	{
 //		GAUGE::OPTION g = (l==O1.length()-1)? GAUGE::C : GAUGE::L;
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-
+		
 		contract_R(B,
 		           Vbra_copy.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket_copy.A_at(g,l%Vket.length()), 
 		           Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l), 

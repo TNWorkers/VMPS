@@ -39,6 +39,7 @@ public:
 	                       double s_betainit, double betaswitch, 
 	                       string wd, string th_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
 	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
+	                       vector<double> stateSavePoints={}, vector<string> stateSaveLabels={}, 
 	                       int Ntaylor=0);
 	
 	void apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK=true);
@@ -236,8 +237,12 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		for (int l=0; l<L; ++l)
 		{
 			O[z][l] = get_Op(Hwork, Lhetero/2+l, specs[z]);
-			O[z][l].scale(1.,-Oshift[z][l]);
+			if (abs(Oshift[z][l]) > 1e-6)
+			{
+				O[z][l].scale(1.,-Oshift[z][l]);
+			}
 			O[z][l].transform_base(Q,false,L); // PRINT=false
+			lout << O[z][l].info() << endl;
 		}
 	}
 	
@@ -358,7 +363,9 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
                   double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
                   double s_betainit, double betaswitch, 
                   string wd, string th_label, bool LOAD_BETA, bool SAVE_BETA,
-                  DMRG::VERBOSITY::OPTION VERB, int Ntaylor)
+                  DMRG::VERBOSITY::OPTION VERB, 
+                  vector<double> stateSavePoints, vector<string> stateSaveLabels, 
+                  int Ntaylor)
 {
 	for (const auto &spec:specs)
 	{
@@ -599,6 +606,22 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << TDVPT.info() << endl;
 			lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
 			
+			bool INTERMEDIATE_SAVEPOINT = false;
+			string saveLabel = "";
+			for (int is=0; is<stateSavePoints.size(); ++is)
+			{
+				if (abs(beta-stateSavePoints[is]) < 1e-8)
+				{
+					INTERMEDIATE_SAVEPOINT = true;
+					saveLabel = stateSaveLabels[is];
+				}
+			}
+			if (SAVE_BETA and INTERMEDIATE_SAVEPOINT)
+			{
+				lout << termcolor::green << "saving the intermediate beta result to: " << saveLabel << " in directory=" << wd << termcolor::reset << endl;
+				PhiT.save(make_string(wd,"/betaRes_",saveLabel));
+			}
+			
 			double avg_H = isReal(avg(PhiT,Hprop,PhiT));
 			
 			double e = avg_H/L;
@@ -694,7 +717,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 	
 	if (SAVE_BETA and !LOAD_BETA)
 	{
-		lout << "saving the beta result to: " << th_label << " in directory=" << wd << endl;
+		lout << termcolor::green << "saving the final beta result to: " << th_label << " in directory=" << wd << termcolor::reset << endl;
 		PhiT.save(make_string(wd,"/betaRes_",th_label));
 	}
 }

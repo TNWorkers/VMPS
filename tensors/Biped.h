@@ -269,6 +269,27 @@ public:
 //			cout << "q=" << ", in=" << in[q]+Q << ", out=" << out[q]+Q << endl;
 			push_back({in[q]+Q, out[q]+Q}, block_tmp[q]);
 		}
+		
+//		for (size_t q=0; q<dim_tmp; ++q)
+//		{
+//			auto qnews = Symmetry::reduceSilent(in[q],Q);
+//			for (const auto &qnew : qnews)
+//			{
+//				double factor_cgc = Symmetry::coeff_rightOrtho(qnew,in[q]);
+//				auto it = dict.find(qarray2<Symmetry::Nq>{qnew,qnew});
+//				if (it != dict.end())
+//				{
+//					cout << block[it->second].rows() << "x" << block[it->second].cols() << endl;
+//					cout << block_tmp[q].rows() << "x" << block_tmp[q].cols() << endl;
+//					
+//					block[it->second] += factor_cgc*block_tmp[q];
+//				}
+//				else
+//				{
+//					push_back({qnew,qnew}, factor_cgc*block_tmp[q]);
+//				}
+//			}
+//		}
 	}
 };
 
