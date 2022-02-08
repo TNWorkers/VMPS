@@ -280,9 +280,13 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		                                                  H.opBasis(loc1), H.opBasis(loc2));
 		
 		Stopwatch<> Woh2;
-		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
+		// WRONG FOR MULTISITE TERMS:
+//		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
+//		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
+//		                        H.TSD[loc1], 
+//		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+		precalc_blockStructure (Heff2.L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff2.R, 
 		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
-		                        H.TSD[loc1], 
 		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 		t_ohead += Woh2.time(SECONDS);
 		
@@ -391,6 +395,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 //		                                                  H.opBasis(loc1), H.opBasis(loc2));
 //		
 //		Stopwatch<> Woh2;
+//		WRONG FOR MULTISITE TERMS:
 //		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
 //		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 //		                        H.TSD[loc1], 
@@ -572,9 +577,13 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	                                                  H.opBasis(loc1), H.opBasis(loc2));
 	
 	Stopwatch<> Woh2;
-	precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
+	// WRONG FOR MULTISITE TERMS:
+//	precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
+//	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
+//	                        H.TSD[loc1], 
+//	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+	precalc_blockStructure (Heff2.L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff2.R, 
 	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
-	                        H.TSD[loc1], 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	t_ohead += Woh2.time(SECONDS);
 	

@@ -94,7 +94,7 @@ public:
 	
 	///@{
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
-	double eps_svd, alpha_rsvd;
+	double eps_svd, eps_truncWeight, alpha_rsvd;
 	size_t max_Nsv, min_Nsv;
 	int max_Nrich;
 	///@}
@@ -133,6 +133,7 @@ void DmrgJanitor<PivotMatrixType>::
 set_defaultCutoffs()
 {
 	eps_svd    = DMRG::CONTROL::DEFAULT::eps_svd(0);
+	eps_truncWeight = DMRG::CONTROL::DEFAULT::eps_truncWeight(0);
 	alpha_rsvd = DMRG::CONTROL::DEFAULT::max_alpha_rsvd(0);
 	min_Nsv    = DMRG::CONTROL::DEFAULT::min_Nsv(0);
 	max_Nsv    = DMRG::CONTROL::DEFAULT::Mlimit;
@@ -175,8 +176,9 @@ template<typename PivotMatrixType>
 void DmrgJanitor<PivotMatrixType>::
 entropy_skim()
 {
-	double eps_svd_bak = eps_svd;
-	eps_svd = 0.;
+	//double eps_svd_bak = eps_svd;
+	double eps_truncWeight_bak = eps_truncWeight;
+	eps_truncWeight = 0.;
 	
 	if (pivot == 0)
 	{
@@ -187,7 +189,8 @@ entropy_skim()
 		skim(DMRG::DIRECTION::LEFT,DMRG::BROOM::SVD,NULL);
 	}
 	
-	eps_svd = eps_svd_bak;
+	//eps_svd = eps_svd_bak;
+	eps_truncWeight = eps_truncWeight_bak;
 }
 
 template<typename PivotMatrixType>

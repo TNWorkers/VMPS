@@ -35,7 +35,7 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
-#include <libwalrus.hpp>
+//#include <libwalrus.hpp>
 
 #include "solvers/DmrgSolver.h"
 #include "solvers/MpsCompressor.h"
@@ -163,36 +163,53 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	CorrFilerAll.close();
 }
 
+struct StateInfo
+{
+	double E;
+	double e;
+	double var = -1.;
+	string label;
+	string stateInfo;
+	
+	void save (string filename)
+	{
+		HDF5Interface target(filename+".h5",WRITE);
+		target.save_scalar(E,"E","");
+		target.save_scalar(e,"e","");
+		target.save_scalar(var,"var","");
+		target.close();
+	}
+};
+
 void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOAD, size_t maxPower, int L, string base, string wd, string label)
 {
-	ofstream VarFiler(make_string(wd,"var_",base,".dat"));
+	StateInfo info;
+	string filename = make_string(wd,"var_",base);
 	lout << label << ":" << endl;
-	lout << "will save to: " << make_string(wd,"var_",base,".dat") << endl;
-	VarFiler << "#" << label << endl;
-	VarFiler << "#" << Psi.state.info() << endl;
+	lout << "will save to: " << filename << ".h5" << endl;
+	info.label = label;
+	info.stateInfo = Psi.state.info();
 	
 	Stopwatch<> Timer;
 	double E = (LOAD!="")? avg(Psi.state,H,Psi.state):Psi.energy;
 	lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
-	VarFiler << setprecision(16) << "E=" << E << setprecision(6) << endl;
+	info.E = E;
+	info.e = E/H.volume();
 	lout << Timer.info("E") << endl;
-	VarFiler << Timer.info("E") << endl;
 	
 	if (maxPower == 1)
 	{
-		double var = abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L;
-		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
-		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		info.var = abs(avg(Psi.state,H,H,Psi.state)-pow(E,2))/L;
 	}
 	else
 	{
-		double var = abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L;
-		lout << setprecision(16) << "varE=" << var << setprecision(6) << endl;
-		VarFiler << setprecision(16) << "varE=" << var << setprecision(6) << endl;
+		info.var = abs(avg(Psi.state,H,Psi.state,2)-pow(E,2))/L;
 	}
+	lout << setprecision(16) << "varE=" << info.var << setprecision(6) << endl;
 	lout << Timer.info("varE") << endl;
 	lout << endl;
-	VarFiler.close();
+	
+	info.save(filename);
 	
 //	auto HmE = H;
 //	double factor = args.get<double>("factor",1.);
@@ -207,6 +224,7 @@ map<string,int> make_Lmap()
 	//
 	m["CHAIN"] = 0; // chain
 	m["RING"] = 0; // ring
+	m["CLUMP"] = 0; // clump = all interact with each other
 	// Platonic solids:
 	m["P04"] = 4; // tetrahedron
 	m["P06"] = 6; // octahedron
@@ -272,12 +290,12 @@ int main (int argc, char* argv[])
 	double J = args.get<double>("J",1.);
 	double Jprime = args.get<double>("Jprime",0.);
 	
-	double Jq = args.get<double>("Jq",0.);
+	double Jbiq = args.get<double>("Jbiq",0.);
 	double R = 0.;
 	double offset = 0.;
-	if (Jq != 0.)
+	if (Jbiq != 0.)
 	{
-		auto JRo = params_bilineraBiquadratic_beta(-Jq,J);
+		auto JRo = params_bilineraBiquadratic_beta(-Jbiq,J);
 		J = get<0>(JRo);
 		R = get<1>(JRo);
 		offset = get<2>(JRo);
@@ -289,7 +307,7 @@ int main (int argc, char* argv[])
 	double Jedge = args.get<double>("Jedge",1.);
 	
 	double Bz = args.get<double>("Bz",0.);
-	int S = args.get<int>("S",0);
+	double S = args.get<double>("S",0);
 	int M = args.get<int>("M",0);
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
@@ -302,7 +320,7 @@ int main (int argc, char* argv[])
 	int VARIANT = args.get<int>("VARIANT",0); // to try different enumeration variants
 	map<string,int> Lmap = make_Lmap();
 	map<string,string> Vmap = make_vertexMap();
-	if (MOL!="CHAIN" and MOL!="RING") L = Lmap[MOL]; // for linear chain, include chain length using -L
+	if (MOL!="CHAIN" and MOL!="RING" and MOL!="CLUMP") L = Lmap[MOL]; // for linear chain, include chain length using -L
 	int N = args.get<int>("N",L);
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
@@ -326,7 +344,7 @@ int main (int argc, char* argv[])
 	int Nexc = args.get<int>("Nexc",0);
 	int ninit = args.get<int>("ninit",0); // ninit=0: start with 1st excited state, ninit=1: start with 2nd excited state etc.
 	vector<string> LOAD_EXCITED = args.get_list<string>("LOAD_EXCITED",{});
-	double Epenalty = args.get<double>("Epenalty",1e4);
+	double Epenalty = args.get<double>("Epenalty",1e2);
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_CORR_EXCITED = args.get<bool>("CALC_CORR_EXCITED",false);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
@@ -406,7 +424,7 @@ int main (int argc, char* argv[])
 				}
 				else if (parsed_vals[j] == "S")
 				{
-					S = boost::lexical_cast<int>(parsed_vals[j+1]);
+					S = boost::lexical_cast<double>(parsed_vals[j+1]);
 					lout << "extracted: S=" << S << endl;
 				}
 				else if (parsed_vals[j] == "M")
@@ -450,10 +468,19 @@ int main (int argc, char* argv[])
 			base += make_string("_M=",M);
 		}
 		#endif
+		if (J != 1.)
+		{
+			base += make_string("_J=",J);
+		}
 		if (Jprime != 0.)
 		{
 			base += make_string("_Jprime=",Jprime);
 		}
+		if (Jbiq != 1.)
+		{
+			base += make_string("_R=",R);
+		}
+		////////////////////
 		if (MOL == "Mn32")
 		{
 			base += make_string("_Jcap=",Jcap,"_Jcorner=",Jcorner,"_Jedge=",Jedge);
@@ -541,6 +568,12 @@ int main (int argc, char* argv[])
 	{
 		hopping = create_1D_OBC(L,J,Jprime); // Heisenberg chain for testing
 	}
+	else if (MOL=="CLUMP")
+	{
+		hopping.resize(L,L);
+		hopping.setConstant(J);
+		hopping.matrix().diagonal().setZero();
+	}
 	else if (MOL.at(0) == 'P')
 	{
 		hopping = J*hopping_Platonic(L,VARIANT);
@@ -618,7 +651,7 @@ int main (int argc, char* argv[])
 		}
 		lout << endl;
 	}
-	if (HAFNIAN)
+	/*if (HAFNIAN)
 	{
 		Stopwatch<> HafnianWatch;
 		vector<double> M(L*L);
@@ -629,7 +662,7 @@ int main (int argc, char* argv[])
 		}
 		lout << "Hafnian=" << static_cast<size_t>(libwalrus::hafnian_recursive(M)) << endl;
 		lout << HafnianWatch.info("Hafnian") << endl;
-	}
+	}*/
 	
 	// free fermions
 	if (PRINT_FREE)
@@ -653,7 +686,7 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"U",U});
 			params.push_back({"tFull",hopping});
-			Q = {2*S+1,N};
+			Q = {static_cast<int>(2*S)+1,N};
 		}
 		else
 		{
@@ -684,7 +717,7 @@ int main (int argc, char* argv[])
 			}
 			#ifdef USING_SU2
 			{
-				Q = {2*S+1};
+				Q = {static_cast<int>(2*S)+1};
 			}
 			#elif defined(USING_U1)
 			{
@@ -697,7 +730,7 @@ int main (int argc, char* argv[])
 		params.push_back({"maxPower",maxPower});
 		
 		MODEL H(size_t(L),params);
-		if (offset!=0.) H.scale(1.,offset*L);
+		//if (offset!=0.) H.scale(1.,offset*L);
 		lout << H.info() << endl;
 		
 		Eigenstate<MODEL::StateXd> g;
@@ -1273,14 +1306,16 @@ int main (int argc, char* argv[])
 				double beta = betavals[i];
 				Stopwatch<> Stepper;
 				
-				if (beta < 0.2)
+				if (beta < 0.015)
 				{
-					PsiT.eps_svd = 1e-9;
+					//PsiT.eps_svd = 1e-9;
+					PsiT.eps_truncWeight = 1e-14;
 					PsiT.min_Nsv = 1ul;
 				}
 				else
 				{
-					PsiT.eps_svd = tol_beta_compr;
+					//PsiT.eps_svd = tol_beta_compr;
+					PsiT.eps_truncWeight = tol_beta_compr;
 					PsiT.min_Nsv = 0ul;
 				}
 				

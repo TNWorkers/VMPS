@@ -1987,6 +1987,7 @@ cast() const
 		Vout.C[l].block[q] = C[l].block[q].template cast<OtherScalar>();
 	}
 	Vout.eps_svd = this->eps_svd;
+	Vout.eps_truncWeight = this->eps_truncWeight;
 	Vout.truncWeight = truncWeight;
 	
 	return Vout;
@@ -2012,6 +2013,7 @@ real() const
 		Vout.C[l].block[q] = C[l].block[q].real();
 	}
 	Vout.eps_svd = this->eps_svd;
+	Vout.eps_truncWeight = this->eps_truncWeight;
 	Vout.truncWeight = truncWeight;
 	
 	return Vout;
@@ -2070,6 +2072,7 @@ save (string filename, string info, double energy)
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,"eps_svd");
+	target.save_scalar(this->eps_truncWeight,"eps_truncWeight");
 	target.save_char(info,add_infoLabel.c_str());
 	
 	//save qloc
@@ -2169,9 +2172,12 @@ load (string filename, double &energy)
 		source.load_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
 	source.load_scalar(this->eps_svd,"eps_svd");
+	// To ensure older files can be loaded, make check here
+	// HAS_GROUP is the same for groups and single objects
+	if (source.HAS_GROUP("eps_truncWeight")) source.load_scalar(this->eps_truncWeight,"eps_truncWeight");
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
-
+	
 	//load qloc
 	qloc.resize(this->N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2690,7 +2696,7 @@ truncate (bool SET_AC_RANDOM)
 		// cout << "**********************l=" << l << "*************************" << endl;
 		// cout << C[l].print(false) << endl;
 		double trunc=0.;
-		auto [trunc_U,Sigma,trunc_Vdag] = C[l].truncateSVD(max_Nsv,eps_svd,trunc,true); //true: PRESERVE_MULTIPLETS
+		auto [trunc_U,Sigma,trunc_Vdag] = C[l].truncateSVD(max_Nsv,eps_truncWeight,trunc,true); //true: PRESERVE_MULTIPLETS
 		U[l] = trunc_U;
 		Vdag[l] = trunc_Vdag;
 		C[l] = Sigma;

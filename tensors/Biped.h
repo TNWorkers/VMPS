@@ -714,7 +714,7 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 template<typename Symmetry, typename MatrixType_>
 template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
-truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
+truncateSVD(size_t maxKeep, EpsScalar eps_truncWeight, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
 {
 	entropy = 0.;
 	truncWeight = 0;
@@ -744,16 +744,62 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		U.push_back(in[q], out[q], Jack.matrixU());
 		Sigma.push_back(in[q], out[q], Jack.singularValues().asDiagonal());
 		Vdag.push_back(in[q], out[q], Jack.matrixV().adjoint());
+		//lout << "q=" << q << ", SV=" << Jack.singularValues().transpose() << endl;
 	}
 	size_t numberOfStates = allSV.size();
 	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, double> &sv1, const pair<typename Symmetry::qType, double> &sv2) {return sv1.second > sv2.second;});
-	for (size_t i=maxKeep; i<allSV.size(); i++)
+//	for (size_t i=maxKeep; i<allSV.size(); i++)
+//	{
+//		truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+//	}
+	
+	//Use eps_svd:
+	/*
+	for (int i=0; i<allSV.size(); ++i)
 	{
-		truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		if (allSV[i].second < eps_svd)
+		{
+			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		}
 	}
-	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
 	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, double> &sv) { return (sv.second < eps_svd); }), allSV.end());
+	*/
+	
+	// Use eps_truncWeight:
+	int numberOfDiscardedStates = 0;
+	for (int i=allSV.size()-1; i>=0; --i)
+	{
+		double truncWeightIncr = Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		//lout << "i=" << i << ", truncWeight=" << truncWeight << ", truncWeightIncr=" << truncWeightIncr <<  ", numberOfDiscardedStates=" << numberOfDiscardedStates << endl;
+		if (truncWeight+truncWeightIncr < eps_truncWeight)
+		{
+			truncWeight += truncWeightIncr;
+			numberOfDiscardedStates += 1;
+		}
+	}
+	//assert(numberOfDiscardedStates < allSV.size());
+	if (numberOfDiscardedStates >= allSV.size())
+	{
+		numberOfDiscardedStates = 0;
+		truncWeight = 0.;
+	}
+	//lout << "all=" << allSV.size() << ", discarded=" << numberOfDiscardedStates << ", truncWeight=" << truncWeight << ", eps_truncWeight=" << eps_truncWeight << endl;
+	int numberOfKeptStates = allSV.size()-numberOfDiscardedStates;
+	
+	if (numberOfKeptStates < maxKeep)
+	{
+		allSV.resize(numberOfKeptStates);
+	}
+	else
+	{
+		numberOfKeptStates = min(maxKeep,numberOfStates);
+		for (int i=allSV.size()-1; i>numberOfKeptStates; --i)
+		{
+			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		}
+		allSV.resize(numberOfKeptStates);
+	}
 	
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
 	// ofstream Filer("sv_expand");

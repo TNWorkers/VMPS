@@ -259,7 +259,7 @@ protected:
      */
     void calc_qOp ();
     
-    /**
+     /**
      *  Calculates the MPO bond bases by analyzing auxdim. GOT_QAUX is set true.
      */
     void calc_qAux ();

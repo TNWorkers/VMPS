@@ -795,6 +795,41 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=35; i<=38; ++i) res(i,i+1) = lambda1;
 		res(35,39) = lambda1;
 	}
+	else if (L==36)
+	{
+		for (int i=0; i<=4; ++i) res(i,i+1) = lambda1;
+		res(0,5) = lambda1;
+		
+		res(0,8) = lambda1;
+		res(1,10) = lambda1;
+		res(2,12) = lambda1;
+		res(3,14) = lambda1;
+		res(4,16) = lambda1;
+		res(5,6) = lambda1;
+		
+		for (int i=6; i<=16; ++i) res(i,i+1) = lambda1;
+		res(6,17) = lambda1;
+		
+		res(7,20) = lambda1;
+		res(9,22) = lambda1;
+		res(11,24) = lambda1;
+		res(13,26) = lambda1;
+		res(15,28) = lambda1;
+		res(17,18) = lambda1;
+		
+		for (int i=18; i<=28; ++i) res(i,i+1) = lambda1;
+		res(18,29) = lambda1;
+		
+		res(19,31) = lambda1;
+		res(21,32) = lambda1;
+		res(23,33) = lambda1;
+		res(25,34) = lambda1;
+		res(27,35) = lambda1;
+		res(29,30) = lambda1;
+		
+		for (int i=30; i<=34; ++i) res(i,i+1) = lambda1;
+		res(30,35) = lambda1;
+	}
 	else if (L==30)
 	{
 		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
@@ -1852,19 +1887,33 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 	return res;
 }
 
-ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=0., bool PBC=false)
+ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=0., bool PBC=false, bool BABA=false)
 {
 	ArrayXXd res(L,L);
 	res.setZero();
 	if (!PBC)
 	{
-		for (int l=0; l<L; ++l)
+		if (!BABA)
 		{
-			if (l+1<L) res(l,l+1) = (l%2==0)? tPerp:0.;
-			if (l+2<L) res(l,l+2) = tPara;
-			
-			if (l%2==0 and l+3<L) res(l,l+3) = tPrime;
-			if (l%2==1 and l+1<L) res(l,l+1) = tPrime;
+			for (int l=0; l<L; ++l)
+			{
+				if (l+1<L) res(l,l+1) = (l%2==0)? tPerp:0.;
+				if (l+2<L) res(l,l+2) = tPara;
+				
+				if (l%2==0 and l+3<L) res(l,l+3) = tPrime;
+				if (l%2==1 and l+1<L) res(l,l+1) = tPrime;
+			}
+		}
+		else
+		{
+			for (int l=0; l<L; ++l)
+			{
+				if (l+1<L) res(l,l+1) = (l%2==1)? tPerp:0.;
+				if (l+2<L) res(l,l+2) = tPara;
+				
+				if (l%2==0 and l+1<L) res(l,l+1) = tPrime;
+				if (l%2==1 and l+3<L) res(l,l+3) = tPrime;
+			}
 		}
 	}
 	else

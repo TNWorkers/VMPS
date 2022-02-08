@@ -93,7 +93,8 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
                            qarray<Symmetry::Nq> Qtot_input, size_t Minit, size_t Mincr=100, size_t Mlimit=10000, double tol=1e-4,
-                           size_t max_halfsweeps=100, size_t min_halfsweeps=1, std::size_t savePeriod = 0, std::string saveName="backup", const MpOperator * HdagH = NULL);
+                           size_t max_halfsweeps=100, size_t min_halfsweeps=1, std::size_t savePeriod = 0, std::string saveName="backup", bool MEASURE_DISTANCE=true, const MpOperator * HdagH = NULL
+                           );
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -761,7 +762,7 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 				{
 					if (CHOSEN_VERBOSITY > 0)
 					{
-						lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
+						lout << termcolor::bold << termcolor::yellow << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
 					}
 					Vout /= sqrt(Vsqnorm);
 				}
@@ -959,15 +960,15 @@ template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input, 
               size_t Minit, size_t Mincr, size_t Mlimit, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps,
-              std::size_t savePeriod, std::string saveName, const MpOperator * HdagH)
+              std::size_t savePeriod, std::string saveName, bool MEASURE_DISTANCE, const MpOperator * HdagH)
 {
-        if (CHOSEN_VERBOSITY>=2)
+	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
 		 << "———————————————————————————————————————————prodCompress: |Φ> = H|Ψ>————————————————————————————————————————————"
 		 <<  termcolor::reset << endl;
 	}
-        
+	
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	tol = tol_input;
@@ -1006,53 +1007,51 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	Mmax = Vout.calc_Mmax();
 	double avgHsqVin;
 	
-	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-	#pragma omp parallel sections
-	#endif
+	if (MEASURE_DISTANCE)
 	{
 		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-		#pragma omp section
+		#pragma omp parallel sections
 		#endif
 		{
-			if (H.IS_UNITARY())
+			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+			#pragma omp section
+			#endif
 			{
-				avgHsqVin = Vin.squaredNorm();
-			}
-			else
-			{
-				if (HdagH != NULL)
+				if (H.IS_UNITARY())
 				{
-					avgHsqVin = isReal(avg(Vin,*HdagH,Vin));
+					avgHsqVin = Vin.squaredNorm();
 				}
 				else
 				{
-					if (H.IS_HERMITIAN())
+					if (HdagH != NULL)
 					{
-						avgHsqVin = (H.maxPower()>=2)? isReal(avg(Vin,H,Vin,2)) : isReal(avg(Vin,H,H,Vin));
+						avgHsqVin = isReal(avg(Vin,*HdagH,Vin));
 					}
 					else
 					{
-						avgHsqVin = isReal(avg(Vin,Hdag,H,Vin));
+						if (H.IS_HERMITIAN())
+						{
+							avgHsqVin = (H.maxPower()>=2)? isReal(avg(Vin,H,Vin,2)) : isReal(avg(Vin,H,H,Vin));
+						}
+						else
+						{
+							avgHsqVin = isReal(avg(Vin,Hdag,H,Vin));
+						}
 					}
 				}
 			}
 		}
-		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-		#pragma omp section
-		#endif
-		{
-			prepSweep(H,Vin,Vout);
-		}
 	}
+	prepSweep(H,Vin,Vout);
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-                lout << Chronos.info("• preparation prodCompress") << endl;
+		lout << Chronos.info("• preparation prodCompress") << endl;
 		size_t standard_precision = cout.precision();
-                lout <<                          "• initial state         : " << Vout.info() << endl;
-                lout << "• Bond dim. increase by ";
+		lout <<                          "• initial state         : " << Vout.info() << endl;
+		lout << "• Bond dim. increase by ";
 		cout << termcolor::underline;
 		lout << Mincr;
 		cout << termcolor::reset;
@@ -1061,7 +1060,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		lout << "4";
 		cout << termcolor::reset;
 		lout << " half-sweeps" << endl;
-                lout << "• make between ";
+		lout << "• make between ";
 		cout << termcolor::underline;
 		lout << min_halfsweeps;
 		cout << termcolor::reset;
@@ -1070,13 +1069,14 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		lout << max_halfsweeps;
 		cout << termcolor::reset;
 		lout << " half-sweep iterations" << endl;
-                lout << "• convergence tolerance: ";
+		lout << "• convergence tolerance: ";
 		cout << termcolor::underline;
 		lout << tol_input;
 		cout << termcolor::reset;
 		lout << endl << endl;
 	}
 	
+	lout << "min_halfsweeps=" << min_halfsweeps << endl;
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
@@ -1093,6 +1093,8 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		{
 			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
 		}
+		
+		double norm_old = Vout.squaredNorm();
 		
 		// optimization
 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -1112,26 +1114,34 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "avgHsqVin=" << avgHsqVin << endl;
-//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
-		sqdist = abs(avgHsqVin - Vout.squaredNorm());
-		assert(!std::isnan(sqdist));
+		if (MEASURE_DISTANCE)
+		{
+	//		cout << "avgHsqVin=" << avgHsqVin << endl;
+	//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+			sqdist = abs(avgHsqVin - Vout.squaredNorm());
+			assert(!std::isnan(sqdist));
+		}
+		else
+		{
+			double norm_new = Vout.squaredNorm();
+			sqdist = abs(norm_new-norm_old);
+		}
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-                        cout << termcolor::underline;
-                        lout << "half-sweeps=" << N_halfsweeps;
-                        cout << termcolor::reset;
-                        size_t standard_precision = cout.precision();
-                        lout << ", distance^2=";
-                        if (sqdist <= tol) {cout << termcolor::green;}
+			cout << termcolor::underline;
+			lout << "half-sweeps=" << N_halfsweeps;
+			cout << termcolor::reset;
+			size_t standard_precision = cout.precision();
+			lout << ", distance^2=";
+			if (sqdist <= tol) {cout << termcolor::green;}
 			else               {cout << termcolor::yellow;}
 			lout << sqdist;
-                        cout << termcolor::reset;
-                        lout << endl;
-                        t_tot = FullSweepTimer.time();
+			cout << termcolor::reset;
+			lout << endl;
+			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
-                        lout << Vout.info() << endl;
+			lout << Vout.info() << endl;
 		}
 		
 		bool RESIZED = false;
@@ -1153,32 +1163,32 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
-
-                #ifdef USE_HDF5_STORAGE
+		
+		#ifdef USE_HDF5_STORAGE
 		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
 		{
 			Vout.save(saveName,H.info());
-                        cout << termcolor::green;
-                        lout << "Saved state to: " << saveName;
-                        cout << termcolor::reset;
-                        lout << endl;
+			cout << termcolor::green;
+			lout << "Saved state to: " << saveName;
+			cout << termcolor::reset;
+			lout << endl;
 		}
 		#endif
-
+		
 		#ifdef COMPRESSOR_RESTART_FROM_RANDOM
 		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
 		{
 			cout << termcolor::red;
-                        lout << "Warning: Could not reach tolerance, restarting from random!";
-                        cout << termcolor::reset;
-                        lout << endl;
+			lout << "Warning: Could not reach tolerance, restarting from random!";
+			cout << termcolor::reset;
+			lout << endl;
 			prepSweep(H,Vin,Vout,true);
 		}
 		#endif
-                if (CHOSEN_VERBOSITY>=2)
+		if (CHOSEN_VERBOSITY>=2)
 		{
-                        lout << endl;
-                }
+			lout << endl;
+		}
 	}
 	
 	// move pivot to edge at the end
@@ -1266,7 +1276,7 @@ prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 	{
 		if (CHOSEN_VERBOSITY > 0)
 		{
-			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
+			lout << termcolor::bold << termcolor::yellow << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
 		}
 		Vout /= sqrt(Vsqnorm);
 	}

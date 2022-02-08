@@ -687,7 +687,12 @@ info() const
 	ss << "Dmax=" << calc_Dmax() << "), ";
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "Nqavg=" << calc_Nqavg() << ", ";
-	ss << "trunc_weight=" << truncWeight.sum() << ", ";
+	ss << "trunc_weight=" << truncWeight.sum();
+	ss << "(";
+	ss << "max=" << truncWeight.maxCoeff();
+	ss << ", eps=" << this->eps_truncWeight;
+	ss << ")";
+	ss << ", ";
 	int lSmax;
 	if (this->N_sites > 1)
 	{
@@ -699,6 +704,10 @@ info() const
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB";
 //	ss << endl << " •ortho: " << test_ortho();
+	if (truncWeight.maxCoeff() > this->eps_truncWeight)
+	{
+		lout << termcolor::yellow << "Warning: max. local truncWeight=" << truncWeight.maxCoeff() << " is larger than the tolerance " << this->eps_truncWeight << "!" << termcolor::reset << endl;
+	}
 	return ss.str();
 }
 
@@ -1530,6 +1539,7 @@ save (string filename, string info, double energy)
 	string DmaxLabel = "Dmax";
 	string NqmaxLabel = "Nqmax";
 	string eps_svdLabel = "eps_svd";
+	string eps_truncWeightLabel = "eps_truncWeightLabel";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
 	
@@ -1557,6 +1567,7 @@ save (string filename, string info, double energy)
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
+	target.save_scalar(this->eps_truncWeight,eps_truncWeightLabel);
 	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	target.save_scalar(this->get_pivot(),"pivot");
 	target.save_char(info,add_infoLabel.c_str());
@@ -1617,6 +1628,7 @@ load (string filename, double &energy)
 	HDF5Interface source(filename, READ);
 	
 	string eps_svdLabel = "eps_svd";
+	string eps_truncWeightLabel = "eps_truncWeightLabel";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	size_t QmultiSize;
 	
@@ -1643,11 +1655,14 @@ load (string filename, double &energy)
 		source.load_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
 	}
 	source.load_scalar(this->eps_svd,eps_svdLabel);
+	// To ensure older files can be loaded, make check here
+	// HAS_GROUP is the same for groups and single objects
+	if (source.HAS_GROUP(eps_truncWeightLabel)) source.load_scalar(this->eps_truncWeight,eps_truncWeightLabel);
 	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	source.load_scalar(this->pivot,"pivot");
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
-
+	
 	//load qloc
 	qloc.resize(this->N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -1845,7 +1860,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	Biped<Symmetry,MatrixType> left,right;
 	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD or TOOL == DMRG::BROOM::BRUTAL_SVD)
 	{
-		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_svd, truncWeight(loc), entropy, SVspec_, false, RETURN_SPEC); //false: DONT PRESERVE MULTIPLETS
+		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false, RETURN_SPEC); //false: DONT PRESERVE MULTIPLETS
 		if (loc != 0)
 		{
 			S(loc-1) = entropy;
@@ -2112,7 +2127,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	Biped<Symmetry,MatrixType> left, right;
 	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD or TOOL == DMRG::BROOM::BRUTAL_SVD)
 	{
-		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_svd, truncWeight(loc), entropy, SVspec_, false); //false: DONT PRESERVE MULTIPLETS
+		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false); //false: DONT PRESERVE MULTIPLETS
 		if (loc != this->N_sites-1)
 		{
 			S(loc) = entropy;
@@ -2630,9 +2645,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	split_AA2(DIR, combined_basis, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 			  QoutTop[loc], QoutBot[loc],
 			  Cdump, false, truncWeight(loc), entropy, SV,
-			  this->eps_svd, this->min_Nsv, this->max_Nsv);
+			  this->eps_truncWeight, this->min_Nsv, this->max_Nsv);
 	//cout << "end splitAA" << endl;
 	
+	// Warning: uses eps_svd
 	// split_AA(DIR, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 	//          QoutTop[loc], QoutBot[loc],
 	//          Cdump, false, truncWeight(loc), entropy,
@@ -3516,6 +3532,7 @@ swap (Mps<Symmetry,Scalar> &V)
 	std::swap(N_phys, V.N_phys);
 	
 	std::swap(this->eps_svd, V.eps_svd);
+	std::swap(this->eps_truncWeight, V.eps_truncWeight);
 	std::swap(this->max_Nsv, V.max_Nsv);
 	std::swap(this->min_Nsv, V.min_Nsv);
 	std::swap(this->S, V.S);
@@ -3540,6 +3557,7 @@ void Mps<Symmetry,Scalar>::
 get_controlParams (const Mps<Symmetry,Scalar> &V)
 {
 	this->eps_svd = V.eps_svd;
+	this->eps_truncWeight = V.eps_truncWeight;
 	this->max_Nsv = V.max_Nsv;
 	this->min_Nsv = V.min_Nsv;
 }
@@ -3650,12 +3668,12 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 	//Decompose the two-site Atensor Apair
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Cdumb;
 	double trunc, Sdumb;
-        map<qarray<Nq>,ArrayXd> SV_dumb;
-	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], Cdumb, false, trunc, Sdumb, SV_dumb, this->eps_svd, this->min_Nsv, this->max_Nsv);
+	map<qarray<Nq>,ArrayXd> SV_dumb;
+	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], Cdumb, false, trunc, Sdumb, SV_dumb, this->eps_truncWeight, this->min_Nsv, this->max_Nsv);
 	truncWeight(l) = trunc;
 	update_outbase(l);
 	update_inbase(l+1);
-//	split_AA(DIR, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
+//	split_AA(DIR, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_truncWeight, this->min_Nsv, this->max_Nsv);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -3674,6 +3692,7 @@ cast() const
 	}
 	
 	Vout.eps_svd = this->eps_svd;
+	Vout.eps_truncWeight = this->eps_truncWeight;
 	Vout.alpha_rsvd = this->alpha_rsvd;
 	Vout.max_Nsv = this->max_Nsv;
 	Vout.pivot = this->pivot;
@@ -3849,6 +3868,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL)
 {
+	lout << termcolor::red << "set_A_from_C is highly deprecated!" << termcolor::reset << endl;
 	if (loc == this->N_sites-1)
 	{
 		for (size_t s=0; s<qloc[loc].size(); ++s)

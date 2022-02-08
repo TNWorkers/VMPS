@@ -305,37 +305,45 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		labellist[loc].push_back(Jxy3site.label);
 		labellist[loc].push_back(Jxy4site.label);
 		
-		// Somehow one needs to explicitly set loc%2==0 here
 		if (loc < N_sites-3 or !static_cast<bool>(boundary))
 		{
 			assert(orbitals == next3_orbitals);
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			{
-				//cout << "loc=" << loc << ", alfa=" << alfa << ", 0.25*val3=" << complex<double>(+0.25*Jxy3site(alfa,alfa)) << endl;
-				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp1].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sm(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(+0.25*Jxy3site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp1].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sp(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(+0.25*Jxy3site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp1].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sp(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(-0.25*Jxy3site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp1].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sm(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(-0.25*Jxy3site(alfa,alfa),0.)
-				                                                                                    ));
+//				if (std::abs(complex<double>(+0.25*Jxy3site(alfa,alfa),0.)) > 1e-10)
+//				{
+//					cout << "loc=" << loc << ", alfa=" << alfa << ", 0.25*val3=" << complex<double>(+0.25*Jxy3site(alfa,alfa),0.) << endl;
+////					cout << "B[loc].Sp(alfa)=" << B[loc].Sp(alfa).template plain<double>() << endl;
+//					cout << endl;
+//				}
+				// +-+-, sign:+ i,A-i,B--i+1,A-i+1,B
+				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp1].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sm(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(+0.25*Jxy3site(alfa,alfa),0.)
+				                                                                                              ));
+				// -+-+, sign:+ i,A-i,B--i+1,A-i+1,B
+				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp1].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sp(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(+0.25*Jxy3site(alfa,alfa),0.)
+				                                                                                              ));
+				// +--+, sign:- i,A-i,B--i+1,A-i+1,B
+				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp1].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sp(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(-0.25*Jxy3site(alfa,alfa),0.)
+				                                                                                              ));
+				// -++-, sign:- i,A-i,B--i+1,A-i+1,B
+				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp1].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sm(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(-0.25*Jxy3site(alfa,alfa),0.)
+				                                                                                              ));
 			}
 		}
 		
@@ -345,30 +353,30 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			{
 				//cout << "loc=" << loc << ", alfa=" << alfa << ", 0.25*val4=" << complex<double>(+0.25*Jxy4site(alfa,alfa)) << endl;
-				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,double>::get_N_site_interaction(B[lp1].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp4].Sm(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(+0.25*Jxy4site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,double>::get_N_site_interaction(B[lp1].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp4].Sp(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(+0.25*Jxy4site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,double>::get_N_site_interaction(B[lp1].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp4].Sp(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(-0.25*Jxy4site(alfa,alfa),0.)
-				                                                                                    ));
-				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,double>::get_N_site_interaction(B[lp1].Sm(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp2].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp3].Sp(alfa).template cast<complex<double> >(),
-				                                                                                    B[lp4].Sm(alfa).template cast<complex<double> >()),
-				                                                                                    complex<double>(-0.25*Jxy4site(alfa,alfa),0.)
-				                                                                                    ));
+				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[lp1].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp4].Sm(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(+0.25*Jxy4site(alfa,alfa),0.)
+				                                                                                              ));
+				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[lp1].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp4].Sp(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(+0.25*Jxy4site(alfa,alfa),0.)
+				                                                                                              ));
+				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[lp1].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp4].Sp(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(-0.25*Jxy4site(alfa,alfa),0.)
+				                                                                                              ));
+				pushlist.push_back(std::make_tuple(lp1,Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[lp1].Sm(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp2].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp3].Sp(alfa).template cast<complex<double> >(),
+				                                                                                              B[lp4].Sm(alfa).template cast<complex<double> >()),
+				                                                                                              complex<double>(-0.25*Jxy4site(alfa,alfa),0.)
+				                                                                                              ));
 			}
 		}
 	}

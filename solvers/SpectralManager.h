@@ -460,7 +460,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		     << endl;
 		
 		PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
-		PhiT.eps_svd = tol_compr_beta;
+		PhiT.eps_truncWeight = tol_compr_beta;
 		PhiT.min_Nsv = 0ul;
 		PhiT.max_Nsv = Mlim;
 		TDVPPropagator<Hamiltonian,
@@ -518,6 +518,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		ofstream BetaFiler(make_string(wd,"/thermodyn_",th_label,".dat"));
 		BetaFiler << "#T\tβ\tc\te\tchi\tchiz\tchic\ts";
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
+		if constexpr (Hamiltonian::FAMILY == HEISENBERG) BetaFiler << "\tSpSm\tSzSz";
 		BetaFiler << endl;
 		
 		// using auxiliary Hamiltonian Hchi
@@ -554,30 +555,35 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << "H^2 done!"  << endl;
 		}
 		
+		Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> U;
+		
 		for (int i=0; i<betasteps.size(); ++i)
 		{
 			Stopwatch<> betaStepper;
 			double beta = betavals[i];
 			
-			//if (i<min(Ntaylor,20))
 			if (i<Ntaylor)
 			{
-				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Id = Hprop.Identity(PhiT.locBasis());
+				if (i==0 or betasteps[i]!=betasteps[i-1])
+				{
+					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Id = Hprop.Identity(PhiT.locBasis());
+					
+					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo1 = Hprop;
+					Hmpo1.scale(-0.5*betasteps[i]); // -1/2*dβ*H
+					
+					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo2 = Hpropsq;
+					Hmpo2.scale(0.125*betasteps[i]*betasteps[i]); // +1/8*(dβ*H)^2
+					
+					lout << "computing 1-1/2*dβ*H+1/8*(dβ*H)^2 for dβ=" << betasteps[i] << endl;
+					U = sum(Id,sum(Hmpo1,Hmpo2));
+				}
 				
-				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo1 = Hprop;
-				Hmpo1.scale(-0.5*betasteps[i]); // -1/2*dβ*H
-				
-				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo2 = Hpropsq;
-				Hmpo2.scale(0.125*betasteps[i]*betasteps[i]); // 1/8*(dβ*H)^2
-				
-				lout << "computing 1-1/2*dβ*H+1/8*(dβ*H)^2..." << endl;
-				Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> U = sum(Id,sum(Hmpo1,Hmpo2));
-				
-				Mps<Symmetry,Scalar> PhiTmp;
-				lout << "applying 1-1/2*dβ*H+1/8*(dβ*H)^2 and compressing..." << endl;
+				//Mps<Symmetry,Scalar> PhiTmp;
+				lout << "applying 1-1/2*dβ*H+1/8*(dβ*H)^2 and compressing for dβ=" << betasteps[i] << endl;
 				//OxV_exact(U,PhiT,PhiTmp,1e-9,DMRG::VERBOSITY::ON_EXIT,200,1,Mlim);
-				HxV(U,PhiT,PhiTmp);
-				PhiT = PhiTmp;
+				//HxV(U,PhiT,PhiTmp,true,tol_compr_beta,50,Mlim);
+				OxV(U,U,PhiT,true,tol_compr_beta,50,Mlim,16,6,false);
+				//PhiT = PhiTmp;
 				
 				if (i==Ntaylor-1)
 				{
@@ -597,6 +603,14 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 				}
 				else
 				{
+					//if (i==0)
+					//{
+					//	PhiT.eps_truncWeight = 0.;
+					//}
+					//else
+					{
+						PhiT.eps_truncWeight = tol_compr_beta;
+					}
 					TDVPT.t_step(Hprop, PhiT, -0.5*betasteps[i], 1);
 				}
 			}
@@ -604,7 +618,8 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lnZvec.push_back(log(norm));
 			PhiT /= sqrt(norm);
 			lout << TDVPT.info() << endl;
-			lout << setprecision(16) << PhiT.info() << setprecision(6) << endl;
+			size_t standard_precision = cout.precision();
+			lout << setprecision(16) << PhiT.info() << setprecision(standard_precision) << endl;
 			
 			bool INTERMEDIATE_SAVEPOINT = false;
 			string saveLabel = "";
@@ -683,6 +698,13 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //					SdagSphys(icell%Lcell) += isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT));
 //				}
 //			}
+			double SzSz = 0.;
+			double SpSm = 0.;
+			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+			{
+				SpSm = isReal(avg(PhiT, Hprop.SpSm(L/4,3*L/4), PhiT));
+				SzSz = isReal(avg(PhiT, Hprop.SzSz(L/4,3*L/4), PhiT));
+			}
 			
 			nphys /= L;
 			double nphystot = nphys.sum();
@@ -695,20 +717,26 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << ", chic=" << chic;
 			#endif
 			lout << ", s=" << s;
-			BetaFiler << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi << "\t" << chiz << "\t" << chic << "\t" << s;
+			BetaFiler << setprecision(16) << 1./beta << "\t" << beta << "\t" << c << "\t" << e << "\t" << chi << "\t" << chiz << "\t" << chic << "\t" << s;
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
 				lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
 				BetaFiler << "\t" << nphystot;
 			}
+			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+			{
+				lout << ", SpSm(" << L/4 << "," << 3*L/4 << ")=" << SpSm << ", SzSz(" << L/4 << "," << 3*L/4 << ")=" << SzSz;
+				BetaFiler << "\t" << SpSm << "\t" << SzSz;
+			}
+			BetaFiler << "\t" << PhiT.get_truncWeight().sum() << "\t" << PhiT.get_truncWeight().maxCoeff();
 //			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
 //			{
 //				double Nb = L-1;
 //				lout << ", SdagSphys/Nb=" << SdagSphys.transpose()/Nb << ", sum/Nb=" << SdagSphys.sum()/Nb;
 //				BetaFiler << "\t" << SdagSphys.transpose()/Nb;
 //			}
-			lout << termcolor::reset << endl;
 			BetaFiler << endl;
+			lout << termcolor::reset << endl;
 			lout << betaStepper.info("βstep") << endl;
 			lout << endl;
 		}

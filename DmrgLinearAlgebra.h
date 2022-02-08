@@ -477,11 +477,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  * \param VERBOSE : print info if \p true
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE = true)
+void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100)
 {
 	Stopwatch<> Chronos;
 	
-	if (Vin.calc_Dmax() <= 4)
+	if (Vin.calc_Mmax() <= 4)
 	{
 		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1);
 	}
@@ -490,10 +490,10 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
-		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 100, 10000, 1e-4);
+		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps);
 	}
 	
-////	double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
+////double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
 //	double tol_compr = 1e-7;
 //	OxV_exact(H, Vin, Vout, tol_compr, (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
 	
@@ -506,10 +506,10 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, bool VERBOSE = true)
+void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, bool VERBOSE = true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	HxV(H,Vinout,Vtmp,VERBOSE);
+	HxV(H,Vinout,Vtmp,VERBOSE,tol_compr,Mincr,Mlimit,max_halfsweeps);
 	Vinout = Vtmp;
 }
 
@@ -568,51 +568,51 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
+void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
 {
-	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
-	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
+	Stopwatch<> Chronos;
 	
-	if (TOOL == DMRG::BROOM::QR)
+	if (Vin.calc_Mmax() <= 4)
 	{
-		assert(O.Qtarget() == Symmetry::qvacuum() and 
-		       "Need a qnumber-conserving operator in OxV for QR option!");
-		Vout = Vin;
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1);
 	}
 	else
 	{
-		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
+		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
+	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
+	                                                  :DMRG::VERBOSITY::SILENT);
+		Compadre.prodCompress(H, Hdag, Vin, Vout, Vin.Qtarget(), Vin.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, min_halfsweeps, 0, "backup", MEASURE_DISTANCE);
 	}
 	
-	contract_C0(O.locBasis(0), O.opBasis(0), O.W_at(0), Vin.A[0], C);
-	Vout.set_A_from_C(0,C,TOOL);
+////double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
+//	double tol_compr = 1e-7;
+//	OxV_exact(H, Vin, Vout, tol_compr, (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
 	
-	for (size_t l=1; l<Vin.length(); ++l)
+	if (VERBOSE)
 	{
-		Stopwatch<> Chronos;
-		contract_C(O.locBasis(l), O.opBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
-//		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
-		
-		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
-		{
-			C[s1].clear();
-			C[s1] = Cnext[s1];
-			Cnext[s1].clear();
-		}
-		
-		Vout.set_A_from_C(l,C,TOOL);
-//		lout << "l=" << l << ", " << Chronos.info("set_A_from_C") << endl;
+//		lout << Compadre.info() << endl;
+		lout << Chronos.info("OxV") << endl;
+		lout << "Vout: " << Vout.info() << endl << endl;
 	}
-	
-	Vout.mend();
-	Vout.pivot = Vout.length()-1;
-	
-//	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> C;
-//	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> Cnext;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, Mps<Symmetry,Scalar> &Vinout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
+{
+	Mps<Symmetry,Scalar> Vtmp;
+	OxV(H,Hdag,Vinout,Vtmp,VERBOSE,tol_compr,Mincr,Mlimit,max_halfsweeps,min_halfsweeps,MEASURE_DISTANCE);
+	Vinout = Vtmp;
+}
+
+//template<typename Symmetry, typename MpoScalar, typename Scalar>
+//void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
+//{
+//	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
+//	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
 //	
 //	if (TOOL == DMRG::BROOM::QR)
 //	{
-//		assert(O.Qtarget() == qvacuum<Nq>() and 
+//		assert(O.Qtarget() == Symmetry::qvacuum() and 
 //		       "Need a qnumber-conserving operator in OxV for QR option!");
 //		Vout = Vin;
 //	}
@@ -621,14 +621,16 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps
 //		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
 //	}
 //	
-//	contract_C0(O.locBasis(0), O.W_at(0), Vin.A[0], C);
+//	contract_C0(O.locBasis(0), O.opBasis(0), O.W_at(0), Vin.A[0], C);
 //	Vout.set_A_from_C(0,C,TOOL);
 //	
 //	for (size_t l=1; l<Vin.length(); ++l)
 //	{
-//		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+//		Stopwatch<> Chronos;
+//		contract_C(O.locBasis(l), O.opBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+////		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
 //		
-//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
 //		{
 //			C[s1].clear();
 //			C[s1] = Cnext[s1];
@@ -636,19 +638,54 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps
 //		}
 //		
 //		Vout.set_A_from_C(l,C,TOOL);
+////		lout << "l=" << l << ", " << Chronos.info("set_A_from_C") << endl;
 //	}
 //	
 //	Vout.mend();
 //	Vout.pivot = Vout.length()-1;
-}
+//	
+////	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> C;
+////	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> Cnext;
+////	
+////	if (TOOL == DMRG::BROOM::QR)
+////	{
+////		assert(O.Qtarget() == qvacuum<Nq>() and 
+////		       "Need a qnumber-conserving operator in OxV for QR option!");
+////		Vout = Vin;
+////	}
+////	else
+////	{
+////		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
+////	}
+////	
+////	contract_C0(O.locBasis(0), O.W_at(0), Vin.A[0], C);
+////	Vout.set_A_from_C(0,C,TOOL);
+////	
+////	for (size_t l=1; l<Vin.length(); ++l)
+////	{
+////		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+////		
+////		for (size_t s1=0; s1<D; ++s1)
+////		{
+////			C[s1].clear();
+////			C[s1] = Cnext[s1];
+////			Cnext[s1].clear();
+////		}
+////		
+////		Vout.set_A_from_C(l,C,TOOL);
+////	}
+////	
+////	Vout.mend();
+////	Vout.pivot = Vout.length()-1;
+//}
 
-template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::BROOM::OPTION TOOL)
-{
-	Mps<Symmetry,Scalar> Vtmp;
-	OxV(O,Vinout,Vtmp,TOOL);
-	Vinout = Vtmp;
-}
+//template<typename Symmetry, typename MpoScalar, typename Scalar>
+//void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::BROOM::OPTION TOOL)
+//{
+//	Mps<Symmetry,Scalar> Vtmp;
+//	OxV(O,Vinout,Vtmp,TOOL);
+//	Vinout = Vtmp;
+//}
 
 /**
  * Performs an exact MPO-MPS product.
@@ -795,10 +832,10 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
-                int max_halfsweeps = 200, int min_halfsweeps = 1)
+                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps);
+	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps,Minit);
 	Vinout = Vtmp;
 }
 
@@ -835,8 +872,10 @@ Mpo<Symmetry,Scalar> sum (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Sca
 {
 	MpoTerms<Symmetry,Scalar> Terms1 = H1;
 	Terms1.set_verbosity(VERBOSITY);
+	Terms1.calc(1);
 	MpoTerms<Symmetry,Scalar> Terms2 = H2;
 	Terms2.set_verbosity(VERBOSITY);
+	Terms2.calc(1);
 	MpoTerms<Symmetry,Scalar> Sum_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
 	Mpo<Symmetry,Scalar> Sum_asMpo(Sum_asTerms);
 	return Sum_asMpo;

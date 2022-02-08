@@ -22,8 +22,11 @@ inline double isReal (double x) {return x;}
 inline double isReal (std::complex<double> x) {return x.real();}
 #endif
 
+#ifndef CONJ_IF_COMPLEX
+#define CONJ_IF_COMPLEX
 inline double conjIfcomplex (double x) {return x;}
 inline std::complex<double> conjIfcomplex (std::complex<double> x) {return conj(x);}
+#endif
 
 #ifndef SPIN_INDEX_ENUM
 #define SPIN_INDEX_ENUM
@@ -236,11 +239,11 @@ struct DMRG
 		enum OPTION
 		{
 			QR, /**<Uses the QR decomposition. It is the fastest of all options, but preserves the matrix sizes, so that neither truncation nor growth can occur. Since the singular values are not computed, no entropy can be calculated and is therefore set to \p nan.*/
-			SVD, /**<Uses the singular value decomposition. All singular values smaller than DmrgJanitor::eps_svd are cut off.
+			SVD, /**<Uses the singular value decomposition. All singular values below eps_truncWeight are cut off.
 			\warning Needs Lapack. Define DONT_USE_LAPACK_SVD to use Eigen's SVD routine. It is 3-90 times slower, but probably accurate and stable as hell.*/
 			BRUTAL_SVD, /**<Uses the singular value decomposition, but imposes a limit on the matrix sizes. Only the first DmrgJanitor::N_sv singular values per symmetry block are kept. This option can be useful to generate starting points for variational procedures. \warning Needs Lapack (see above).*/
 			RDM, /**<Uses diagonalization of the reduced density matrix. Adds a noise term multiplied by DmrgJanitor::eps_noise. All eigenvalues smaller than DmrgJanitor::eps_rdm are cut off. (Note that the eigenvalues are the singular values squared, so DmrgJanitor::eps_noise must be chosen accordingly).*/
-			RICH_SVD, /**<Uses an enrichment scheme, a.k.a.\ the "Strictly Single-Site (SSS) algorithm" according to Hubig et al.\ (2015). The matrices are enlarged with non-local information times DmrgJanitor::eps_rsvd, then the usual SVD is performed (using DmrgJanitor::eps_svd as a cutoff parameter). Note that DmrgJanitor::eps_rsvd is a much less sensitive parameter than DmrgJanitor::eps_rdm and can be even kept equal to 1 (but this will result in larger than optimal matrix sizes). \warning Needs Lapack (see above).*/
+			RICH_SVD, /**<Uses an enrichment scheme, a.k.a.\ the "Strictly Single-Site (SSS) algorithm" according to Hubig et al.\ (2015). The matrices are enlarged with non-local information times DmrgJanitor::eps_rsvd, then the usual SVD is performed (using DmrgJanitor::eps_truncWeight as a cutoff parameter). Note that DmrgJanitor::eps_rsvd is a much less sensitive parameter than DmrgJanitor::eps_rdm and can be even kept equal to 1 (but this will result in larger than optimal matrix sizes). \warning Needs Lapack (see above).*/
 			QR_NULL /**Computes the null space only using full QR decomposition.*/
 		};
 	};
@@ -328,7 +331,8 @@ struct DMRG
 			//DYN DEFAULTS
 			static double max_alpha_rsvd             (size_t i) {return (i<11)? 1e2:0;}
 			static double min_alpha_rsvd             (size_t i) {return (i<11)? 1e-11:0;}
-			static double eps_svd                    (size_t i) {return 1e-8;}
+			static double eps_svd                    (size_t i) {return 1e-14;}
+			static double eps_truncWeight            (size_t i) {return 1e-5;}
 			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least 20
 			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
 			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps
@@ -365,6 +369,7 @@ struct DMRG
 			function<double(size_t)> max_alpha_rsvd             = CONTROL::DEFAULT::max_alpha_rsvd;
 			function<double(size_t)> min_alpha_rsvd             = CONTROL::DEFAULT::min_alpha_rsvd;
 			function<double(size_t)> eps_svd                    = CONTROL::DEFAULT::eps_svd;
+			function<double(size_t)> eps_truncWeight            = CONTROL::DEFAULT::eps_truncWeight;
 			function<size_t(size_t)> Mincr_abs                  = CONTROL::DEFAULT::Mincr_abs;
 			function<double(size_t)> Mincr_rel                  = CONTROL::DEFAULT::Mincr_rel;
 			function<size_t(size_t)> Mincr_per                  = CONTROL::DEFAULT::Mincr_per;

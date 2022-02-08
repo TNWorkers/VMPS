@@ -504,6 +504,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	// initial cutoffs
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);
+	Vout.state.eps_truncWeight = DynParam.eps_truncWeight(0);
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
@@ -517,9 +518,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		cout << termcolor::reset;
 		lout << endl;
 		
-		lout << "• initial singular value cutoff : ε_svd=";
+//		lout << "• initial singular value cutoff : ε_svd=";
+//		cout << termcolor::underline;
+//		lout << Vout.state.eps_svd;
+//		cout << termcolor::reset;
+//		lout << endl;
+		
+		lout << "• initial truncWeight value cutoff : ε_truncWeight=";
 		cout << termcolor::underline;
-		lout << Vout.state.eps_svd;
+		lout << Vout.state.eps_truncWeight;
 		cout << termcolor::reset;
 		lout << endl;
 		
@@ -1366,6 +1373,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
+		Vout.state.eps_truncWeight = DynParam.eps_truncWeight(j);
 //		cout << "j=" << j << ", Vout.state.eps_svd=" << Vout.state.eps_svd << endl;
 		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)

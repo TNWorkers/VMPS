@@ -646,7 +646,7 @@ private:
 //	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 //	
 //	Mps<Symmetry,complex<double>> Psi = OxPhi0;
-//	Psi.eps_svd = tol_compr;
+//	Psi.eps_truncWeight = tol_compr;
 //	Psi.max_Nsv = max(Psi.calc_Mmax(),500ul);
 //	
 //	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H, Psi);
@@ -795,7 +795,7 @@ private:
 //	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 //	
 //	Mps<Symmetry,complex<double>> Psi = OxPhi0;
-//	Psi.eps_svd = tol_compr;
+//	Psi.eps_truncWeight = tol_compr;
 //	Psi.max_Nsv = max(Psi.calc_Mmax(),min(500ul,lim_Nsv));
 //	
 //	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPket(H,Psi);
@@ -1019,7 +1019,7 @@ propagate_cell (int x0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<
 	for (int i=0; i<Lcell; ++i)
 	{
 		Psi[i] = OxPhi[x0+i];
-		Psi[i].eps_svd = tol_compr;
+		Psi[i].eps_truncWeight = tol_compr;
 		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),lim_Nsv);
 	}
 	
@@ -1177,7 +1177,7 @@ propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 	
 	Mps<Symmetry,complex<double>> Psi;
 	Psi = OxPhi[j0];
-	Psi.eps_svd = tol_compr;
+	Psi.eps_truncWeight = tol_compr;
 	Psi.max_Nsv = max(Psi.calc_Mmax(),lim_Nsv);
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP;
@@ -1291,7 +1291,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		for (int i=0; i<Lcell; ++i)
 		{
 			Psi[z][i] = OxPhi[i];
-			Psi[z][i].eps_svd = tol_compr;
+			Psi[z][i].eps_truncWeight = tol_compr;
 			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),lim_Nsv);
 		}
 	}
@@ -1510,7 +1510,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	for (int i=0; i<Lcell+1; ++i)
 	{
 		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
-		Psi[i].eps_svd = tol_compr;
+		Psi[i].eps_truncWeight = tol_compr;
 		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),lim_Nsv);
 	}
 	

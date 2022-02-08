@@ -2462,7 +2462,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 				const vector<qarray<Symmetry::Nq> >& qloc_r, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ar,
 				const qarray<Symmetry::Nq>& qtop, const qarray<Symmetry::Nq>& qbot,
 				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double &truncWeight, double &S, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec,
-				double eps_svd, size_t min_Nsv, size_t max_Nsv)
+				double eps_truncWeight, size_t min_Nsv, size_t max_Nsv)
 {
 	truncWeight=0.;
 	S=0;
@@ -2541,7 +2541,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
 //	cout << "begin truncate SVD" << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_truncWeight,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
 //	cout << "end truncate SVD" << endl;
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
