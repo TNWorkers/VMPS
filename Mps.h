@@ -704,10 +704,10 @@ info() const
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB";
 //	ss << endl << " •ortho: " << test_ortho();
-	if (truncWeight.maxCoeff() > this->eps_truncWeight)
-	{
-		lout << termcolor::yellow << "Warning: max. local truncWeight=" << truncWeight.maxCoeff() << " is larger than the tolerance " << this->eps_truncWeight << "!" << termcolor::reset << endl;
-	}
+//	if (truncWeight.maxCoeff() > this->eps_truncWeight)
+//	{
+//		lout << termcolor::yellow << "Warning: max. local truncWeight=" << truncWeight.maxCoeff() << " is larger than the tolerance " << this->eps_truncWeight << "!" << termcolor::reset << endl;
+//	}
 	return ss.str();
 }
 

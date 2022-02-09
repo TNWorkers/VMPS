@@ -40,7 +40,7 @@ public:
 	                       string wd, string th_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
 	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
 	                       vector<double> stateSavePoints={}, vector<string> stateSaveLabels={}, 
-	                       int Ntaylor=0);
+	                       int Ntaylor=0, bool CALC_C=true, bool CALC_CHI=true);
 	
 	void apply_operators_on_thermal_state (int Lcell, int dLphys, bool CHECK=true);
 	
@@ -365,7 +365,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
                   string wd, string th_label, bool LOAD_BETA, bool SAVE_BETA,
                   DMRG::VERBOSITY::OPTION VERB, 
                   vector<double> stateSavePoints, vector<string> stateSaveLabels, 
-                  int Ntaylor)
+                  int Ntaylor, bool CALC_C, bool CALC_CHI)
 {
 	for (const auto &spec:specs)
 	{
@@ -519,6 +519,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		BetaFiler << "#T\tβ\tc\te\tchi\tchiz\tchic\ts";
 		if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO) BetaFiler << "\tnphys";
 		if constexpr (Hamiltonian::FAMILY == HEISENBERG) BetaFiler << "\tSpSm\tSzSz";
+		BetaFiler << "truncWeightGlob\ttruncWeightLoc\tMmax";
 		BetaFiler << endl;
 		
 		// using auxiliary Hamiltonian Hchi
@@ -641,30 +642,37 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			
 			double e = avg_H/L;
 			
-			double avg_Hsq = (Hprop.maxPower()==1)? isReal(avg(PhiT,Hprop,Hprop,PhiT)):isReal(avg(PhiT,Hprop,PhiT,2));
-			double avgH_sq = pow(avg_H,2);
-			double c = isReal(beta*beta*(avg_Hsq-avgH_sq))/L;
+			double c = std::nan("0");
+			if (CALC_C)
+			{
+				double avg_Hsq = (Hprop.maxPower()==1)? isReal(avg(PhiT,Hprop,Hprop,PhiT)):isReal(avg(PhiT,Hprop,PhiT,2));
+				double avgH_sq = pow(avg_H,2);
+				c = isReal(beta*beta*(avg_Hsq-avgH_sq))/L;
+			}
 			
 			double chi = std::nan("0");
 			double chiz = std::nan("0");
 			double chic = 0;
-			#ifdef USING_SU2
-			chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
-			chiz = chi/3.;
-			for (int l=0; l<dLphys*L; l+=dLphys)
+			if (CALC_CHI)
 			{
-				chic += isReal(beta*avg(PhiT, Hprop.SdagS(l,dLphys*L/2), PhiT))/3.;
+				#ifdef USING_SU2
+				chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
+				chiz = chi/3.;
+				for (int l=0; l<dLphys*L; l+=dLphys)
+				{
+					chic += isReal(beta*avg(PhiT, Hprop.SdagS(l,dLphys*L/2), PhiT))/3.;
+				}
+				#else
+				chi =  0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SP,0,1.,dLphys), Hprop.Scomptot(SM,0,1.,dLphys), PhiT))/L;
+				chi += 0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SM,0,1.,dLphys), Hprop.Scomptot(SP,0,1.,dLphys), PhiT))/L;
+				chiz = isReal(beta*avg(PhiT, Hprop.Scomptot(SZ,0,1.,dLphys), Hprop.Scomptot(SZ,0,1.,dLphys), PhiT))/L;
+				chi += chiz;
+				for (int l=0; l<dLphys*L; l+=dLphys)
+				{
+					chic += isReal(beta*avg(PhiT, Hprop.SzSz(l,dLphys*L/2), PhiT));
+				}
+				#endif
 			}
-			#else
-			chi =  0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SP,0,1.,dLphys), Hprop.Scomptot(SM,0,1.,dLphys), PhiT))/L;
-			chi += 0.5*isReal(beta*avg(PhiT, Hprop.Scomptot(SM,0,1.,dLphys), Hprop.Scomptot(SP,0,1.,dLphys), PhiT))/L;
-			chiz = isReal(beta*avg(PhiT, Hprop.Scomptot(SZ,0,1.,dLphys), Hprop.Scomptot(SZ,0,1.,dLphys), PhiT))/L;
-			chi += chiz;
-			for (int l=0; l<dLphys*L; l+=dLphys)
-			{
-				chic += isReal(beta*avg(PhiT, Hprop.SzSz(l,dLphys*L/2), PhiT));
-			}
-			#endif
 			
 //			double chi_ = beta*(2.*avg(PhiT,Hchi,PhiT)/L+0.75);
 			
@@ -728,7 +736,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 				lout << ", SpSm(" << L/4 << "," << 3*L/4 << ")=" << SpSm << ", SzSz(" << L/4 << "," << 3*L/4 << ")=" << SzSz;
 				BetaFiler << "\t" << SpSm << "\t" << SzSz;
 			}
-			BetaFiler << "\t" << PhiT.get_truncWeight().sum() << "\t" << PhiT.get_truncWeight().maxCoeff();
+			BetaFiler << "\t" << PhiT.get_truncWeight().sum() << "\t" << PhiT.get_truncWeight().maxCoeff() << "\t" << PhiT.calc_Mmax();
 //			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
 //			{
 //				double Nb = L-1;
