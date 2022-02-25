@@ -134,7 +134,6 @@ public:
 			if      (Sa==SZ)  { out = Sz(orbital); }
 			else if (Sa==SP)  { out = Sp(orbital); }
 			else if (Sa==SM)  { out = Sm(orbital); }
-			else if (Sa==SM)  { out = Sm(orbital); }
 		}
 		return out;
 	};

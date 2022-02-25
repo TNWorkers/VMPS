@@ -140,14 +140,17 @@ fill_SiteOps()
 	
 	F_1s_ = 0.5*Id_1s_-Sz_1s_;
 	
-	Sm_1s_ = 2.*Sbase;
-	Sp_1s_ = Sm_1s_.adjoint();
+	Sp_1s_ = 2.*Sbase;
+	Sm_1s_ = Sp_1s_.adjoint();
 	Sz_1s_ = 0.5 * (Sp_1s_*Sm_1s_ - Sm_1s_*Sp_1s_);
 	
-//	cout << Sbase << endl;
-//	cout << Sp_1s_ << endl;
-//	cout << Sm_1s_ << endl;
-//	cout << Sz_1s_ << endl;
+//	cout << "SpinSite:" << endl;
+//	cout << "Id=" << endl << MatrixXd(Id_1s_.template plain<double>().data) << endl;
+//	cout << "Sbase=" << endl << MatrixXd(Sbase.template plain<double>().data) << endl;
+//	cout << "Sp=" << endl << MatrixXd(Sp_1s_.template plain<double>().data) << endl;
+//	cout << "Sm=" << endl << MatrixXd(Sm_1s_.template plain<double>().data) << endl;
+//	cout << "Sz=" << endl << MatrixXd(Sz_1s_.template plain<double>().data) << endl;
+//	cout << Id_1s_ << endl;
 	
 	Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
 	Qp_1s_ = Sp_1s_*Sp_1s_;
@@ -158,7 +161,8 @@ fill_SiteOps()
 	if constexpr (Symmetry::IS_TRIVIAL)
 	{
 		// The exponentials are only correct for integer spin S=1,2,3,...!
-		for (size_t i=0; i<D; ++i)
+		//for (size_t i=0; i<D; ++i) // <- don't want this basis order
+		for (int i=D-1; i>=0; --i)
 		{
 			int Q1 = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 			int Q2 = +static_cast<int>(Sx2) - 2*static_cast<int>(i);
@@ -175,7 +179,8 @@ fill_SiteOps()
 		}
 	}
 	
-	for (size_t i=0; i<D; ++i)
+	//for (size_t i=0; i<D; ++i) // <- don't want this basis order
+	for (int i=D-1; i>=0; --i)
 	{
 		double m = -S + static_cast<double>(i);
 		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
@@ -199,7 +204,8 @@ fill_basis()
 		assert(D >= 1);
 		double S = 0.5*(D-1);
 		size_t Sx2 = D-1;
-		for (size_t i=0; i<D; ++i)
+		//for (size_t i=0; i<D; ++i) // <- don't want this basis order
+		for (int i=D-1; i>=0; --i)
 		{
 			int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 			inner_dim=1;
@@ -218,7 +224,8 @@ fill_basis()
 		double S = 0.5*(D-1);
 		size_t Sx2 = D-1;
 		
-		for (size_t i=0; i<D; ++i)
+		//for (size_t i=0; i<D; ++i) // <- don't want this basis order
+		for (int i=D-1; i>=0; --i)
 		{
 			int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 			if constexpr (Symmetry::Nq>1)
@@ -255,7 +262,6 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
-//			cout << "Sa=" << Sa << endl;
 			assert(Sa != SX and Sa != iSY);
 			
 			typename Symmetry::qType out;

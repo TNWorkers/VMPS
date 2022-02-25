@@ -615,6 +615,26 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		cout << termcolor::underline;
 		lout << GlobParam.CALC_S_ON_EXIT;
 		cout << termcolor::reset << endl;
+		
+		lout << "• bond dim. sequence: ";
+		size_t M = Vout.state.max_Nsv;
+		if (DynParam.Mincr_per(0) == 0)
+		{
+			size_t Mnew = max(static_cast<size_t>(DynParam.Mincr_rel(0) * M), M + DynParam.Mincr_abs(0));
+			M = min(Mnew, GlobParam.Mlimit);
+			lout << 0 << ":" << M << " ";
+		}
+		for (int j=1; j<GlobParam.max_halfsweeps; ++j)
+		{
+			if (j%DynParam.Mincr_per(j) == 0)
+			{
+				size_t Mnew = max(static_cast<size_t>(DynParam.Mincr_rel(j) * M), M + DynParam.Mincr_abs(j));
+				M = min(Mnew, GlobParam.Mlimit);
+				lout << j << ":" << M << " ";
+			}
+		}
+		lout << endl;
+		
 		lout << endl;
 		
 //		Vout.state.graph("init");

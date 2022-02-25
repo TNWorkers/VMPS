@@ -40,7 +40,7 @@ double dt;
 double e_exact;
 size_t L, Ly;
 int N;
-size_t Dinit, max_iter, min_iter;
+size_t Minit, max_iter, min_iter;
 double tol_eigval, tol_var, tol_state;
 bool ISING, HEIS2, HEIS3, SSH, ALL;
 size_t D;
@@ -155,7 +155,7 @@ int main (int argc, char* argv[])
 	size_t j0 = (args.get<int>("j0",0))%L;
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
-	Dinit = args.get<double>("Dinit",5);    // bond dimension
+	Minit = args.get<double>("Minit",5);    // bond dimension
 	tol_eigval = args.get<double>("tol_eigval",1e-5);
 	tol_var = args.get<double>("tol_var",1e-4);
 	tol_state = args.get<double>("tol_state",1.);
@@ -182,7 +182,7 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = tol_state;
 	GlobParams.min_iterations = min_iter;
 	GlobParams.max_iterations = max_iter;
-	GlobParams.Dinit = Dinit;
+	GlobParams.Minit = Minit;
 	
 	Lattice2D Square1cell({L,Ly},{false,true});
 	Geometry2D Geo1cell(Square1cell, SNAKE, {1.});
@@ -224,7 +224,7 @@ int main (int argc, char* argv[])
 	MODEL::uSolver DMRG(VERB);
 	Eigenstate<MODEL::StateUd> g;
 	GlobParams.Qinit = 6;
-	GlobParams.Dinit = 10;
+	GlobParams.Minit = 10;
 	DMRG.userSetGlobParam();
 	DMRG.GlobParam = GlobParams;
 	DMRG.edgeState(H, g, Qc);

@@ -520,7 +520,7 @@ int main (int argc, char* argv[])
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",20ul);
+	size_t end_2site = args.get<size_t>("end_2site",0ul);
 	int period_2site = args.get<int>("period_2site",2ul);
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	

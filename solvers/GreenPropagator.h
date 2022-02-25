@@ -1078,14 +1078,14 @@ propagate_cell (int x0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<
 				//-------------------------------------------------------------------------------------------------
 			}
 			
-			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
+			/*if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
 				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
 				}
-			}
+			}*/
 		}
 		tval = tsteps.head(t.index()+1).sum();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;
@@ -1374,14 +1374,14 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 			}
 			//---------------------------------------------------------------------------------------------------------------
 			
-			if (Psi[z][i].get_truncWeight().sum() > 0.5*tol_compr)
+			/*if (Psi[z][i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
 				Psi[z][i].max_Nsv = min(static_cast<size_t>(max(Psi[z][i].max_Nsv*1.1, Psi[z][i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[z][i].max_Nsv << termcolor::reset << endl;
 				}
-			}
+			}*/
 		}
 		tval = tsteps.head(t.index()+1).sum();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;

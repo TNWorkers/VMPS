@@ -312,7 +312,7 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
 	for (int l=0; l<OpsPlain.size(); ++l)
 	{
-		OpsPlain[l] = Ops[l].template cast<complex<double> >(). template plain<double>();
+		OpsPlain[l] = Ops[l].template cast<complex<double> >(). template plain<complex<double> >();
 	}
 	
 	Mout.setLocalSum(OpsPlain, phases_x_factor);

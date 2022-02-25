@@ -295,6 +295,7 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 									}
 									else
 									{
+										//lout << "contract_R quple=" << quple[0] << ", " << quple[1] << ", " << quple[2] << endl;
 										boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].rows()][1]);
 										Mtmpvec[a][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);

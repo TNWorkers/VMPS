@@ -306,7 +306,7 @@ public:
 	template<typename MpoScalar>
 	ArrayXXcd intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar> &Obeta, int Lx, 
 	                       double kmin=0., double kmax=2.*M_PI, int kpoints=51, 
-	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT, double tol=1e-12);
 	
 	/**
 	Calculates the static structure factor between cells for one k-point only. See the more general function above.
@@ -330,7 +330,7 @@ public:
 	template<typename MpoScalar>
 	ArrayXXcd SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, const vector<Mpo<Symmetry,MpoScalar> > &Obeta, int Lx,
 	              double kmin, double kmax, int kpoints, 
-	              DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	              DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT, double tol=1e-12);
 	
 	/**
 	Calculates the full static structure factor between cells for one k-point only. See the more general function above.
@@ -346,6 +346,7 @@ public:
 	size_t N_sites;
 	size_t Mmax, Nqmax;
 	double eps_svd = 1e-13;
+	double eps_truncWeight = 1e-14;
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
 	
@@ -3064,7 +3065,7 @@ entanglementSpectrumLoc (size_t loc) const
 template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 ArrayXXcd Umps<Symmetry,Scalar>::
-intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar> &Obeta, int Lx, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
+intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar> &Obeta, int Lx, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB, double tol)
 {
 	double t_tot=0.;
 	double t_LReigen=0.;
@@ -3078,19 +3079,24 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	Stopwatch<> LReigenTimer;
 	
 	// T_L^R, right eigenvector
-	Reigen_LR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, 1e-12).state;
+	Reigen_LR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, tol).state;
 	// T_L^R, left eigenvector
-	Leigen_LR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc, 100ul, 1e-12).state;
+	Leigen_LR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc, 100ul, tol).state;
 	// T_R^L, right eigenvector
-	Reigen_RL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, 1e-12).state;
+	Reigen_RL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, tol).state;
 	// T_R^L, left eigenvector
-	Leigen_RL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], inBasis(0), inBasis(0), qloc, 100ul, 1e-12).state;
+	Leigen_RL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], inBasis(0), inBasis(0), qloc, 100ul, tol).state;
 	
 	t_LReigen += LReigenTimer.time();
 	
 	// b (edge tensor of contraction) for alfa, beta and exp(-i*Lcell*k), exp(+i*Lcell*k)
+	// Note: AC is set to the locality of beta in the bra state and to alfa in the ket state
 	
 	Stopwatch<> ContractionTimer;
+	
+	lout << Oalfa.info() << endl;
+	lout << Obeta.info() << endl;
+	//lout << Oalfa.print(true) << endl;
 	
 	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Lid; Lid.setIdentity(1,1,inBasis(0));
 	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1));
@@ -3115,6 +3121,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.reversed.W[l], A[GAUGE::L][l], 
 		           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
 	}
+	
 	// term exp(-i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bmbetaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.reversed.W[N_sites-1], A[GAUGE::R][N_sites-1], 
@@ -3167,7 +3174,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
 		assert(dim(bmalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fmalfa;
-		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-12, true);
+		Gimli.solve_linear(Tm, bmalfa, Fmalfa, tol, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
 			lout << ik << ", k/π=" << kval/M_PI << ", term exp(-i*Lcell*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
@@ -3178,7 +3185,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		Gimli.set_dimK(min(100ul,dim(bpalfa)));
 		assert(dim(bpalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fpalfa;
-		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-12, true);
+		Gimli.solve_linear(Tp, bpalfa, Fpalfa, tol, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
 			lout << ik << ", k/π=" << kval/M_PI << ", term exp(+i*Lcell*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
@@ -3232,7 +3239,9 @@ SFpoint (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa
 	
 	ArrayXXcd Sijk = cellAvg;
 	
+	#ifndef UMPS_DONT_PARALLELIZE_SF_LOOPS
 	#pragma omp parallel for collapse(2)
+	#endif
 	for (size_t i0=0; i0<Lx; ++i0)
 	for (size_t j0=0; j0<Lx; ++j0)
 	{
@@ -3254,7 +3263,7 @@ template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 ArrayXXcd Umps<Symmetry,Scalar>::
 SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, const vector<Mpo<Symmetry,MpoScalar> > &Obeta, 
-    int Lx, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
+    int Lx, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB, double tol)
 {
 	assert(Oalfa.size() == Lx and Obeta.size() == Lx and cellAvg.rows() == Lx and cellAvg.cols() == Lx);
 	
@@ -3269,11 +3278,13 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		}
 	}
 	
+	#ifndef UMPS_DONT_PARALLELIZE_SF_LOOPS
 	#pragma omp parallel for collapse(2)
+	#endif
 	for (size_t i0=0; i0<Lx; ++i0)
 	for (size_t j0=0; j0<Lx; ++j0)
 	{
-		Sijk[i0][j0] = intercellSF(Oalfa[i0],Obeta[j0],Lx,kmin,kmax,kpoints,VERB);
+		Sijk[i0][j0] = intercellSF(Oalfa[i0],Obeta[j0],Lx,kmin,kmax,kpoints,VERB,tol);
 		Sijk[i0][j0].col(1) += cellAvg(i0,j0);
 	}
 	
@@ -3288,9 +3299,10 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
 		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
 		// Attention: order [j0][i0] in argument is correct!
+		// Or maybe not?...
 	}
 	
 	return res;
 }
 
-#endif //VANILLA_Umps
+#endif

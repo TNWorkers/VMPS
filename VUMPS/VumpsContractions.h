@@ -47,12 +47,12 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
 		assert(1==0 and "Unknown VMPS::DIRECTION::OPTION in calc_LReigen!");
 	}
 	
-	ArnoldiSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,complex<double> > > Arnie;
+	ArnoldiSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,complex<double> > > Arnie(1,tol_input);
 	Arnie.set_dimK(dimK);
 	
-	complex<double> lambda;
-	
-	Arnie.calc_dominant(T,LRtmp,lambda,tol_input);
+	//Arnie.calc_dominant(T,LRtmp,lambda,tol_input);
+	Arnie.calc_dominant(T,LRtmp);
+	complex<double> lambda = Arnie.get_lambda(0);
 	
 	if (abs(lambda.imag()) > tol_input)
 	{

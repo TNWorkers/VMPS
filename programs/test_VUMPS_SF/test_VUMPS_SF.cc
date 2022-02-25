@@ -1,4 +1,7 @@
-#define LANCZOS_MAX_ITERATIONS 1e2
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
 
 #define DMRG_DONT_USE_OPENMP
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -31,17 +34,15 @@ using namespace Eigen;
 #include "VUMPS/UmpsCompressor.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
-#include "models/HeisenbergU1XXZ.h"
-#include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
-#include "models/HubbardU1xU1.h"
-#include "models/Hubbard.h"
-#include "models/HubbardSU2xSU2.h"
-#include "models/HubbardSU2.h"
-#include "models/HubbardSU2xU1.h"
-#include "models/KondoSU2xU1.h"
-#include "models/KondoU1xU1.h"
-#include "models/KondoU0xSU2.h"
+//#include "models/HubbardU1xU1.h"
+//#include "models/Hubbard.h"
+//#include "models/HubbardSU2xSU2.h"
+//#include "models/HubbardSU2.h"
+//#include "models/HubbardSU2xU1.h"
+//#include "models/KondoSU2xU1.h"
+//#include "models/KondoU1xU1.h"
+//#include "models/KondoU0xSU2.h"
 
 double Jxy, Jz, J, Jprime, tPrime, Bx, Bz;
 double U, mu;
@@ -49,7 +50,7 @@ double dt;
 double e_exact;
 size_t L, Ly;
 int N;
-size_t Dinit, max_iter, min_iter;
+size_t Minit, max_iter, min_iter;
 double tol_eigval, tol_var, tol_state;
 bool ISING, HEIS2, HEIS3, SSH, ALL;
 size_t D;
@@ -77,7 +78,7 @@ void fill_OdagO_SU2 (const Eigenstate<typename Model::StateUd> &g)
 		}
 	}
 	Lattice2D Square({L,Ly},{false,true});
-	Geometry2D Geo(Square, SNAKE, 1.);
+	Geometry2D Geo(Square, SNAKE, {1.});
 	
 	#pragma omp parallel for collapse(5)
 	for (size_t x0=0; x0<L; ++x0)
@@ -99,7 +100,7 @@ complex<double> calc_FT (double kx, int iky)
 	ArrayXXcd FTintercell(L,L);
 
 	Lattice2D Square({L,Ly},{false,true});
-	Geometry2D Geo(Square, SNAKE, 1.);
+	Geometry2D Geo(Square, SNAKE, {1.});
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -164,7 +165,7 @@ int main (int argc, char* argv[])
 	size_t j0 = (args.get<int>("j0",0))%L;
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
-	Dinit = args.get<double>("Dinit",5);    // bond dimension
+	Minit = args.get<double>("Minit",5);    // bond dimension
 	tol_eigval = args.get<double>("tol_eigval",1e-5);
 	tol_var = args.get<double>("tol_var",1e-4);
 	tol_state = args.get<double>("tol_state",1.);
@@ -201,16 +202,16 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = tol_state;
 	GlobParams.min_iterations = min_iter;
 	GlobParams.max_iterations = max_iter;
-	GlobParams.Dinit = Dinit;
+	GlobParams.Minit = Minit;
 	
 	if (U1)
 	{
-		// typedef VMPS::HeisenbergU1XXZ MODEL;
-		// MODEL H(L,{{"Jxy",Jxy},{"Jz",Jz},{"D",D},{"Ly",Ly},{"maxPower",1ul}}, BC::INFINITE);
-		// qarray<1> Qc = {0};
-		typedef VMPS::HeisenbergXXZ MODEL;
-		MODEL H(L,{{"Bx",Bx},{"Jz",Jz},{"D",D},{"maxPower",1ul}},BC::INFINITE);
-		qarray<0> Qc = {};
+		typedef VMPS::HeisenbergU1 MODEL;
+		MODEL H(L,{{"J",0.},{"Jxy",Jxy},{"Jz",Jz},{"D",D},{"Ly",Ly},{"maxPower",1ul}}, BC::INFINITE);
+		qarray<1> Qc = {0};
+//		typedef VMPS::Heisenberg MODEL;
+//		MODEL H(L,{{"Bx",Bx},{"Jz",Jz},{"D",D},{"maxPower",1ul}},BC::INFINITE);
+//		qarray<0> Qc = {};
 		
 		lout << H.info() << endl;
 		
@@ -230,10 +231,10 @@ int main (int argc, char* argv[])
 		
 		for (size_t l=0; l<L; ++l)
 		{
-			// O[l]    = H.Scomp(SM,l);
-			// Odag[l] = H.Scomp(SP,l);
-			O[l]    = H.Scomp(SZ,l);
-			Odag[l] = H.Scomp(SZ,l);
+			O[l]    = H.Scomp(SM,l);
+			Odag[l] = H.Scomp(SP,l);
+//			O[l]    = H.Scomp(SZ,l);
+//			Odag[l] = H.Scomp(SZ,l);
 		}
 		
 		for (size_t l=0; l<L; ++l)
@@ -360,10 +361,10 @@ int main (int argc, char* argv[])
 	if (SU2)
 	{
 		Lattice2D Square1cell({L,Ly},{false,true});
-		Geometry2D Geo1cell(Square1cell, SNAKE, 1.);
+		Geometry2D Geo1cell(Square1cell, SNAKE, {1.});
 
 		Lattice2D Square2cell({2*L,Ly},{false,true});
-		Geometry2D Geo2cell(Square2cell, SNAKE, 1.);
+		Geometry2D Geo2cell(Square2cell, SNAKE, {1.});
 		
 		ArrayXXd Jarray = J * Geo2cell.hopping();
 		
@@ -398,7 +399,7 @@ int main (int argc, char* argv[])
 		MODEL::uSolver DMRG(VERB);
 		Eigenstate<MODEL::StateUd> g;
 		GlobParams.Qinit = 6;
-		GlobParams.Dinit = 10;
+		GlobParams.Minit = 10;
 		DMRG.userSetGlobParam();
 		DMRG.GlobParam = GlobParams;
 		DMRG.edgeState(H, g, Qc);
@@ -407,8 +408,8 @@ int main (int argc, char* argv[])
 //		int iky = Ly/2;
 		{
 			Lattice2D Square({L,Ly},{false,true});
-			Geometry2D GeoSnake(Square, SNAKE, 1.);
-			Geometry2D GeoChess(Square, CHESSBOARD, 1.);
+			Geometry2D GeoSnake(Square, SNAKE, {1.});
+			Geometry2D GeoChess(Square, CHESSBOARD, {1.});
 			
 			for (size_t x=0; x<L; ++x)
 			{

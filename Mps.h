@@ -3468,7 +3468,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	size_t loc2 = this->pivot+distance;
 	
 //	assert(O.locality() >= loc1 and O.locality() <= loc2);
-//	lout << "loc1=" << loc1 << ", O.locality()=" << O.locality() << ", loc2=" << loc2 << endl;
+//	lout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
@@ -3476,7 +3476,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	
 	for (size_t l=0; l<distance+1; ++l)
 	{
-		contract_L(L, A[loc1], O.W_at(loc1), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
+		contract_L(L, A[l], O.W_at(l), A[l], O.locBasis(l), O.opBasis(l), Lnext);
 		L = Lnext;
 		Lnext.clear();
 	}
