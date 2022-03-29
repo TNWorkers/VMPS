@@ -636,8 +636,8 @@ transpose() const
 	// new dict with reversed keys {qin,qout}->{qout,qin}
 	for (auto it=dict.begin(); it!=dict.end(); ++it)
 	{
-		auto qin  = get<0>(it->first);
-		auto qout = get<1>(it->first);
+		auto qin  = Symmetry::flip(get<0>(it->first));
+		auto qout = Symmetry::flip(get<1>(it->first));
 		Aout.dict.insert({{qout,qin}, it->second});
 	}
 	

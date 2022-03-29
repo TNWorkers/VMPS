@@ -150,7 +150,6 @@ fill_SiteOps()
 //	cout << "Sp=" << endl << MatrixXd(Sp_1s_.template plain<double>().data) << endl;
 //	cout << "Sm=" << endl << MatrixXd(Sm_1s_.template plain<double>().data) << endl;
 //	cout << "Sz=" << endl << MatrixXd(Sz_1s_.template plain<double>().data) << endl;
-//	cout << Id_1s_ << endl;
 	
 	Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
 	Qp_1s_ = Sp_1s_*Sp_1s_;

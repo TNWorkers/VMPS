@@ -3100,6 +3100,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	
 	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Lid; Lid.setIdentity(1,1,inBasis(0));
 	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1));
+	
 	// term exp(-i*Lcell*k), alfa
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bmalfaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), A[GAUGE::C][0], 
@@ -3121,6 +3122,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.reversed.W[l], A[GAUGE::L][l], 
 		           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
 	}
+	assert(bpalfaTripod[0].size() > 0);
 	
 	// term exp(-i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bmbetaTripod(N_sites);
@@ -3132,6 +3134,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		contract_R(bmbetaTripod[l+1], A[GAUGE::L][l], Obeta.reversed.W[l], A[GAUGE::R][l], 
 		           Obeta.locBasis(l), Obeta.opBasis(l), bmbetaTripod[l]);
 	}
+	assert(bmbetaTripod[0].size() > 0);
 	
 	// term exp(+i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bpbetaTripod(N_sites);
@@ -3146,7 +3149,6 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	
 	// wrap bmalfa, bpalfa by MpoTransferVector for GMRES
 	// Note: the Tripods has only a single quantum number with inner dimension 1 on their mid leg. We need to pass this information to MpoTransferVector.
-	assert(bpalfaTripod[0].size() > 0);
 	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >(), make_pair(bmalfaTripod[N_sites-1].mid(0),0));
 	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>(), make_pair(bpalfaTripod[0].mid(0),0));
 	
@@ -3297,7 +3299,8 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		double kval = Sijk[i0][j0](ik,0).real();
 		res(ik,0) = kval;
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
+		//res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
+		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[j0][i0](ik,1);
 		// Attention: order [j0][i0] in argument is correct!
 		// Or maybe not?...
 	}

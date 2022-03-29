@@ -64,7 +64,7 @@ typedef typename MatrixType::Scalar Scalar;
 	 */
 	size_t dim = 0;
 	inline std::size_t size() const {return dim;}
-
+	
 	/**
 	 * Vector of all incoming quantum numbers.
 	 * The entries are arrays of size \p Nlegs. The sorting is according to the following convention:

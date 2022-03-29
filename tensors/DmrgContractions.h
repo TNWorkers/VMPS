@@ -80,6 +80,7 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 						factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 						                                    Lold.mid(qL),            qOp[k],   quple[2],
 						                                    Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
+						//lout << "cgc=" << factor_cgc << ", " << Aket[s2].in[qAket] << ", " << Aket[s2].out[qAket] << ", " << Lold.mid(qL) << ", " << qOp[k] << ", " << quple[2] << ", " << Abra[s1].in[qAbra] << ", " << Abra[s1].out[qAbra] << endl;
 					}
 					else
 					{
@@ -295,7 +296,6 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 									}
 									else
 									{
-										//lout << "contract_R quple=" << quple[0] << ", " << quple[1] << ", " << quple[2] << endl;
 										boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].rows()][1]);
 										Mtmpvec[a][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);

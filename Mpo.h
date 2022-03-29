@@ -538,7 +538,7 @@ template<typename CouplScalar>
 void Mpo<Symmetry,Scalar>::
 calc_reversedData_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, double tolerance)
 {
-    Mpo<Symmetry,Scalar> mpo_rev(this->N_sites, this->get_qTot(), "Reversed(temp)", true, true, this->get_boundary_condition(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry,Scalar> mpo_rev(this->N_sites, this->get_qTot(), "Reversed(temp)", false, false, this->get_boundary_condition(), DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         mpo_rev.set_qPhys(loc, this->qPhys[this->N_sites-1-loc]);

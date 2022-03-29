@@ -96,69 +96,69 @@ public:
 	typedef typename Symmetry::qType qType;
 	typedef MatrixType_ MatrixType;
 	typedef typename MatrixType::Scalar Scalar;
-
+	
 	/**Does nothing.*/
 	SiteOperatorQ() {};
-
+	
 	SiteOperatorQ( const qType& Q_in, const Qbasis<Symmetry>& basis_in, std::string label_in="" )
-		: Q_(Q_in),basis_(basis_in),label_(label_in) {};
-
+	:Q_(Q_in), basis_(basis_in), label_(label_in)
+	{};
+	
 	SiteOperatorQ( const qType& Q_in, const Qbasis<Symmetry>& basis_in, const base& data_in )
-		:Q_(Q_in),basis_(basis_in),data_(data_in) {};
+	:Q_(Q_in), basis_(basis_in), data_(data_in)
+	{};
 	
 	base& data() {return data_;}
 	const base& data() const {return data_;}
-
+	
 	qType& Q() {return Q_;}
 	const qType& Q() const {return Q_;}
-
+	
 	Qbasis<Symmetry>& basis() {return basis_;}
 	const Qbasis<Symmetry>& basis() const {return basis_;}
-
+	
 	std::string& label() {return label_;}
 	const std::string& label() const {return label_;}
 	
 	MatrixType operator() ( const qType& bra, const qType& ket ) const;
 	MatrixType& operator() ( const qType& bra, const qType& ket );
-
+	
 	Scalar operator() ( const std::string& bra, const std::string& ket ) const;
 	Scalar& operator() ( const std::string& bra, const std::string& ket );
-
+	
 	SiteOperatorQ<Symmetry,MatrixType_>& operator+= ( const SiteOperatorQ<Symmetry,MatrixType_>& Op );
 	SiteOperatorQ<Symmetry,MatrixType_>& operator-= ( const SiteOperatorQ<Symmetry,MatrixType_>& Op );
-
+	
 	SiteOperatorQ<Symmetry,MatrixType_> adjoint() const;
-
+	
 	SiteOperatorQ<Symmetry,MatrixType_> hermitian_conj() const;
-
+	
 	void setZero();
 	void setIdentity();
 	void setRandom();
 	
-	static SiteOperatorQ<Symmetry,MatrixType_> prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
-													 const qType& target );
-	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
-														  const qType& target );
+	static SiteOperatorQ<Symmetry,MatrixType_> prod(const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2, const qType& target);
+	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2, const qType& target );
 	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2)
-		{
-			auto target = Symmetry::reduceSilent(O1.Q(),O2.Q());
-			assert(target.size() == 1 and "Use other outerprod!");
-			return SiteOperatorQ<Symmetry,MatrixType_>::outerprod(O1,O2,target[0]);
-		}
-			
+	{
+		auto target = Symmetry::reduceSilent(O1.Q(),O2.Q());
+		assert(target.size() == 1 and "Use other outerprod!");
+		return SiteOperatorQ<Symmetry,MatrixType_>::outerprod(O1,O2,target[0]);
+	}
+	
 	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=Eigen::DecompositionOptions::EigenvaluesOnly) const;
-
+	
 	typename MatrixType_::Scalar norm() const;
-
+	
 	template<typename Scalar>
 	SiteOperator<Symmetry,Scalar> plain() const;
 	
 	// template<typename Scalar>
 	// SiteOperator<Symmetry,Scalar> fullPlain(int m) const;
-
+	
 	/**Prints the operator.*/
-	std::string print(bool PRINT_BASIS=false) const;
-
+	std::string print (bool PRINT_BASIS=false) const;
+	
 	template<typename OtherScalar>
 	SiteOperatorQ<Symmetry,Eigen::Matrix<OtherScalar, -1, -1 > > cast() const
 	{
@@ -171,6 +171,7 @@ public:
 	}
 	
 private:
+	
 	base data_;
 	qType Q_;
 	Qbasis<Symmetry> basis_;

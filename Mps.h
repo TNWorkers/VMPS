@@ -3462,13 +3462,14 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 {
 //	cout << O.info() << endl;
 	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
-	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
+	//assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
 	
 	size_t loc1 = this->pivot;
 	size_t loc2 = this->pivot+distance;
 	
 //	assert(O.locality() >= loc1 and O.locality() <= loc2);
 //	lout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;
+//	lout << O.Qtarget() << endl;
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;

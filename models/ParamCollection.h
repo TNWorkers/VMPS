@@ -1913,6 +1913,12 @@ ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=
 				
 				if (l%2==0 and l+1<L) res(l,l+1) = tPrime;
 				if (l%2==1 and l+3<L) res(l,l+3) = tPrime;
+				
+//				// different enumeration, doesn't seem to be correct:
+//				if (l+1<L) res(l,l+1) = (l%4==0 or l%4==2)? tPara:0.;
+//				if (l+3<L) res(l,l+3) = (l%4==1 or l%4==3)? tPara:0.;
+//				if (l+1<L) res(l,l+1) = (l%4==1 or l%4==3)? tPerp:0.;
+//				if (l+2<L) res(l,l+2) = tPrime;
 			}
 		}
 	}
