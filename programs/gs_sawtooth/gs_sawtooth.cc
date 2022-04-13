@@ -131,8 +131,8 @@ int main (int argc, char* argv[])
 	GlobParam.CALC_S_ON_EXIT = false;
 	
 	DMRG::CONTROL::DYN  DynParam;
-	double eps_svd = args.get<double>("eps_svd",1e-10);
-	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
+	double eps_truncWeight = args.get<double>("eps_truncWeight",1e-10);
+	DynParam.eps_truncWeight = [eps_truncWeight] (size_t i) {return eps_truncWeight;};
 	
 	size_t Mincr_per = args.get<size_t>("Mincr_per",2ul);
 	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
