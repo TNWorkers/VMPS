@@ -171,14 +171,14 @@ public:
 	
 	template<typename EpsScalar>
 	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
-	truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
+	truncateSVD (size_t minKeep, size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
 	
 	template<typename EpsScalar>
-	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const
+	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD (size_t minKeep, size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const
 	{
 		double S_dumb;
 		map<qarray<Symmetry::Nq>,Eigen::ArrayXd> SVspec_dumb;
-		return truncateSVD(maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
+		return truncateSVD(minKeep, maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
 	}
 	
 	pair<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
@@ -714,7 +714,7 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 template<typename Symmetry, typename MatrixType_>
 template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
-truncateSVD(size_t maxKeep, EpsScalar eps_truncWeight, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
+truncateSVD (size_t minKeep, size_t maxKeep, EpsScalar eps_truncWeight, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,Eigen::ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
 {
 	entropy = 0.;
 	truncWeight = 0;
@@ -787,18 +787,34 @@ truncateSVD(size_t maxKeep, EpsScalar eps_truncWeight, double &truncWeight, doub
 	//lout << "all=" << allSV.size() << ", discarded=" << numberOfDiscardedStates << ", truncWeight=" << truncWeight << ", eps_truncWeight=" << eps_truncWeight << endl;
 	int numberOfKeptStates = allSV.size()-numberOfDiscardedStates;
 	
-	if (numberOfKeptStates < maxKeep)
+	if (numberOfKeptStates <= maxKeep and numberOfKeptStates >= min(minKeep,numberOfStates))
 	{
 		allSV.resize(numberOfKeptStates);
 	}
-	else
+	else if (numberOfKeptStates <= maxKeep and numberOfKeptStates <= min(minKeep,numberOfStates))
 	{
-		numberOfKeptStates = min(maxKeep,numberOfStates);
+		numberOfKeptStates = min(minKeep,numberOfStates);
+		truncWeight = 0;
 		for (int i=allSV.size()-1; i>numberOfKeptStates; --i)
 		{
 			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
 		}
 		allSV.resize(numberOfKeptStates);
+	}
+	else if (numberOfKeptStates > maxKeep)
+	{
+		numberOfKeptStates = min(maxKeep,numberOfStates);
+		truncWeight = 0;
+		for (int i=allSV.size()-1; i>numberOfKeptStates; --i)
+		{
+			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+		}
+		allSV.resize(numberOfKeptStates);
+	}
+	else
+	{
+		lout << "numberOfKeptStates=" << numberOfKeptStates << ", minKeep=" << minKeep << ", maxKeep=" << maxKeep << ", numberOfStates=" << numberOfStates << endl;
+		throw;
 	}
 	
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;

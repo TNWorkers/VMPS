@@ -882,6 +882,22 @@ Mpo<Symmetry,Scalar> sum (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Sca
 }
 
 template<typename Symmetry, typename Scalar=double>
+Mpo<Symmetry,Scalar> diff (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
+{
+	MpoTerms<Symmetry,Scalar> Terms1 = H1;
+	Terms1.set_verbosity(VERBOSITY);
+	Terms1.calc(1);
+	auto minusH2 = H2;
+	minusH2.scale(-1.);
+	MpoTerms<Symmetry,Scalar> Terms2 = minusH2;
+	Terms2.set_verbosity(VERBOSITY);
+	Terms2.calc(1);
+	MpoTerms<Symmetry,Scalar> Diff_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
+	Mpo<Symmetry,Scalar> Diff_asMpo(Diff_asTerms);
+	return Diff_asMpo;
+}
+
+template<typename Symmetry, typename Scalar=double>
 Mpo<Symmetry,Scalar> prod (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, const qarray<Symmetry::Nq> &Qtot=Symmetry::qvacuum(), DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	MpoTerms<Symmetry,Scalar> Terms1 = H1;

@@ -578,7 +578,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //		lout << "Hchi: " << Hchi.info() << endl;
 //		lout << endl;
 		
-		Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hpropsq;
+		Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> Hpropsq;
 		if (Ntaylor>0)
 		{
 			lout << "computing H^2..." << endl;
@@ -586,7 +586,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			lout << "H^2 done!"  << endl;
 		}
 		
-		Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> U;
+		Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> U;
 		
 		for (int i=0; i<betasteps.size(); ++i)
 		{
@@ -597,12 +597,12 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			{
 				if (i==0 or betasteps[i]!=betasteps[i-1])
 				{
-					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Id = Hprop.Identity(PhiT.locBasis());
+					Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> Id = Hprop.Identity(PhiT.locBasis());
 					
-					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo1 = Hprop;
+					Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> Hmpo1 = Hprop;
 					Hmpo1.scale(-0.5*betasteps[i]); // -1/2*dβ*H
 					
-					Mpo<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> Hmpo2 = Hpropsq;
+					Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> Hmpo2 = Hpropsq;
 					Hmpo2.scale(0.125*betasteps[i]*betasteps[i]); // +1/8*(dβ*H)^2
 					
 					lout << "computing 1-1/2*dβ*H+1/8*(dβ*H)^2 for dβ=" << betasteps[i] << endl;

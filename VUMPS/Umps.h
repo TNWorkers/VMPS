@@ -2697,7 +2697,7 @@ truncate (bool SET_AC_RANDOM)
 		// cout << "**********************l=" << l << "*************************" << endl;
 		// cout << C[l].print(false) << endl;
 		double trunc=0.;
-		auto [trunc_U,Sigma,trunc_Vdag] = C[l].truncateSVD(max_Nsv,this->eps_truncWeight,trunc,true); //true: PRESERVE_MULTIPLETS
+		auto [trunc_U,Sigma,trunc_Vdag] = C[l].truncateSVD(min_Nsv,max_Nsv,this->eps_truncWeight,trunc,true); //true: PRESERVE_MULTIPLETS
 		U[l] = trunc_U;
 		Vdag[l] = trunc_Vdag;
 		C[l] = Sigma;

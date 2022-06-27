@@ -5,7 +5,7 @@
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
-#define USE_OLD_COMPRESSION
+//#define USE_OLD_COMPRESSION
 
 //#define DMRG_CONTRACTLANDR_PARALLELIZE
 //#define DMRG_PARALLELIZE_GRALF
@@ -262,6 +262,12 @@ map<string,int> make_Lmap()
 	m["SQR20"] = 20;
 	
 	m["Mn32"] = 32;
+	
+	m["fcc38"] = 38;
+	m["fcc68"] = 68;
+	m["fcc92"] = 92;
+	m["fcc116"] = 116;
+	
 	return m;
 }
 
@@ -614,6 +620,14 @@ int main (int argc, char* argv[])
 			Mn4spins.push_back(transform[27]);
 			Mn4spins.push_back(transform[31]);
 		}
+	}
+	else if (MOL.at(0) == 'f' and MOL.at(1) == 'c' and MOL.at(2) == 'c')
+	{
+		ArrayXXd hopping1 = loadMatrix(make_string("fcc",L,"_d=1.dat"));
+		ArrayXXd hopping2 = loadMatrix(make_string("fcc",L,"_d=2.dat"));
+		hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
+		auto res = compress_CuthillMcKee(hopping,true);
+		hopping = res;
 	}
 	else
 	{

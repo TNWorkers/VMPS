@@ -1,4 +1,4 @@
-#ifdef BLAS
+#if defined(BLAS) or defined(BLIS) or defined(MKL)
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif

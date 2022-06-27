@@ -1370,10 +1370,10 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	{
 		//make sure to perform at least one measurement before expanding the basis
 		FORCE_DO_SOMETHING = true;
-		cout << "Performing a measurement for N_iterations=" << N_iterations << endl;
+		lout << termcolor::bold << "Performing a measurement for N_iterations=" << N_iterations << termcolor::reset << endl;
 		DynParam.doSomething(N_iterations);
 		FORCE_DO_SOMETHING = false;
-
+		
 		Stopwatch<> ExpansionTimer;
 		size_t current_M = Vout.state.calc_Mmax();
 		size_t deltaM = min(max(static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M), DynParam.Mincr_abs(N_iterations)),
@@ -1979,7 +1979,7 @@ expand_basis (size_t loc, size_t DeltaM, const MpHamiltonian &H, Eigenstate<Umps
 	
 	// SVD-decompose NAAN
 	double trunc;
-	auto [U,Sigma,Vdag] = NAAN.truncateSVD(DeltaM,Vout.state.eps_svd,trunc,true); //true: PRESERVE_MULTIPLETS
+	auto [U,Sigma,Vdag] = NAAN.truncateSVD(1ul,DeltaM,Vout.state.eps_svd,trunc,true); //true: PRESERVE_MULTIPLETS
 	
 	// Biped<Symmetry,MatrixType> U, Vdag;
 
@@ -2522,7 +2522,7 @@ expand_basis2 (size_t DeltaM, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,S
 		
 		// SVD-decompose NAAN
 		double trunc;
-		auto [U,Sigma,Vdag] = NAAN.truncateSVD(DeltaM,state_ref.eps_svd,trunc,false); //true: PRESERVE_MULTIPLETS
+		auto [U,Sigma,Vdag] = NAAN.truncateSVD(1ul,DeltaM,state_ref.eps_svd,trunc,false); //true: PRESERVE_MULTIPLETS
 		// cout << "U:" << endl << U.print(false) << endl << "Sigma:" << endl << Sigma.print(false) << "Vdag:" << Vdag.print(false) << endl;
 		
 		//calc P

@@ -2542,7 +2542,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
 //	cout << "begin truncate SVD" << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_truncWeight,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(min_Nsv,max_Nsv,eps_truncWeight,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
 //	cout << "end truncate SVD" << endl;
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;

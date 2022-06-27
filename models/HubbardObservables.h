@@ -87,7 +87,15 @@ public:
 	
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
+	cc1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
 	cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type
+	cdagcdag1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorrSpin (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)  const;
@@ -882,7 +890,7 @@ template<typename Symmetry, typename Scalar>
 template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{ 
+{
 	if constexpr (Dummy::ABELIAN)
 	{
 		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
@@ -925,7 +933,8 @@ template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(sigma1,locy1), F[locx2].c(sigma2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	auto Qtot = F[locx1].c(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -942,7 +951,8 @@ template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cdagcdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].cdag(sigma2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].cdag(sigma2,locy2).Q();
+	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].cdag(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -961,7 +971,7 @@ cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	if constexpr (Dummy::IS_SPIN_SU2())
 	{
-		//Determine Qtot to the spin triplet quantumnumber. 
+		//Determine Qtot to the spin triplet quantum number. 
 		auto Qtots = Symmetry::reduceSilent(F[locx1].c(locy1).Q(), F[locx2].c(locy2).Q());
 		typename Symmetry::qType Qtot;
 		for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
@@ -971,7 +981,7 @@ cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	{
 		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge SU2 symmetry. Use U1 charge symmetry instead.");
 		vector<Mpo<Symmetry,Scalar> > out(2);
-		out[0] = cc<UP,DN>(locx1,locx2,locy1,locy2);
+		out[0] = cc<UP,DN>(locx1,locx2,locy1,locy2); // Should be UP,UP and DN,DN???
 		out[1] = cc<DN,UP>(locx1,locx2,locy1,locy2);
 		return out;
 	}
@@ -989,15 +999,61 @@ cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 		typename Symmetry::qType Qtot;
 		for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
 		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-	 }
+	}
 	else
 	{
 		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge-SU(2) symmetry. Use U(1) charge symmetry instead.");
 		vector<Mpo<Symmetry,Scalar> > out(2);
-		out[0] = cdagcdag<UP,DN>(locx1,locx2,locy1,locy2);
+		out[0] = cdagcdag<UP,DN>(locx1,locx2,locy1,locy2); // Should be UP,UP and DN,DN???
 		out[1] = cdagcdag<DN,UP>(locx1,locx2,locy1,locy2);
 		return out;
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HubbardObservables<Symmetry,Scalar>::
+cc1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	if constexpr (Dummy::IS_SPIN_SU2())
+	{
+		//Determine Qtot to the spin triplet quantum number. 
+		auto Qtots = Symmetry::reduceSilent(F[locx1].c(locy1).Q(), F[locx2].c(locy2).Q());
+		typename Symmetry::qType Qtot;
+		for (const auto Q : Qtots) {if (Q[0] == 1) {Qtot = Q;}}
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+//	else
+//	{
+//		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge SU2 symmetry. Use U1 charge symmetry instead.");
+//		vector<Mpo<Symmetry,Scalar> > out(2);
+//		out[0] = cc<UP,DN>(locx1,locx2,locy1,locy2); // Should be UP,UP and DN,DN???
+//		out[1] = cc<DN,UP>(locx1,locx2,locy1,locy2);
+//		return out;
+//	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HubbardObservables<Symmetry,Scalar>::
+cdagcdag1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	if constexpr (Dummy::IS_SPIN_SU2())
+	{
+		// Set Qtot to the spin triplet quantum number. 
+		auto Qtots = Symmetry::reduceSilent(F[locx1].cdag(locy1).Q(), F[locx2].cdag(locy2).Q());
+		typename Symmetry::qType Qtot;
+		for (const auto Q : Qtots) {if (Q[0] == 1) {Qtot = Q;}}
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+//	else
+//	{
+//		static_assert(!Dummy::IS_CHARGE_SU2(),"cc with a spin-triplet coupling cannot be computed for a charge-SU(2) symmetry. Use U(1) charge symmetry instead.");
+//		vector<Mpo<Symmetry,Scalar> > out(2);
+//		out[0] = cdagcdag<UP,DN>(locx1,locx2,locy1,locy2); // Should be UP,UP and DN,DN???
+//		out[1] = cdagcdag<DN,UP>(locx1,locx2,locy1,locy2);
+//		return out;
+//	}
 }
 
 template<typename Symmetry, typename Scalar>

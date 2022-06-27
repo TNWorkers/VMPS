@@ -1,4 +1,4 @@
-#ifdef BLAS
+#if defined(BLAS) or defined(BLIS) or defined(MKL)
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
@@ -82,24 +82,32 @@ int main (int argc, char* argv[])
 	// parameters
 	vector<Param> params_IBC;
 	
-	ArrayXXd t1cell = hopping_Archimedean("3.6^2",0,1.,tPrime);
+	//ArrayXXd t1cell = hopping_Archimedean("3.4.3.4",0,1.,tPrime);
+	//ArrayXXd t1cell = hopping_Platonic(L, 0, 1.);
+//	
+//	// coupling between two molecules
+//	ArrayXXd t2cell(24,24); t2cell = 0.;
+//	t2cell.topLeftCorner(12,12) = t1cell;
+//	t2cell.bottomRightCorner(12,12) = t1cell;
+//	t2cell(10,12) = tinter;
+//	t2cell(12,10) = tinter;
 	
-	// coupling between two molecules
-	ArrayXXd t2cell(24,24); t2cell = 0.;
-	t2cell.topLeftCorner(12,12) = t1cell;
-	t2cell.bottomRightCorner(12,12) = t1cell;
-	t2cell(10,12) = tinter;
-	t2cell(12,10) = tinter;
+//	ArrayXXd t1cell(2,2);
+//	t1cell.setZero();
+//	t1cell(0,1) = 1.;
+//	t1cell(1,0) = 1.;
 	
-	lout << t1cell << endl;
-	lout << endl;
-	lout << t2cell << endl;
+	ArrayXXd t1cell = hopping_Platonic(L);
+//	
+//	lout << t1cell << endl;
+//	lout << endl;
+////	lout << t2cell << endl;
 	
-	// IBC
-	params_IBC.push_back({"U",U});
-	params_IBC.push_back({"tFull",t2cell});
-	params_IBC.push_back({"Vfull",V*t2cell});
-	params_IBC.push_back({"maxPower",1ul});
+//	// IBC
+//	params_IBC.push_back({"U",U});
+//	params_IBC.push_back({"tFull",t2cell});
+//	params_IBC.push_back({"Vfull",V*t2cell});
+//	params_IBC.push_back({"maxPower",1ul});
 	
 	// free fermions
 	if (PRINT_FREE)
@@ -117,15 +125,21 @@ int main (int argc, char* argv[])
 	//--------------pair binding energy to check results by White et al. (1991)--------------
 	if (PAIR_BINDING)
 	{
-		IntervalIterator Uit(0.,3.,21);
+		IntervalIterator Uit(0.,100.,101);
 		for (Uit=Uit.begin(); Uit!=Uit.end(); ++Uit)
 		{
 			MODEL H(L,{{"U",*Uit},{"tFull",t1cell}},BC::OPEN);
 			lout << H.info() << endl;
-			Eigenstate<MODEL::StateXd> g0;
-			Eigenstate<MODEL::StateXd> g1;
+			
+			Eigenstate<MODEL::StateXd> g0s;
+			Eigenstate<MODEL::StateXd> g0t;
+			
+			Eigenstate<MODEL::StateXd> g1d;
+			Eigenstate<MODEL::StateXd> g1q;
+			
 			Eigenstate<MODEL::StateXd> g2s;
 			Eigenstate<MODEL::StateXd> g2t;
+			Eigenstate<MODEL::StateXd> g2q;
 			
 			DMRG::CONTROL::GLOB GlobParams;
 			GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
@@ -140,11 +154,16 @@ int main (int argc, char* argv[])
 			size_t Mincr_abs = args.get<size_t>("Mincr_abs",100ul);
 			DynParams.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 			
+			size_t start_2site = args.get<size_t>("start_2site",0ul);
+			size_t end_2site = args.get<size_t>("end_2site",0ul); //GlobParam.max_halfsweeps-3
+			size_t period_2site = args.get<size_t>("period_2site",2ul);
+			DynParams.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+			
 			size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
 			DynParams.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 			
-			DMRG::ITERATION::OPTION ITALG = static_cast<DMRG::ITERATION::OPTION>(args.get<int>("ITALG",2));
-			DynParams.iteration = [ITALG] (size_t i) {return ITALG;};
+//			DMRG::ITERATION::OPTION ITALG = static_cast<DMRG::ITERATION::OPTION>(args.get<int>("ITALG",2));
+//			DynParams.iteration = [ITALG] (size_t i) {return ITALG;};
 			
 			#pragma omp parallel sections
 			{
@@ -155,7 +174,7 @@ int main (int argc, char* argv[])
 					DMRG.userSetGlobParam();
 					DMRG.DynParam = DynParams;
 					DMRG.userSetDynParam();
-					DMRG.edgeState(H, g0, {1,12});
+					DMRG.edgeState(H, g0s, {1,N});
 				}
 				#pragma omp section
 				{
@@ -164,7 +183,7 @@ int main (int argc, char* argv[])
 					DMRG.userSetGlobParam();
 					DMRG.DynParam = DynParams;
 					DMRG.userSetDynParam();
-					DMRG.edgeState(H, g1, {2,12+1});
+					DMRG.edgeState(H, g0t, {3,N});
 				}
 				#pragma omp section
 				{
@@ -173,7 +192,7 @@ int main (int argc, char* argv[])
 					DMRG.userSetGlobParam();
 					DMRG.DynParam = DynParams;
 					DMRG.userSetDynParam();
-					DMRG.edgeState(H, g2s, {1,12+2});
+					DMRG.edgeState(H, g1d, {2,N+1});
 				}
 				#pragma omp section
 				{
@@ -182,10 +201,40 @@ int main (int argc, char* argv[])
 					DMRG.userSetGlobParam();
 					DMRG.DynParam = DynParams;
 					DMRG.userSetDynParam();
-					DMRG.edgeState(H, g2t, {3,12+2});
+					DMRG.edgeState(H, g1q, {4,N+1});
+				}
+				#pragma omp section
+				{
+					MODEL::Solver DMRG(DMRG::VERBOSITY::SILENT);
+					DMRG.GlobParam = GlobParams;
+					DMRG.userSetGlobParam();
+					DMRG.DynParam = DynParams;
+					DMRG.userSetDynParam();
+					DMRG.edgeState(H, g2s, {1,N+2});
+				}
+				#pragma omp section
+				{
+					MODEL::Solver DMRG(DMRG::VERBOSITY::SILENT);
+					DMRG.GlobParam = GlobParams;
+					DMRG.userSetGlobParam();
+					DMRG.DynParam = DynParams;
+					DMRG.userSetDynParam();
+					DMRG.edgeState(H, g2t, {3,N+2});
+				}
+				#pragma omp section
+				{
+					MODEL::Solver DMRG(DMRG::VERBOSITY::SILENT);
+					DMRG.GlobParam = GlobParams;
+					DMRG.userSetGlobParam();
+					DMRG.DynParam = DynParams;
+					DMRG.userSetDynParam();
+					DMRG.edgeState(H, g2q, {5,N+2});
 				}
 			}
-			double Epair = g0.energy+g2s.energy-2.*g1.energy;
+			double E0 = min(g0s.energy,g0t.energy);
+			double E1 = min(g1d.energy,g1q.energy);
+			double E2 = min(min(g2s.energy,g2t.energy),g2q.energy);
+			double Epair = E0+E2-2.*E1;
 			lout << "U=" << *Uit << ", Epair=" << Epair << endl;
 			Uit << Epair;
 			Uit.save("Epair(U).dat");
@@ -193,31 +242,31 @@ int main (int argc, char* argv[])
 	}
 	//----------------------------
 	
-	Eigenstate<MODEL::StateUd> g;
-	
-	// model
-	MODEL H(L,params_IBC,BC::INFINITE);
-	H.transform_base(Q,false); // PRINT=false
-	H.precalc_TwoSiteData(true); // FORCE=true
-	lout << H.info() << endl;
-	
-	// VUMPS solver
-	MODEL::uSolver DMRG(VERB);
-	DMRG.userSetGlobParam();
-	DMRG.userSetDynParam();
-	DMRG.GlobParam = GlobSweepParams;
-	DMRG.DynParam = DynSweepParams;
-	DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
-	
-	lout << setprecision(16) << "g.energy=" << g.energy << endl;
-	
-	for (int d=1; d<=dmax; ++d)
-	{
-		MODEL Haux(12*d+24,{{"maxPower",1ul}},BC::INFINITE,DMRG::VERBOSITY::SILENT); Haux.transform_base(Q,false); // PRINT=false
-		double res1 = avg(g.state, Haux.TpTm(0,12*d), g.state);
-		double res2 = avg(g.state, Haux.TzTz(0,12*d), g.state);
-		double res21 = avg(g.state, Haux.Tz(0), g.state);
-		double res22 = avg(g.state, Haux.Tz(12*d), g.state);
-		lout << "d=" << d << ", <c†c†cc>=" << res1 << ", <nn>=" << res2-res21*res22 << endl;
-	}
+//	Eigenstate<MODEL::StateUd> g;
+//	
+//	// model
+//	MODEL H(L,params_IBC,BC::INFINITE);
+//	H.transform_base(Q,false); // PRINT=false
+//	H.precalc_TwoSiteData(true); // FORCE=true
+//	lout << H.info() << endl;
+//	
+//	// VUMPS solver
+//	MODEL::uSolver DMRG(VERB);
+//	DMRG.userSetGlobParam();
+//	DMRG.userSetDynParam();
+//	DMRG.GlobParam = GlobSweepParams;
+//	DMRG.DynParam = DynSweepParams;
+//	DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+//	
+//	lout << setprecision(16) << "g.energy=" << g.energy << endl;
+//	
+//	for (int d=1; d<=dmax; ++d)
+//	{
+//		MODEL Haux(12*d+24,{{"maxPower",1ul}},BC::INFINITE,DMRG::VERBOSITY::SILENT); Haux.transform_base(Q,false); // PRINT=false
+//		double res1 = avg(g.state, Haux.TpTm(0,12*d), g.state);
+//		double res2 = avg(g.state, Haux.TzTz(0,12*d), g.state);
+//		double res21 = avg(g.state, Haux.Tz(0), g.state);
+//		double res22 = avg(g.state, Haux.Tz(12*d), g.state);
+//		lout << "d=" << d << ", <c†c†cc>=" << res1 << ", <nn>=" << res2-res21*res22 << endl;
+//	}
 }

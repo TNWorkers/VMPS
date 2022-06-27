@@ -50,7 +50,7 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S1, typename S2> friend 
-	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY, int max_halfsweeps, int min_halfsweeps);
+	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY, int max_halfsweeps, int min_halfsweeps, int Minit);
 	
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	
@@ -1860,7 +1860,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	Biped<Symmetry,MatrixType> left,right;
 	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD or TOOL == DMRG::BROOM::BRUTAL_SVD)
 	{
-		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false, RETURN_SPEC); //false: DONT PRESERVE MULTIPLETS
+		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->min_Nsv, this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false, RETURN_SPEC); //false: DONT PRESERVE MULTIPLETS
 		if (loc != 0)
 		{
 			S(loc-1) = entropy;
@@ -2127,7 +2127,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	Biped<Symmetry,MatrixType> left, right;
 	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD or TOOL == DMRG::BROOM::BRUTAL_SVD)
 	{
-		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false); //false: DONT PRESERVE MULTIPLETS
+		auto [U,Sigma,Vdag] = Aclump.truncateSVD(this->min_Nsv, this->max_Nsv, this->eps_truncWeight, truncWeight(loc), entropy, SVspec_, false); //false: DONT PRESERVE MULTIPLETS
 		if (loc != this->N_sites-1)
 		{
 			S(loc) = entropy;

@@ -128,10 +128,11 @@ int main (int argc, char* argv[])
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",40ul);
 	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-12);
 	GlobParam.tol_state = args.get<double>("tol_state",1e-10);
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.CALC_S_ON_EXIT = false;
 	
 	DMRG::CONTROL::DYN  DynParam;
-	double eps_truncWeight = args.get<double>("eps_truncWeight",1e-10);
+	double eps_truncWeight = args.get<double>("eps_truncWeight",0);
 	DynParam.eps_truncWeight = [eps_truncWeight] (size_t i) {return eps_truncWeight;};
 	
 	size_t Mincr_per = args.get<size_t>("Mincr_per",2ul);
@@ -140,9 +141,13 @@ int main (int argc, char* argv[])
 	size_t Mincr_abs = args.get<size_t>("Mincr_abs",60ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
-	//size_t start_2site = args.get<size_t>("start_2site",0ul);
-	//size_t end_2site = args.get<size_t>("end_2site",20ul);
-	//DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%2==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	int max_Nrich = args.get<int>("max_Nrich",-1);
+	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
+	
+	size_t start_2site = args.get<size_t>("start_2site",0ul);
+	size_t end_2site = args.get<size_t>("end_2site",GlobParam.max_halfsweeps-3);
+	size_t period_2site = args.get<size_t>("period_2site",2ul);
+	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
