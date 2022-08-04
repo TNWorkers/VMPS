@@ -32,6 +32,7 @@ parser.add_argument('-Qinit', action='store', type=int, default=10)
 parser.add_argument('-Minit', action='store', type=int, default=10)
 parser.add_argument('-Mincr_abs', action='store', type=int, default=60)
 parser.add_argument('-end_2site', action='store', type=int, default=0)
+parser.add_argument('-D', action='store', type=int, default=2)
 args = parser.parse_args()
 
 wd = 'Mlimit='+str(args.Mlimit)
@@ -51,9 +52,10 @@ Qinit = args.Qinit
 Mincr_abs = args.Mincr_abs
 eps_truncWeight = args.eps_truncWeight
 end_2site = args.end_2site
+D = args.D
 
 for S in range(args.Smin,args.Smax+1):
-	call = 'OMP_NUM_THREADS='+str(args.THREADS)+' ./SU2.out -JA='+str(args.J)+' -JB='+str(args.J)+' -JpA='+str(args.JpA)+' -JpB=0 -PBC='+str(args.PBC)+' -CALC_VAR=1 -L '+str(args.L)+' -S '+str(S)+' -Mlimit '+str(args.Mlimit)+' -Mincr_abs='+str(Mincr_abs)+' -wd '+wd+' -tol_eigval '+str(tol_eigval)+' -tol_state '+str(tol_state)+' -min_halfsweeps='+str(min_halfsweeps)+' -max_halfsweeps='+str(max_halfsweeps)+' -Qinit='+str(Qinit)+' -Minit='+str(Minit)+' -eps_truncWeight='+str(eps_truncWeight)+' -end_2site='+str(end_2site)
+	call = 'OMP_NUM_THREADS='+str(args.THREADS)+' ./SU2.out -JA='+str(args.J)+' -JB='+str(args.J)+' -JpA='+str(args.JpA)+' -JpB=0 -PBC='+str(args.PBC)+' -CALC_VAR=1 -L '+str(args.L)+' -S '+str(S)+' -Mlimit '+str(args.Mlimit)+' -Mincr_abs='+str(Mincr_abs)+' -wd '+wd+' -tol_eigval '+str(tol_eigval)+' -tol_state '+str(tol_state)+' -min_halfsweeps='+str(min_halfsweeps)+' -max_halfsweeps='+str(max_halfsweeps)+' -Qinit='+str(Qinit)+' -Minit='+str(Minit)+' -eps_truncWeight='+str(eps_truncWeight)+' -end_2site='+str(end_2site)+' -D='+str(D)
 	
 	if args.LOAD:
 		call = call + ' -LOAD='+'./Mlimit='+str(args.Mold)+'/state/'+'gs_L='+str(args.L)+'_J='+str(round(args.J))+','+str(round(args.J))+'_Jprime='+str(round(args.JpA))+',0'+'_D=2_S='+str(S)+'_PBC=1_Mmax='+str(args.Mold)

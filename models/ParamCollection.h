@@ -65,13 +65,13 @@ ArrayXXd create_1D_PBC_AB (size_t L, double lambda1A=1., double lambda1B=1., dou
 	for (int i=0; i<L; i+=2)
 	{
 		res(i,  (i+1)%L) = lambda1A;
-		res(i+1,(i+2)%L) = lambda1B;
+		if (i+1<L) res(i+1,(i+2)%L) = lambda1B;
 	}
 	
 	for (int i=0; i<L; i+=2)
 	{
 		res(i,  (i+2)%L) = lambda2A;
-		res(i+1,(i+3)%L) = lambda2B;
+		if (i+1<L) res(i+1,(i+3)%L) = lambda2B;
 	}
 	
 	res += res.transpose().eval();

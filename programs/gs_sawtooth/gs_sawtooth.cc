@@ -145,7 +145,7 @@ int main (int argc, char* argv[])
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",GlobParam.max_halfsweeps-3);
+	size_t end_2site = args.get<size_t>("end_2site",0); //GlobParam.max_halfsweeps-3
 	size_t period_2site = args.get<size_t>("period_2site",2ul);
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
@@ -258,6 +258,14 @@ int main (int argc, char* argv[])
 					data.Savg(l) = res;
 					lout << l << "\t" << res << endl;
 				}
+//				for (int l=0; l<2; ++l)
+//				for (int m=S; m>=0; --m)
+//				{
+//					double 3j = coupl_3j_base(2*S+1, 3, 2*S+1, 2*m, 0, -2*m);
+//					double cgc = 3j * sqrt(2*S+1) * pow(-1,S-1+m);
+//					double res = (S==0)? 0. : avg(g.state, H.S(l), g.state) * cgc; //* S/sqrt(S*(S+1.));
+//					lout << "l=" << l << ", M=" << m << ", res=" << res << ", cgc=" << cgc << ", 3j=" << 3j << endl;
+//				}
 				#else
 				for (int l=0; l<L; ++l)
 				{
@@ -455,6 +463,9 @@ int main (int argc, char* argv[])
 			ArrayXXd Jfull = create_1D_PBC_AB(L,JA,JB,JpA,JpB,COMPRESS);
 //			lout << "Jfull=" << Jfull << endl;
 			paramsPBC.push_back({"Jfull",Jfull});
+			#if defined(USING_U1) or defined(USING_U0)
+			paramsPBC.push_back({"Bz",Bz});
+			#endif
 			
 			MODEL H(L,paramsPBC);
 //			H.scale(1.,offset*L);
@@ -482,13 +493,18 @@ int main (int argc, char* argv[])
 				for (int l=0; l<L; ++l)
 				{
 					int lorig = CMK.get_inverse()[l];
-					double res;
+					double res = 0.;
+					double resx = 0.;
+					double resz = 0.;
 					#ifdef USING_SU2
 					res = (S==0)? 0. : avg(g.state, H.S(l), g.state) * S/sqrt(S*(S+1.));
-					#else
-					double resx = avg(g.state, H.Scomp(SX,l), g.state);
-					double resz = avg(g.state, H.Scomp(SZ,l), g.state);
+					#elif defined(USING_U0)
+					resx = avg(g.state, H.Scomp(SX,l), g.state);
+					resz = avg(g.state, H.Scomp(SZ,l), g.state);
 					res = sqrt(resx*resx+resz*resz);
+					#elif defined(USING_U1)
+					resz = avg(g.state, H.Scomp(SZ,l), g.state);
+					res = resz;
 					#endif
 					if (COMPRESS)
 					{
@@ -532,8 +548,15 @@ int main (int argc, char* argv[])
 					int inew = CMK.get_transform()[i];
 					int jnew = CMK.get_transform()[j];
 					double res = avg(g.state, H.SdagS(inew,jnew), g.state);
-					data.SdagS(i,j) = res;
-					data.SdagS(j,i) = res;
+					#ifdef USING_SU2
+					double avgi = avg(g.state, H.S(inew), g.state) * S/sqrt(S*(S+1.));
+					double avgj = avg(g.state, H.S(jnew), g.state) * S/sqrt(S*(S+1.));
+					#else
+					double avgi = avg(g.state, H.Scomp(SZ,inew), g.state);
+					double avgj = avg(g.state, H.Scomp(SZ,jnew), g.state);
+					#endif
+					data.SdagS(i,j) = res - avgi*avgj;
+					data.SdagS(j,i) = res - avgi*avgj;
 					#pragma omp critical
 					{
 						lout << "i=" << i << ", j=" << j << ", SdagS=" << res << endl;
@@ -544,7 +567,8 @@ int main (int argc, char* argv[])
 					data.SdagS(i,i) = 0.5*(D-1) * 0.5*(D+1);
 				}
 				
-				lout << "SdagS=" << endl << data.SdagS << endl;
+				//lout << "SdagS=" << endl << data.SdagS << endl;
+				lout << data.SdagS.col(0) << endl;
 				double SdagStot = data.SdagS.sum();
 				lout << "SdagStot=" << SdagStot << endl;
 				data.SdagStot = SdagStot;

@@ -116,13 +116,13 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary, 
 {
 	ParamHandler P(params, HubbardU1xU1::defaults);
 	size_t Lcell = P.size();
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-
+	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
@@ -143,7 +143,6 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary, 
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
 	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-	
 	this->precalc_TwoSiteData();
 }
 

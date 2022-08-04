@@ -102,8 +102,8 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	cup_1s_      = OperatorType(getQ(UP,-1),basis_1s_);
 	cdn_1s_      = OperatorType(getQ(DN,-1),basis_1s_);
 	
-	cdagup_1s_      = OperatorType(getQ(UP,+1),basis_1s_);
-	cdagdn_1s_      = OperatorType(getQ(DN,+1),basis_1s_);
+	cdagup_1s_   = OperatorType(getQ(UP,+1),basis_1s_);
+	cdagdn_1s_   = OperatorType(getQ(DN,+1),basis_1s_);
 	
 	n_1s_        = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	nup_1s_      = OperatorType(Symmetry::qvacuum(),basis_1s_);
@@ -378,7 +378,7 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
 		}
-		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+		else {assert(false and "Ill-defined KIND of the used Symmetry.");}
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
@@ -472,7 +472,7 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		return out;
 	}
-	static_assert("You inserted a Symmetry which can not be handled by FermionBase.");
+	static_assert("You've inserted a symmetry which can not be handled by FermionSite.");
 }
 
 #endif //FERMIONSITE_H_

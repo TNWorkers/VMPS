@@ -1137,7 +1137,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			array<bool,Nq> WITHIN_RANGE;
 			for (size_t q=0; q<Nq; ++q)
 			{
-//				cout << "l=" << l << ", q=" << q << ", QinTop[l][q]=" << QinTop[l][q] << ", QinBot[l][q]=" << QinBot[l][q] << ", candidate[q]=" << candidate[q] << endl;
+				//cout << "l=" << l << ", q=" << q << ", QinTop[l][q]=" << QinTop[l][q] << ", QinBot[l][q]=" << QinBot[l][q] << ", candidate[q]=" << candidate[q] << endl;
 				WITHIN_RANGE[q] = (candidate[q] <= QinTop[l][q] and candidate[q] >= QinBot[l][q]);
 			}
 			if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))

@@ -67,8 +67,8 @@ struct SiteOperator
 	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > structured();
 	
 	void setIdentity();
-    
-    std::string label = "";
+	
+	std::string label = "";
 };
 
 template<typename Symmetry,typename Scalar_>
