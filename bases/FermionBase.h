@@ -219,6 +219,9 @@ public:
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type Tz (size_t orbital=0) const;
 	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),OperatorType>::type tz (size_t orbital=0) const;
+	
 	/**
 	 * Isospin x-component
 	 * \param orbital : orbital index
@@ -700,6 +703,16 @@ Tz (std::size_t orbital) const
 
 template <typename Symmetry_>
 template <typename Dummy>
+typename std::enable_if<!Dummy::IS_CHARGE_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
+tz (std::size_t orbital) const
+{
+	OperatorType out = n(orbital)-0.5*Id();
+	out.label() = "tz=n-0.5*Id";
+	return out;
+}
+
+template <typename Symmetry_>
+template <typename Dummy>
 typename std::enable_if<Dummy::NO_CHARGE_SYM(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 Tx (std::size_t orbital, SUB_LATTICE G) const
 {
@@ -840,7 +853,7 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		}
 		if (Jz(i,j) != 0.)
 		{
-			Oout += Jz(i,j) * Sz(i)*Sz(j).template cast<Scalar_>();
+			Oout += Jz(i,j) * (Sz(i)*Sz(j)).template cast<Scalar_>();
 		}
 		if (Jxy(i,j) != 0.)
 		{

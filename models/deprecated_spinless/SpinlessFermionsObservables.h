@@ -34,16 +34,16 @@ public:
 //	Mpo<Symmetry,Scalar> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> nph (size_t locx, size_t locy=0) const;
-//	Mpo<Symmetry,Scalar> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry,Scalar> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 protected:
 	
 	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, bool FERMIONIC=false, bool HERMITIAN=false) const;
-//	Mpo<Symmetry,Scalar> make_corr  (string name1, string name2, 
-//	                          size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-//	                          const OperatorType &Op1, const OperatorType &Op2,
-//	                          bool BOTH_HERMITIAN=false) const;
+	Mpo<Symmetry,Scalar> make_corr  (string name1, string name2, 
+	                          size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+	                          const OperatorType &Op1, const OperatorType &Op2,
+	                          bool BOTH_HERMITIAN=false) const;
 	
 	vector<SpinlessFermionBase<Symmetry> > F;
 };
@@ -99,26 +99,26 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	return Mout;
 }
 
-//template<typename Symmetry, typename Scalar>
-//Mpo<Symmetry,Scalar> SpinlessFermionsObservables<Symmetry,Scalar>::
-//make_corr (string name1, string name2, 
-//           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-//           const OperatorType &Op1, const OperatorType &Op2,
-//           bool BOTH_HERMITIAN) const
-//{
-//	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
-//	stringstream ss;
-//	ss << name1 << "(" << locx1 << "," << locy1 << ")"
-//	   << name2 << "(" << locx2 << "," << locy2 << ")";
-//	
-//	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
-//	
-//	Mpo<Symmetry,Scalar> Mout(F.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
-//	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
-//	
-//	Mout.setLocal({locx1,locx2}, {Op1,Op2});
-//	return Mout;
-//}
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> SpinlessFermionsObservables<Symmetry,Scalar>::
+make_corr (string name1, string name2, 
+           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+           const OperatorType &Op1, const OperatorType &Op2,
+           bool BOTH_HERMITIAN) const
+{
+	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
+	
+	Mpo<Symmetry,Scalar> Mout(F.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	Mout.setLocal({locx1,locx2}, {Op1,Op2});
+	return Mout;
+}
 
 //-------------
 
@@ -198,11 +198,11 @@ nph (size_t locx, size_t locy) const
 
 //-------------
 
-//template<typename Symmetry, typename Scalar>
-//Mpo<Symmetry,Scalar> SpinlessFermionsObservables<Symmetry,Scalar>::
-//nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-//{
-//	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(locy1), F[locx2].n(locy2), true);
-//}
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> SpinlessFermionsObservables<Symmetry,Scalar>::
+nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(locy1), F[locx2].n(locy2), true);
+}
 
 #endif

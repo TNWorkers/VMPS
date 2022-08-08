@@ -1,7 +1,9 @@
-#ifdef BLAS
+#if defined(BLAS) or defined(BLIS) or defined(MKL)
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
+
+#define USE_WIG_SU2_COEFFS
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
@@ -317,6 +319,12 @@ int main (int argc, char* argv[])
 	int M = args.get<int>("M",0);
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
+	
+	int Slimit = args.get<int>("Slimit",int(L*(D-1)/2));
+	#if defined(USING_SU2)
+	lout << "initializing CGC tables for Slimit=" << Slimit << "..." << endl;
+	Sym::initialize(Slimit);
+	#endif
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
 	bool HAFNIAN = args.get<bool>("HAFNIAN",false);
