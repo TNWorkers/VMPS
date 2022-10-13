@@ -1227,10 +1227,10 @@ int main (int argc, char* argv[])
 					obs.TdagT1d(d,0) = d;
 					obs.TdagT1d(d,1) = avg(g_foxy.state, Htmp.TdagT(0,d), g_foxy.state);
 					
-					#if defined(USING_SO4) or defined(USING_SU2xU1) or defined(USING_SU2)
-					lout << "d=" << d << ", string=" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
-					StringFiler << d << "\t" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
-					#endif
+					//#if defined(USING_SO4) or defined(USING_SU2xU1) or defined(USING_SU2)
+					//lout << "d=" << d << ", string=" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
+					//StringFiler << d << "\t" << avg(g_foxy.state, Htmp.StringCorrSpin(0,d), g_foxy.state) << endl;
+					//#endif
 					
 					#if !defined(USING_SO4)
 					obs.TzTz1d(d,0) = d;

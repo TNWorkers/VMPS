@@ -3,7 +3,7 @@
 #pragma message("LapackManager")
 #endif
 
-#define USE_WIG_SU2_COEFFS
+//#define USE_WIG_SU2_COEFFS
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
@@ -91,10 +91,12 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 	return res;
 }
 
+int Slimit;
+
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
+void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, double S, string base, string wd, int L, int dmin, int dmax, const ArrayXXi &distanceMatrix)
 {
 	lout << "correlations for following state:" << endl;
 	lout << "will save to: " << make_string(wd,"SdagS_",base,"_d=[...]",".dat") << endl;
@@ -104,25 +106,32 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 	{
 		ofstream SFiler(make_string(wd,"S_",base,".dat"));
 		SFiler << "#" << Psi.info() << endl;
+		double sum_test = 0.;
 		#pragma omp parallel for
 		for (int l=0; l<L; ++l)
 		{
+			#if defined(USE_WIG_SU2_COEFFS)
+			wig_thread_temp_init(2*Slimit);
+			#endif
+			
 			double res = 0;
 			#ifdef USING_SU2
 			{
-				res = avg(Psi, H.S(l), Psi) / sqrt(S*(S+1.));
+				res = avg(Psi, H.S(l), Psi) * S / sqrt(S*(S+1.));
 			}
 			#elif defined(USING_U1)
 			{
-				res = avg(Psi, H.Sz(l), Psi) / sqrt(S*(S+1.));
+				res = avg(Psi, H.Sz(l), Psi);
 			}
 			#endif
+			sum_test += res;
 			#pragma omp critical
 			{
 				SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
 				lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
 			}
 		}
+		lout << "sum(<S_i>)=" << sum_test << endl << endl;
 		SFiler.close();
 	}
 	
@@ -143,6 +152,10 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 		#pragma omp parallel for
 		for (int k=0; k<indices.size(); ++k)
 		{
+			#if defined(USE_WIG_SU2_COEFFS)
+			wig_thread_temp_init(2*Slimit);
+			#endif
+			
 			int i = indices[k].first;
 			int j = indices[k].second;
 			double val = avg(Psi, H.SdagS(i,j), Psi);
@@ -163,6 +176,7 @@ void calc_corr (const MODEL &H, const MODEL::StateXd &Psi, int S, string base, s
 		lout << Timer.info(make_string("d=",d)) << endl;
 	}
 	CorrFilerAll.close();
+	lout << endl;
 }
 
 struct StateInfo
@@ -212,6 +226,7 @@ void calc_var (const MODEL &H, const Eigenstate<MODEL::StateXd> &Psi, string LOA
 	lout << endl;
 	
 	info.save(filename);
+	lout << endl;
 	
 //	auto HmE = H;
 //	double factor = args.get<double>("factor",1.);
@@ -229,6 +244,7 @@ map<string,int> make_Lmap()
 	m["CLUMP"] = 0; // clump = all interact with each other
 	// Platonic solids:
 	m["P04"] = 4; // tetrahedron
+	m["P05"] = 5; // bipyramid
 	m["P06"] = 6; // octahedron
 	m["P08"] = 8; // cube
 	m["P12"] = 12; // icosahedron
@@ -265,6 +281,7 @@ map<string,int> make_Lmap()
 	
 	m["Mn32"] = 32;
 	
+	m["fcc14"] = 14;
 	m["fcc38"] = 38;
 	m["fcc68"] = 68;
 	m["fcc92"] = 92;
@@ -319,12 +336,6 @@ int main (int argc, char* argv[])
 	int M = args.get<int>("M",0);
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
-	
-	int Slimit = args.get<int>("Slimit",int(L*(D-1)/2));
-	#if defined(USING_SU2)
-	lout << "initializing CGC tables for Slimit=" << Slimit << "..." << endl;
-	Sym::initialize(Slimit);
-	#endif
 	
 	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
 	bool HAFNIAN = args.get<bool>("HAFNIAN",false);
@@ -465,6 +476,12 @@ int main (int argc, char* argv[])
 		}
 	}
 	
+	Slimit = args.get<int>("Slimit",int(L*(D-1)/2));
+	#if defined(USING_SU2)
+	lout << "initializing CGC tables for Slimit=" << Slimit << "..." << endl;
+	Sym::initialize(Slimit);
+	#endif
+	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
 	{
@@ -538,8 +555,8 @@ int main (int argc, char* argv[])
 	int period_2site = args.get<int>("period_2site",2ul);
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
-	double eps_svd = args.get<double>("eps_svd",1e-10);
-	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
+//	double eps_svd = args.get<double>("eps_svd",1e-10);
+//	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
 	
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
@@ -558,7 +575,9 @@ int main (int argc, char* argv[])
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
 	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per+1ul);
 	double alpha = args.get<double>("alpha",100.);
+	//double alpha_min = args.get<double>("alpha_min",1e-8);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	//DynParam.min_alpha_rsvd = [start_alpha, end_alpha, alpha_min] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha_min:0.;};
 	
 	lout.set(make_string(base,".log"), wd+"log", true);
 	
@@ -809,7 +828,7 @@ int main (int argc, char* argv[])
 					excited[n].state.sweep(0,DMRG::BROOM::QR);
 					excited[n].state /= sqrt(dot(excited[n].state,excited[n].state));
 				}
-				excited[n].state.eps_svd = eps_svd;
+				//excited[n].state.eps_svd = eps_svd;
 				
 				VectorXd overlaps(n+1);
 				
@@ -851,7 +870,7 @@ int main (int argc, char* argv[])
 			{
 				for (int n=0; n<excited.size(); ++n)
 				{
-					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, make_string("n=",n,"_",base), wd, make_string("excited state n=",n," variance:"));
+					calc_var(H, excited[n], (LOAD_EXCITED.size()>0)?LOAD_EXCITED[n]:"", maxPower, L, make_string("n=",n,"_",base), wd, make_string("excited state n=",n," variance"));
 				}
 			}
 			

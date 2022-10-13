@@ -6,6 +6,7 @@
 #include "ParamHandler.h"
 #include "CuthillMcKeeCompressor.h" // from ALGS
 #include <boost/rational.hpp>
+#include "termcolor.hpp"
 
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {
@@ -54,6 +55,28 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
 	}
+	return res;
+}
+
+ArrayXXd create_1D_AB (size_t L, double lambda1A=1., double lambda1B=1., double lambda2A=0., double lambda2B=0.)
+{
+	ArrayXXd res(L,L);
+	res.setZero();
+	
+	for (int i=0; i<L; i+=2)
+	{
+		if (i+1<L) res(i,  i+1) = lambda1A;
+		if (i+2<L) res(i+1,i+2) = lambda1B;
+	}
+	
+	for (int i=0; i<L; i+=2)
+	{
+		if (i+2<L) res(i  ,i+2) = lambda2A;
+		if (i+3<L) res(i+1,i+3) = lambda2B;
+	}
+	
+	res += res.transpose().eval();
+	
 	return res;
 }
 
@@ -758,7 +781,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		res(18,19) = lambda1;
 		res(15,19) = lambda1;
 	}
-	else if (L==40)
+	else if (L==40) // symmetry D_5d(I)
 	{
 		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
 		res(0,4) = lambda1;
@@ -795,7 +818,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=35; i<=38; ++i) res(i,i+1) = lambda1;
 		res(35,39) = lambda1;
 	}
-	else if (L==36)
+	else if (L==36) // symmetry D_6h
 	{
 		for (int i=0; i<=4; ++i) res(i,i+1) = lambda1;
 		res(0,5) = lambda1;
@@ -943,6 +966,18 @@ ArrayXXd hopping_Platonic (int L, int VARIANT=0, double lambda1=1.)
 		res(0,3) = lambda1;
 		res(1,3) = lambda1;
 		res(2,3) = lambda1;
+	}
+	if (L == 5) // bipyramid
+	{
+		res(0,1) = lambda1;
+		res(0,2) = lambda1;
+		res(0,3) = lambda1;
+		res(1,2) = lambda1;
+		res(1,3) = lambda1;
+		res(2,3) = lambda1;
+		res(1,4) = lambda1;
+		res(2,4) = lambda1;
+		res(3,4) = lambda1;
 	}
 	else if (L == 6) // octahedron
 	{

@@ -105,6 +105,7 @@ int main (int argc, char* argv[])
 	bool LOAD_AVG = args.get<bool>("LOAD_AVG",false);
 	bool LOAD_SDAGS = args.get<bool>("LOAD_SDAGS",false);
 	int Nl0 = args.get<int>("Nl0",L);
+	int dmax = args.get<int>("dmax",L/2);
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd);
 	string base = make_string("L=",L,"_J=",J,",",J,"_Jprime=",JpA,",",JpB,"_D=",D);
@@ -154,7 +155,7 @@ int main (int argc, char* argv[])
 		if (S!=0)
 		{
 			Stopwatch<> Timer;
-			#pragma omp parallel for
+			#pragma omp parallel for schedule(dynamic)
 			for (int l=0; l<L; ++l)
 			{
 				#if defined(USE_WIG_SU2_COEFFS)
@@ -193,8 +194,10 @@ int main (int argc, char* argv[])
 		Savg_red.resize(L/2+1,1); Savg_red.setZero();
 	}
 	
-	//g.state.sweep(0,DMRG::BROOM::QR);
+	Stopwatch<> SweepTimer;
+	if (S == 0) g.state.sweep(0,DMRG::BROOM::QR);
 	//lout << g.state.get_pivot() << endl;
+	lout << SweepTimer.info("QR sweep") << endl;
 	
 	for (int l0=Savg_nrm.cols()-1; l0<Nl0; ++l0)
 	{
@@ -205,7 +208,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Timer;
 		
 		#pragma omp parallel for
-		for (int d=0; d<=L/2; ++d)
+		for (int d=0; d<=dmax; ++d)
 		{
 			#if defined(USE_WIG_SU2_COEFFS)
 			wig_thread_temp_init(2*Slimit);
@@ -214,14 +217,26 @@ int main (int argc, char* argv[])
 			int inew = CMK.get_transform()[l0];
 			int jnew = CMK.get_transform()[(l0+d)%L];
 			
-			double val = avg(g.state, H.SdagS(inew,jnew), g.state);
-			//double val = g.state.locAvg(H.SdagS(inew,jnew), max(inew,jnew));
+			double val;
+			if (S != 0)
+			{
+				val = avg(g.state, H.SdagS(inew,jnew), g.state);
+			}
+			else
+			{
+				val = g.state.locAvg(H.SdagS(inew,jnew), max(inew,jnew));
+			}
 			double val_red = val - Savgt(inew,1)*Savgt(jnew,1);
 			//double val_red = val - avg(g.state, H.S(inew), g.state) * avg(g.state, H.S(jnew), g.state) * pow(S/sqrt(S*(S+1.)),2);
 			
 			#pragma omp critical
 			{
-				lout << "l0=" << l0 << ", ld=" << l0+d << ", inew=" << inew << ", jnew=" << jnew << ", d=" << d << "\t" << val << "\t" << val_red << endl;
+				lout << "l0=" << l0 << ", ld=" << l0+d << ", inew=" << inew << ", jnew=" << jnew << ", d=" << d << "\t" << val;
+				if (S!=0)
+				{
+					lout << "\t" << val_red;
+				}
+				lout << endl;
 				
 				Savg_nrm(d,0) = d;
 				Savg_nrm(d,l0+1) = val;
@@ -231,7 +246,7 @@ int main (int argc, char* argv[])
 			}
 		}
 		lout << Timer.info(make_string("l0=",l0)) << endl;
-		saveMatrix(Savg_nrm, make_string("obs/SdagSnrm_","d_",base,"_Mmax=",Mlimit,".dat"));
+		if (S!=0) saveMatrix(Savg_nrm, make_string("obs/SdagSnrm_","d_",base,"_Mmax=",Mlimit,".dat"));
 		saveMatrix(Savg_red, make_string("obs/SdagSred_","d_",base,"_Mmax=",Mlimit,".dat"));
 	}
 	

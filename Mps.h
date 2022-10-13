@@ -3475,7 +3475,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	L.setIdentity(1,1,inBasis(loc1));
 	
-	for (size_t l=0; l<distance+1; ++l)
+	for (size_t l=loc1; l<distance+1; ++l)
 	{
 		contract_L(L, A[l], O.W_at(l), A[l], O.locBasis(l), O.opBasis(l), Lnext);
 		L = Lnext;

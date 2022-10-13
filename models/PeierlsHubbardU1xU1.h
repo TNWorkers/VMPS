@@ -235,6 +235,25 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			push_full("VextFull", "Vextᵢⱼ", first, last, {1.}, {false}, PROP::BOSONIC);
 		}
 		
+		if (P.HAS("Jfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > first {F[loc].Sp(0).template cast<complex<double>>(), 
+			                                                         F[loc].Sm(0).template cast<complex<double>>(),
+			                                                         F[loc].Sz(0).template cast<complex<double>>()};
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > Sm_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,MatrixType> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				Sp_ranges[i] = F[i].Sp(0).template cast<complex<double>>();
+				Sm_ranges[i] = F[i].Sm(0).template cast<complex<double>>();
+				Sz_ranges[i] = F[i].Sz(0).template cast<complex<double>>();
+			}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
+			push_full("Jfull", "Jᵢⱼ", first, last, {0.5,0.5,1.}, {false,false,false}, PROP::BOSONIC);
+		}
+		
 		// Local terms: U, t0, μ, t⟂, V⟂, J⟂
 		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
 		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", orbitals, loc%Lcell);

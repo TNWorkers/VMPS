@@ -222,6 +222,13 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
 		}
+		if (P.HAS("JfullA"))
+		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {B[loc].Sdag(1)};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = B[i].S(1);}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
+			push_full("JfullA", "JAᵢⱼ", first, last, {std::sqrt(3.)});
+		}
 		
 		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
 		if (P.HAS("Rfull"))

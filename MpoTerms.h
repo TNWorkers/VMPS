@@ -3034,32 +3034,35 @@ scale (const Scalar factor, const Scalar offset, const std::size_t power, const 
             }
         }
     }
-    std::stringstream new_name;
-    if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
-    {
-        new_name << "[";
-    }
-    std::size_t curr_prec = std::cout.precision();
-    if(std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
-    {
-        new_name << setprecision(3) << "(" << factor << "*" << label << ")" << setprecision(curr_prec);
-    }
-    if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
-    {
-        new_name << " + " << setprecision(3) << offset << setprecision(curr_prec) << "]";
-    }
-    if(new_name.str().length() < MAX_SUMPROD_STRINGLENGTH)
-    {
-        set_name(new_name.str());
-    }
-    else
-    {
-        set_name(label+"+[...]");
-    }
-    if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
-    {
-    	calc(calc_to_power);
-    }
+		
+	if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
+	{
+		std::stringstream new_name;
+		if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
+		{
+			new_name << "[";
+		}
+		std::size_t curr_prec = std::cout.precision();
+		if(std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
+		{
+			new_name << setprecision(3) << "(" << factor << "*" << label << ")" << setprecision(curr_prec);
+		}
+		if(std::abs(offset) > ::mynumeric_limits<double>::epsilon())
+		{
+			new_name << " + " << setprecision(3) << offset << setprecision(curr_prec) << "]";
+		}
+		
+		if(new_name.str().length() < MAX_SUMPROD_STRINGLENGTH)
+		{
+			set_name(new_name.str());
+		}
+		else
+		{
+			set_name(label+"+[...]");
+		}
+		
+		calc(calc_to_power);
+	}
 }
 
 template<typename Symmetry, typename Scalar> template<typename OtherScalar> MpoTerms<Symmetry, OtherScalar> MpoTerms<Symmetry,Scalar>::

@@ -249,11 +249,11 @@ public:
 	calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R1, const Mpo<Symmetry,complex<double>> &R2) const;
 	
 	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > >
-	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1, qarray<Symmetry::Nq> Qtot=Symmetry::qvacuum()) const;
+	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1, qarray<Symmetry::Nq> Qtot=Symmetry::qvacuum(), string label="") const;
 	
 	template<typename MpoScalar>
 	vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > >
-	calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1) const;
+	calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15, int dimK=-1, string label="") const;
 	
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -2745,7 +2745,7 @@ truncate (bool SET_AC_RANDOM)
 
 template<typename Symmetry, typename Scalar>
 vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > Umps<Symmetry,Scalar>::
-calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK, qarray<Symmetry::Nq> Qtot) const
+calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK, qarray<Symmetry::Nq> Qtot, string label) const
 {
 	vector<std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > res(N);
 	
@@ -2782,7 +2782,7 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, 
 		John.set_dimK(dimK);
 	}
 	John.calc_dominant(T,x);
-	lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
+	lout << "Fixed point(" << label << "): GAUGE=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
 	//Normalize the Fixed point and try to make it real.
 //	x.data = exp(-1.i*arg(x.data.block[0](0,0))) * (1./x.data.norm()) * x.data;
 	
@@ -2826,7 +2826,7 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, 
 template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > Umps<Symmetry,Scalar>::
-calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK) const
+calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol, int dimK, string label) const
 {
 	vector<std::pair<complex<double>,Tripod<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > > res(N);
 	
@@ -2885,7 +2885,7 @@ calc_dominant_Q (const Mpo<Symmetry,MpoScalar> &O, GAUGE::OPTION g, DMRG::DIRECT
 	ArnoldiSolver<TransferMatrixQ<Symmetry,complex<double> >,MpoTransferVector<Symmetry,complex<double> > > Arnie(N,tol);
 	if (dimK != -1) Arnie.set_dimK(dimK);
 	Arnie.calc_dominant(T,x);
-	lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Arnie.info()  << endl;
+	lout << "Fixed point(" << label << "):" << " GAUGE=" << g << ", DIR=" << DIR << ": " << Arnie.info()  << endl;
 	
 	res[0].first = Arnie.get_lambda(0);
 	res[0].second = x.data;

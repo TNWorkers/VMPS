@@ -21,13 +21,13 @@ public:
 	                 int Ncells_input, const vector<Param> &params_hetero, 
 	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
 	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
-	                 double tol_OxV=2.);
+	                 double tol_OxV=2., int locyBra=0, int locyKet=0);
 	
 	// OBC
 	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, DMRG::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
 	                 string gs_label="gs", bool LOAD_GS=false, bool SAVE_GS=false,
 	                 DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
-	                 double tol_OxV=2.);
+	                 double tol_OxV=2., int locy=0);
 	
 	SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE)
 	:specs(specs_input), Hwork(H), CHOSEN_VERB(VERB)
@@ -104,6 +104,8 @@ public:
 		if (spec == "PESUP")      res = "IPEUP";
 		if (spec == "PESDN")      res = "IPEDN";
 		else if (spec == "SSF")   res = "SDAGSF";
+		else if (spec == "SPM")   res = "SMP";
+		else if (spec == "SMP")   res = "SPM";
 		else if (spec == "QSF")   res = "QDAGSF";
 		else if (spec == "SSZ")   res = "SSZ";
 		else if (spec == "IPE")   res = "PES";
@@ -127,7 +129,7 @@ public:
 	
 	static bool CHECK_SPEC (string spec)
 	{
-		std::array<string,24> possible_specs = {"PES","PESUP","PESDN", //3,3
+		std::array<string,26> possible_specs = {"PES","PESUP","PESDN", //3,3
 		                                        "SSF","SSZ", //2,5
 		                                        "IPE","IPEUP","IPEDN", //3,8
 		                                        "AES","APS", //2,10
@@ -135,7 +137,8 @@ public:
 		                                        "HSF","IHSF", //2,17
 		                                        "HTS","IHTS", // 2,19
 		                                        "JCJC","JEJE", "JCJE", "JEJC", // 4,23
-		                                        "QSF" // 1,24
+		                                        "QSF", // 1,24
+		                                        "SPM","SMP" // 2,26
 		                                        }; 
 		return find(possible_specs.begin(), possible_specs.end(), spec) != possible_specs.end();
 	}
@@ -154,7 +157,8 @@ private:
 	Hamiltonian Hwork;
 	Mps<Symmetry,Scalar> Phi;
 	double Eg;
-	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiCell;
+	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiCellBra;
+	vector<vector<Mps<Symmetry,complex<double>>>> OxPhiCellKet;
 	
 	Eigenstate<Umps<Symmetry,Scalar>> g;
 	Eigenstate<Mps<Symmetry,Scalar>> gfinite;
@@ -177,7 +181,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 	             int Ncells_input, const vector<Param> &params_hetero, 
 	             string gs_label, bool LOAD_GS, bool SAVE_GS,
 	             DMRG::VERBOSITY::OPTION VERB,
-	             double tol_OxV)
+	             double tol_OxV, int locyBra, int locyKet)
 :specs(specs_input), Ncells(Ncells_input), CHOSEN_VERB(VERB)
 {
 	for (const auto &spec:specs)
@@ -218,50 +222,98 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 	Phi = uDMRG.create_Mps(Ncells, g, H, Lhetero/2); // ground state as heterogenic MPS
 	
 	// shift values O→O-<O>
-	vector<vector<Scalar>> Oshift(Nspec);
+	vector<vector<Scalar>> OshiftKet(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
-		Oshift[z].resize(L);
+		OshiftKet[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
 			if (specs[z] == "HSF")
 			{
 				Hamiltonian Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
-				Oshift[z][l] = avg(g.state, get_Op(Haux,l,specs[z]), g.state);
+				OshiftKet[z][l] = avg(g.state, get_Op(Haux,l,specs[z],1.,locyKet), g.state);
 			}
 			else
 			{
-				Oshift[z][l] = avg(g.state, get_Op(H,l,specs[z]), g.state);
+				OshiftKet[z][l] = avg(g.state, get_Op(H,l,specs[z],1.,locyKet), g.state);
 			}
-			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
+			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << OshiftKet[z][l] << endl;
 		}
 	}
 	
 	// O and OxPhiCell for counterpropagate
-	vector<vector<Mpo<Symmetry,Scalar>>> O(Nspec);
+	vector<vector<Mpo<Symmetry,Scalar>>> Oket(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
-		O[z].resize(L);
+		Oket[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
-			O[z][l] = get_Op(Hwork, Lhetero/2+l, specs[z]);
-			if (abs(Oshift[z][l]) > 1e-6)
+			Oket[z][l] = get_Op(Hwork, Lhetero/2+l, specs[z], 1., locyKet);
+			if (abs(OshiftKet[z][l]) > 1e-6)
 			{
-				O[z][l].scale(1.,-Oshift[z][l]);
+				Oket[z][l].scale(1.,-OshiftKet[z][l]);
 			}
-			O[z][l].transform_base(Q,false,L); // PRINT=false
-			lout << O[z][l].info() << endl;
+			Oket[z][l].transform_base(Q,false,L); // PRINT=false
+			lout << Oket[z][l].info() << endl;
 		}
 	}
 	
-	OxPhiCell.resize(Nspec);
+	vector<vector<Mpo<Symmetry,Scalar>>> Obra(Nspec);
+	if (locyBra == locyKet)
+	{
+		Obra = Oket;
+	}
+	else
+	{
+		vector<vector<Scalar>> OshiftBra(Nspec);
+		for (int z=0; z<Nspec; ++z)
+		{
+			OshiftBra[z].resize(L);
+			for (int l=0; l<L; ++l)
+			{
+				if (specs[z] == "HSF")
+				{
+					Hamiltonian Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+					OshiftBra[z][l] = avg(g.state, get_Op(Haux,l,specs[z],1.,locyBra), g.state);
+				}
+				else
+				{
+					OshiftBra[z][l] = avg(g.state, get_Op(H,l,specs[z],1.,locyBra), g.state);
+				}
+				lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << OshiftBra[z][l] << endl;
+			}
+		}
+		
+		for (int z=0; z<Nspec; ++z)
+		{
+			Obra[z].resize(L);
+			for (int l=0; l<L; ++l)
+			{
+				Obra[z][l] = get_Op(Hwork, Lhetero/2+l, specs[z], 1., locyBra);
+				if (abs(OshiftBra[z][l]) > 1e-6)
+				{
+					Obra[z][l].scale(1.,-OshiftBra[z][l]);
+				}
+				Obra[z][l].transform_base(Q,false,L); // PRINT=false
+				lout << Obra[z][l].info() << endl;
+			}
+		}
+	}
+	
+	OxPhiCellKet.resize(Nspec);
+	OxPhiCellBra.resize(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
-		OxPhiCell[z].resize(L);
-		auto tmp = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z], tol_OxV); // O[z][0] for boundaries, O[z] is multiplied (vector in cell size)
+		OxPhiCellKet[z].resize(L);
+		OxPhiCellBra[z].resize(L);
+		
+		auto tmpKet = uDMRG.create_Mps(Ncells, g, H, Oket[z][0], Oket[z], tol_OxV); // O[z][0] for boundaries, O[z] is multiplied (vector in cell size)
+		auto tmpBra = uDMRG.create_Mps(Ncells, g, H, Obra[z][0], Obra[z], tol_OxV);
+		
 		for (int l=0; l<L; ++l)
 		{
-			OxPhiCell[z][l] = tmp[l].template cast<complex<double>>();
+			OxPhiCellKet[z][l] = tmpKet[l].template cast<complex<double>>();
+			OxPhiCellBra[z][l] = tmpBra[l].template cast<complex<double>>();
 		}
 	}
 	
@@ -273,7 +325,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 template<typename Hamiltonian>
 SpectralManager<Hamiltonian>::
 SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const vector<Param> &params, DMRG::CONTROL::GLOB GlobSweepParams, qarray<Symmetry::Nq> Q,
-                 string gs_label, bool LOAD_GS, bool SAVE_GS, DMRG::VERBOSITY::OPTION VERB, double tol_OxV)
+                 string gs_label, bool LOAD_GS, bool SAVE_GS, DMRG::VERBOSITY::OPTION VERB, double tol_OxV, int locy)
 :specs(specs_input), CHOSEN_VERB(VERB)
 {
 	for (const auto &spec:specs)
@@ -323,11 +375,11 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 			if (specs[z] == "HSF")
 			{
 				Hamiltonian Haux(2*L, {{"maxPower",1ul}}, BC::OPEN, DMRG::VERBOSITY::SILENT);
-				Oshift[z][l] = avg(gfinite.state, get_Op(Haux,l,specs[z]), gfinite.state);
+				Oshift[z][l] = avg(gfinite.state, get_Op(Haux,l,specs[z],1.,locy), gfinite.state);
 			}
 			else
 			{
-				Oshift[z][l] = avg(gfinite.state, get_Op(H,l,specs[z]), gfinite.state);
+				Oshift[z][l] = avg(gfinite.state, get_Op(H,l,specs[z],1.,locy), gfinite.state);
 			}
 			lout << "spec=" << specs[z] << ", l=" << l << ", shift=" << Oshift[z][l] << endl;
 		}
@@ -340,7 +392,7 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		O[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
-			O[z][l] = get_Op(Hwork, l, specs[z]);
+			O[z][l] = get_Op(Hwork, l, specs[z], 1., locy);
 			if (O[z][l].Qtarget() == Symmetry::qvacuum())
 			{
 				O[z][l].scale(1.,-Oshift[z][l]);
@@ -348,16 +400,16 @@ SpectralManager (const vector<string> &specs_input, const Hamiltonian &H, const 
 		}
 	}
 	
-	OxPhiCell.resize(Nspec);
+	OxPhiCellKet.resize(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
-		OxPhiCell[z].resize(L);
+		OxPhiCellKet[z].resize(L);
 		for (int l=0; l<L; ++l)
 		{
 			Mps<Symmetry,Scalar> tmp;
 			Mpo<Symmetry,Scalar> Otmp = O[z][l];
 			OxV_exact(Otmp, Phi, tmp, tol_OxV, DMRG::VERBOSITY::SILENT, 200, 1);
-			OxPhiCell[z][l] = tmp.template cast<complex<double>>();
+			OxPhiCellKet[z][l] = tmp.template cast<complex<double>>();
 		}
 	}
 	
@@ -485,11 +537,15 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //			}
 		}
 		
-		cout << termcolor::yellow
-		     << "avg(th.state, Htherm.SdagS(0,1), th.state)=" << avg(th.state, Htherm.SdagS(0,1), th.state) 
-		     << ", avg(th.state, Htherm.SdagS(0,0,0,1), th.state)=" << avg(th.state, Htherm.SdagS(0,0,0,1), th.state) 
-		     << termcolor::reset
-		     << endl;
+		for (int l=0; l<L-dLphys; l+=dLphys)
+		{
+			cout << termcolor::yellow
+				 << "l=" << l
+				// << ", avg(th.state, Htherm.SdagS(NN), th.state)=" << avg(th.state, Htherm.SdagS(l,l+dLphys), th.state) 
+				 << ", avg_loc=" << avg(th.state, Htherm.SdagS(l,l,0,1), th.state) 
+				 << termcolor::reset
+				 << endl;
+		}
 		
 		PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
 		PhiT.eps_truncWeight = tol_compr_beta;
@@ -1130,7 +1186,7 @@ compute (string wd, string label, int Ns, double tmax, double dt, double wmin, d
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
 		
-		Green[z].compute_cell(Hwork, OxPhiCell[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		Green[z].compute_cell(Hwork, OxPhiCellBra[z], OxPhiCellKet[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -1153,8 +1209,8 @@ compute_finite (size_t j0, string wd, string label, int Ns, double tmax, double 
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
 		
-		Green[z].set_OxPhiFull(OxPhiCell[z]); 
-		Green[z].compute_one(j0, Hwork, OxPhiCell[z], Eg, TIME_DIR(spec), false); // COUNTERPROPAGATE=false
+		Green[z].set_OxPhiFull(OxPhiCellKet[z]); 
+		Green[z].compute_one(j0, Hwork, OxPhiCellKet[z], Eg, TIME_DIR(spec), false); // COUNTERPROPAGATE=false
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -1182,7 +1238,7 @@ compute_finiteCell (int Lcell, int x0, string wd, string label, double tmax, dou
 		Green[z].set_lim_Nsv(Mlim);
 		Green[z].set_tol_compr(tol_compr);
 		
-		Green[z].set_OxPhiFull(OxPhiCell[z]);
+		Green[z].set_OxPhiFull(OxPhiCellKet[z]);
 		if (Oshift.size() != 0)
 		{
 			if (Oshift[z][0] != 0.)
@@ -1190,7 +1246,7 @@ compute_finiteCell (int Lcell, int x0, string wd, string label, double tmax, dou
 				Green[z].set_Oshift(Oshift[z]);
 			}
 		}
-		Green[z].compute_cell(Hwork, OxPhiCell[z], Eg, TIME_DIR(spec), false, x0); // COUNTERPROPAGATE=false
+		Green[z].compute_cell(Hwork, OxPhiCellKet[z], Eg, TIME_DIR(spec), false, x0); // COUNTERPROPAGATE=false
 		Green[z].save(false); // IGNORE_TX=false
 	}
 }
@@ -1362,6 +1418,30 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 		if constexpr (!Symmetry::IS_SPIN_SU2())
 		{
 			Res = H.Scomp(SZ,loc,locy);
+			OPERATOR_IS_SET = true;
+		}
+		else
+		{
+			throw;
+		}
+	}
+	else if (spec == "SPM")
+	{
+		if constexpr (!Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.Scomp(SM,loc,locy);
+			OPERATOR_IS_SET = true;
+		}
+		else
+		{
+			throw;
+		}
+	}
+	else if (spec == "SMP")
+	{
+		if constexpr (!Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.Scomp(SP,loc,locy);
 			OPERATOR_IS_SET = true;
 		}
 		else

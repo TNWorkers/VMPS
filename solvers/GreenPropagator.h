@@ -394,8 +394,8 @@ public:
 	\param TIME_FORWARDS : For photoemission, set to \p false. For inverse photoemission, set to \p true.
 	\param COUNTERPROPAGATE : If \p true, use the more efficient propagations forwards and backwards in time (not for finite MPS)
 	*/
-	void compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, 
-	                   bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true, int x0=0);
+	void compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhiBra, const vector<Mps<Symmetry,complex<double>>> &OxPhiKet,
+	                   double Eg, bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true, int x0=0);
 	
 	void compute_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS = true);
 	
@@ -568,7 +568,7 @@ private:
 //	                double Eg, bool TIME_FORWARDS);
 	void propagate_cell (int x0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
 	void propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
-	void counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
+	void counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhiBra, const vector<Mps<Symmetry,complex<double>>> &OxPhiKet, double Eg, bool TIME_FORWARDS=true);
 	
 //	void propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
 //	                        Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
@@ -939,13 +939,13 @@ private:
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE, int x0)
+compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhiBra, const vector<Mps<Symmetry,complex<double>>> &OxPhiKet, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE, int x0)
 {
 	print_starttext();
 	
-	if (!OxPhi[0].Boundaries.IS_TRIVIAL()) // IBC
+	if (!OxPhiKet[0].Boundaries.IS_TRIVIAL()) // IBC
 	{
-		Lcell = OxPhi.size();
+		Lcell = OxPhiKet.size();
 		Lhetero = H.length();
 		Ncells = Lhetero/Lcell;
 	}
@@ -980,7 +980,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 		GloctCell[i].setZero();
 	}
 	
-	if (OxPhi[0].Boundaries.IS_TRIVIAL() or COUNTERPROPAGATE == false)
+	if (OxPhiKet[0].Boundaries.IS_TRIVIAL() or COUNTERPROPAGATE == false)
 	{
 		#pragma omp critical
 		{
@@ -989,7 +989,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 			lout << termcolor::blue << "current OMP threads=" << omp_get_max_threads() << termcolor::reset << endl;
 			#endif
 		}
-		propagate_cell(x0, H, OxPhi, Eg, TIME_FORWARDS);
+		propagate_cell(x0, H, OxPhiKet, Eg, TIME_FORWARDS);
 	}
 	else
 	{
@@ -1000,7 +1000,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 			lout << termcolor::blue << "current OMP threads=" << omp_get_max_threads() << termcolor::reset << endl;
 			#endif
 		}
-		counterpropagate_cell(H, OxPhi, Eg, TIME_FORWARDS);
+		counterpropagate_cell(H, OxPhiBra, OxPhiKet, Eg, TIME_FORWARDS);
 	}
 	
 //	FTcell_xq();
@@ -1277,7 +1277,7 @@ propagate_one (int j0, const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
+counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhiBra, const vector<Mps<Symmetry,complex<double>>> &OxPhiKet, double Eg, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 	std::array<double,2> zfac;
@@ -1290,7 +1290,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		Psi[z].resize(Lcell);
 		for (int i=0; i<Lcell; ++i)
 		{
-			Psi[z][i] = OxPhi[i];
+			Psi[z][i] = (z==0)? OxPhiKet[i] : OxPhiBra[i];
 			Psi[z][i].eps_truncWeight = tol_compr;
 			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),lim_Nsv);
 		}
@@ -1573,14 +1573,14 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 			}
 			//-------------------------------------------------------------------------------------------------
 			
-			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
+			/*if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
 				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
 				}
-			}
+			}*/
 		}
 		tval = tsteps.head(t.index()+1).sum();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;
