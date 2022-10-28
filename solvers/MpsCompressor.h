@@ -297,8 +297,7 @@ memory (MEMUNIT memunit) const
 	}
 	for (size_t l=0; l<Heff.size(); ++l)
 	{
-		res += Heff[l].L.memory(memunit);
-		res += Heff[l].R.memory(memunit);
+		res += Heff[l].memory(memunit);
 	}
 	return res;
 }
@@ -988,18 +987,19 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	// prepare edges of LW & RW
 	Heff.clear();
 	Heff.resize(N_sites);
-	Heff[0].L.setVacuum();
+	for (int l=0; l<N_sites; ++l) Heff[l].Terms.resize(1);
+	Heff[0].Terms[0].L.setVacuum();
 	
 	vector<qarray3<Symmetry::Nq> > Qt;
 	for (size_t i=0; i<Vin.Qmultitarget().size(); ++i)
 	{
 		Qt.push_back(qarray3<Symmetry::Nq>{Vin.Qmultitarget()[i], Vout.Qmultitarget()[i], H.Qtarget()});
 	}
-	Heff[N_sites-1].R.setTarget(Qt);
+	Heff[N_sites-1].Terms[0].R.setTarget(Qt);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Heff[l].W = H.W[l];
+		Heff[l].Terms[0].W = H.W[l];
 	}
 	
 	Vout.max_Nsv = Mcutoff;
@@ -1246,7 +1246,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, PivotVector<Symmetry,Scalar> &Aout)
 {
 	Stopwatch<> OheadTimer;
-	precalc_blockStructure (Heff[pivot].L, Vout.A[pivot], Heff[pivot].W, Vin.A[pivot], Heff[pivot].R, 
+	precalc_blockStructure (Heff[pivot].Terms[0].L, Vout.A[pivot], Heff[pivot].Terms[0].W, Vin.A[pivot], Heff[pivot].Terms[0].R, 
 	                        H.locBasis(pivot), H.opBasis(pivot), 
 	                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	
@@ -1305,13 +1305,13 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	                                        true); // dry run: do not multiply matrices, just set blocks
 	t_AA += AAtimer.time();
 	
-	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1()].L, Heff[loc2()].R, 
+	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1()].Terms[0].L, Heff[loc2()].Terms[0].R, 
 	                                              H.W[loc1()], H.W[loc2()], 
 	                                              H.locBasis(loc1()), H.locBasis(loc2()), 
 	                                              H.opBasis (loc1()), H.opBasis (loc2()));
 	
 	Stopwatch<> OheadTimer;
-	precalc_blockStructure (Heff[loc1()].L, ApairOut.data, Heff2.W12, Heff2.W34, ApairIn.data, Heff[loc2()].R, 
+	precalc_blockStructure (Heff[loc1()].Terms[0].L, ApairOut.data, Heff2.Terms[0].W12, Heff2.Terms[0].W34, ApairIn.data, Heff[loc2()].Terms[0].R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	t_ohead += OheadTimer.time();
@@ -1353,7 +1353,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L, RANDOMIZE);
+	contract_L(Heff[loc-1].Terms[0].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].Terms[0].L, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
@@ -1363,7 +1363,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R, RANDOMIZE);
+	contract_R(Heff[loc+1].Terms[0].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].Terms[0].R, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 

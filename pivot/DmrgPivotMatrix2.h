@@ -13,20 +13,8 @@
 #include "pivot/DmrgPivotOverlap2.h"
 
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
-struct PivotMatrix2
+struct PivotMatrix2Terms
 {
-	PivotMatrix2 (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L_input, 
-	              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R_input, 
-	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W12_input,
-	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W34_input,
-	              const vector<qarray<Symmetry::Nq> > &qloc12_input,
-	              const vector<qarray<Symmetry::Nq> > &qloc34_input, 
-	              const vector<qarray<Symmetry::Nq> > &qOp12_input, 
-	              const vector<qarray<Symmetry::Nq> > &qOp34_input)
-	:L(L_input), R(R_input), W12(W12_input), W34(W34_input), 
-	qloc12(qloc12_input), qloc34(qloc34_input), qOp12(qOp12_input), qOp34(qOp34_input)
-	{}
-	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W12;
@@ -36,16 +24,55 @@ struct PivotMatrix2
 	vector<qarray<Symmetry::Nq> > qloc34;
 	vector<qarray<Symmetry::Nq> > qOp12;
 	vector<qarray<Symmetry::Nq> > qOp34;
+};
+
+template<typename Symmetry, typename Scalar, typename MpoScalar=double>
+struct PivotMatrix2
+{
+	PivotMatrix2(){};
 	
-	// stuff for excited states
-//	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
-//	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
-	double Epenalty = 0;
+	PivotMatrix2 (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L_input, 
+	              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R_input, 
+	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W12_input,
+	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W34_input,
+	              const vector<qarray<Symmetry::Nq> > &qloc12_input,
+	              const vector<qarray<Symmetry::Nq> > &qloc34_input, 
+	              const vector<qarray<Symmetry::Nq> > &qOp12_input, 
+	              const vector<qarray<Symmetry::Nq> > &qOp34_input)
+	{
+		Terms.resize(1);
+		Terms[0].L = L_input;
+		Terms[0].R = R_input;
+		Terms[0].W12 = W12_input;
+		Terms[0].W34 = W34_input;
+		Terms[0].qloc12 = qloc12_input;
+		Terms[0].qloc34 = qloc34_input;
+		Terms[0].qOp12 = qOp12_input;
+		Terms[0].qOp34 = qOp34_input;
+	}
 	
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+//	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W12;
+//	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W34;
+//	
+//	vector<qarray<Symmetry::Nq> > qloc12;
+//	vector<qarray<Symmetry::Nq> > qloc34;
+//	vector<qarray<Symmetry::Nq> > qOp12;
+//	vector<qarray<Symmetry::Nq> > qOp34;
+	
+	vector<PivotMatrix2Terms<Symmetry,Scalar,MpoScalar> > Terms;
+	
+	//---<pre-calculated, if Terms.size() == 1>---
 	vector<std::array<size_t,2> >           qlhs;
 	vector<vector<std::array<size_t,12> > > qrhs;
 	vector<vector<Scalar> >                 factor_cgcs;
+	//--------------------------------
+	
+	//---<stuff for excited states>---
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
+	double Epenalty = 0;
+	//--------------------------------
 };
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -59,67 +86,159 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
 	for (size_t i=0; i<Vout.data.size(); ++i) {Vout.data[i].setZero();}
+	vector<PivotVector<Symmetry,Scalar> > Vt(H.Terms.size());
+	for (size_t t=0; t<H.Terms.size(); ++t) Vt[t] = Vout;
 	
-//	cout << "2site H.qlhs.size()=" << H.qlhs.size() << endl;
-	#ifdef DMRG_PIVOT2_PARALLELIZE
-	#pragma omp parallel for schedule(dynamic)
-	#endif
-	for (size_t q=0; q<H.qlhs.size(); ++q)
+//	vector<std::array<size_t,2> >           qlhs;
+//	vector<vector<std::array<size_t,12> > > qrhs;
+//	vector<vector<Scalar> >                 factor_cgcs;
+//	precalc_blockStructure<Symmetry,Scalar,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> >
+//	(H.L, Vin.data, H.W12, H.W34, Vin.data, H.R, H.qloc12, H.qloc34, H.qOp12, H.qOp34, qlhs, qrhs, factor_cgcs);
+//	
+//	#ifdef DMRG_PIVOT2_PARALLELIZE
+//	#pragma omp parallel for schedule(dynamic)
+//	#endif
+//	for (size_t q=0; q<qlhs.size(); ++q)
+//	{
+//		size_t s1s3 = qlhs[q][0];//H.qlhs[q][0];
+//		size_t q13  = qlhs[q][1];//H.qlhs[q][1];
+//		
+//		for (size_t p=0; p<qrhs[q].size(); ++p)
+//		{
+//			size_t s2s4 = qrhs[q][p][0];//H.qrhs[q][p][0];
+//			size_t q24  = qrhs[q][p][1];//H.qrhs[q][p][1];
+//			size_t qL   = qrhs[q][p][2];//H.qrhs[q][p][2];
+//			size_t qR   = qrhs[q][p][3];//H.qrhs[q][p][3];
+//			size_t s1   = qrhs[q][p][4];//H.qrhs[q][p][4];
+//			size_t s2   = qrhs[q][p][5];//H.qrhs[q][p][5];
+//			size_t k12  = qrhs[q][p][6];//H.qrhs[q][p][6];
+//			size_t qW12 = qrhs[q][p][7];//H.qrhs[q][p][7];
+//			size_t s3   = qrhs[q][p][8];//H.qrhs[q][p][8];
+//			size_t s4   = qrhs[q][p][9];//H.qrhs[q][p][9];
+//			size_t k34  = qrhs[q][p][10];//H.qrhs[q][p][10];
+//			size_t qW34 = qrhs[q][p][11];//H.qrhs[q][p][11];
+//			
+//			for (int r12=0; r12<H.W12[s1][s2][k12].block[qW12].outerSize(); ++r12)
+//			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12].block[qW12],r12); iW12; ++iW12)
+//			for (int r34=0; r34<H.W34[s3][s4][k34].block[qW34].outerSize(); ++r34)
+//			for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34].block[qW34],r34); iW34; ++iW34)
+//			{
+//				if (H.L.block[qL][iW12.row()][0].size() != 0 and 
+//				    H.R.block[qR][iW34.col()][0].size() != 0 and
+//				    Vin.data[s2s4].block[q24].size() != 0 and
+//				    iW12.col() == iW34.row())
+//				{
+////					cout << "s1s3=" << s1s3 << ", q13=" << q13 << ", qL=" << qL 
+////					     << ", iW12.row()=" << iW12.row() << ", qR=" << qR << ", iW34.col()=" << iW34.col() << endl;
+////					print_size(H.L.block[qL][iW12.row()][0],"H.L.block[qL][iW12.row()][0]");
+////					print_size(Vin.data[s2s4].block[q24],"Vin.data[s2s4].block[q24]");
+////					print_size(H.R.block[qR][iW34.col()][0],"H.R.block[qR][iW34.col()][0]");
+////					cout << endl;
+//					
+//					if (Vout.data[s1s3].block[q13].rows() != H.L.block[qL][iW12.row()][0].rows() or
+//					    Vout.data[s1s3].block[q13].cols() != H.R.block[qR][iW34.col()][0].cols())
+//					{
+//						Vout.data[s1s3].block[q13].noalias() = factor_cgcs[q][p] * iW12.value() * iW34.value() *
+//						                             (H.L.block[qL][iW12.row()][0] * 
+//						                              Vin.data[s2s4].block[q24] * 
+//						                              H.R.block[qR][iW34.col()][0]);
+//					}
+//					else
+//					{
+//						Vout.data[s1s3].block[q13].noalias() += factor_cgcs[q][p] * iW12.value() * iW34.value() *
+//						                              (H.L.block[qL][iW12.row()][0] * 
+//						                               Vin.data[s2s4].block[q24] * 
+//						                               H.R.block[qR][iW34.col()][0]);
+//					}
+//				}
+//			}
+//		}
+//	}
+	
+	for (size_t t=0; t<H.Terms.size(); ++t)
 	{
-		size_t s1s3 = H.qlhs[q][0];
-		size_t q13  = H.qlhs[q][1];
+		vector<std::array<size_t,2> >           qlhs;
+		vector<vector<std::array<size_t,12> > > qrhs;
+		vector<vector<Scalar> >                 factor_cgcs;
 		
-		for (size_t p=0; p<H.qrhs[q].size(); ++p)
+		if (H.Terms.size() == 1)
 		{
-			size_t s2s4 = H.qrhs[q][p][0];
-			size_t q24  = H.qrhs[q][p][1];
-			size_t qL   = H.qrhs[q][p][2];
-			size_t qR   = H.qrhs[q][p][3];
-			size_t s1   = H.qrhs[q][p][4];
-			size_t s2   = H.qrhs[q][p][5];
-			size_t k12  = H.qrhs[q][p][6];
-			size_t qW12 = H.qrhs[q][p][7];
-			size_t s3   = H.qrhs[q][p][8];
-			size_t s4   = H.qrhs[q][p][9];
-			size_t k34  = H.qrhs[q][p][10];
-			size_t qW34 = H.qrhs[q][p][11];
+			qlhs = H.qlhs;
+			qrhs = H.qrhs;
+			factor_cgcs = H.factor_cgcs;
+		}
+		else
+		{
+			precalc_blockStructure<Symmetry,Scalar,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> >
+			(H.Terms[t].L, Vin.data, H.Terms[t].W12, H.Terms[t].W34, Vin.data, H.Terms[t].R, H.Terms[t].qloc12, H.Terms[t].qloc34, H.Terms[t].qOp12, H.Terms[t].qOp34, qlhs, qrhs, factor_cgcs);
+		}
+		
+		#ifdef DMRG_PIVOT2_PARALLELIZE
+		#pragma omp parallel for schedule(dynamic)
+		#endif
+		for (size_t q=0; q<qlhs.size(); ++q)
+		{
+			size_t s1s3 = qlhs[q][0];
+			size_t q13  = qlhs[q][1];
 			
-			for (int r12=0; r12<H.W12[s1][s2][k12].block[qW12].outerSize(); ++r12)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12].block[qW12],r12); iW12; ++iW12)
-			for (int r34=0; r34<H.W34[s3][s4][k34].block[qW34].outerSize(); ++r34)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34].block[qW34],r34); iW34; ++iW34)
+			for (size_t p=0; p<qrhs[q].size(); ++p)
 			{
-				if (H.L.block[qL][iW12.row()][0].size() != 0 and 
-				    H.R.block[qR][iW34.col()][0].size() != 0 and
-				    Vin.data[s2s4].block[q24].size() != 0 and
-				    iW12.col() == iW34.row())
+				size_t s2s4 = qrhs[q][p][0];
+				size_t q24  = qrhs[q][p][1];
+				size_t qL   = qrhs[q][p][2];
+				size_t qR   = qrhs[q][p][3];
+				size_t s1   = qrhs[q][p][4];
+				size_t s2   = qrhs[q][p][5];
+				size_t k12  = qrhs[q][p][6];
+				size_t qW12 = qrhs[q][p][7];
+				size_t s3   = qrhs[q][p][8];
+				size_t s4   = qrhs[q][p][9];
+				size_t k34  = qrhs[q][p][10];
+				size_t qW34 = qrhs[q][p][11];
+				
+				for (int r12=0; r12<H.Terms[t].W12[s1][s2][k12].block[qW12].outerSize(); ++r12)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.Terms[t].W12[s1][s2][k12].block[qW12],r12); iW12; ++iW12)
+				for (int r34=0; r34<H.Terms[t].W34[s3][s4][k34].block[qW34].outerSize(); ++r34)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.Terms[t].W34[s3][s4][k34].block[qW34],r34); iW34; ++iW34)
 				{
-//					cout << "s1s3=" << s1s3 << ", q13=" << q13 << ", qL=" << qL 
-//					     << ", iW12.row()=" << iW12.row() << ", qR=" << qR << ", iW34.col()=" << iW34.col() << endl;
-//					print_size(H.L.block[qL][iW12.row()][0],"H.L.block[qL][iW12.row()][0]");
-//					print_size(Vin.data[s2s4].block[q24],"Vin.data[s2s4].block[q24]");
-//					print_size(H.R.block[qR][iW34.col()][0],"H.R.block[qR][iW34.col()][0]");
-//					cout << endl;
-					
-					if (Vout.data[s1s3].block[q13].rows() != H.L.block[qL][iW12.row()][0].rows() or
-					    Vout.data[s1s3].block[q13].cols() != H.R.block[qR][iW34.col()][0].cols())
+					if (H.Terms[t].L.block[qL][iW12.row()][0].size() != 0 and 
+						H.Terms[t].R.block[qR][iW34.col()][0].size() != 0 and
+						Vin.data[s2s4].block[q24].size() != 0 and
+						iW12.col() == iW34.row())
 					{
-						Vout.data[s1s3].block[q13] = H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
-						                             (H.L.block[qL][iW12.row()][0] * 
-						                              Vin.data[s2s4].block[q24] * 
-						                              H.R.block[qR][iW34.col()][0]);
-					}
-					else
-					{
-						Vout.data[s1s3].block[q13] += H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
-						                              (H.L.block[qL][iW12.row()][0] * 
-						                               Vin.data[s2s4].block[q24] * 
-						                               H.R.block[qR][iW34.col()][0]);
+						if (Vt[t].data[s1s3].block[q13].rows() != H.Terms[t].L.block[qL][iW12.row()][0].rows() or
+							Vt[t].data[s1s3].block[q13].cols() != H.Terms[t].R.block[qR][iW34.col()][0].cols())
+						{
+							Vt[t].data[s1s3].block[q13].noalias() = factor_cgcs[q][p] * iW12.value() * iW34.value() *
+								                         (H.Terms[t].L.block[qL][iW12.row()][0] * 
+								                          Vin.data[s2s4].block[q24] * 
+								                          H.Terms[t].R.block[qR][iW34.col()][0]);
+						}
+						else
+						{
+							Vt[t].data[s1s3].block[q13].noalias() += factor_cgcs[q][p] * iW12.value() * iW34.value() *
+								                          (H.Terms[t].L.block[qL][iW12.row()][0] * 
+								                           Vin.data[s2s4].block[q24] * 
+								                           H.Terms[t].R.block[qR][iW34.col()][0]);
+						}
 					}
 				}
 			}
 		}
 	}
+	
+	for (size_t s=0; s<Vout.size(); ++s)
+	{
+		Vout[s] = Vt[0][s];
+	}
+	
+	for (size_t t=1; t<H.Terms.size(); ++t)
+	for (size_t s=0; s<Vout.size(); ++s)
+	{
+		Vout[s].addScale(1.,Vt[t][s]);
+	}
+	
+	if (H.Terms.size() > 0) for (size_t s=0; s<Vout.size(); ++s) Vout[s] = Vout[s].cleaned();
 	
 	// project out unwanted states (e.g. to get lower spectrum)
 	for (size_t n=0; n<H.A0proj.size(); ++n)

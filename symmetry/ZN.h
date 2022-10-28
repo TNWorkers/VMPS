@@ -38,12 +38,15 @@ public:
 	static constexpr bool IS_CHARGE_SU2() { return false; }
 	static constexpr bool IS_SPIN_SU2() { return false; }
 	
+	static constexpr bool NO_SPIN_SYM() { return false;}
+	static constexpr bool NO_CHARGE_SYM() { return false;}
+	
 	typedef qarray<Nq> qType;
 	
 	ZN() {};
 	
 	inline static constexpr qType qvacuum() { return {0}; }
-	inline static constexpr std::array<qType,2> lowest_qs()	{ return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{1}}), qarray<1>(std::array<int,1>{{N-1}}) }}; }
+	inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{1}}) }}; }
 	
 	inline static std::string name()
 	{
@@ -56,7 +59,7 @@ public:
 	inline static qType flip( const qType& q ) { return {posmod<N>(-q[0])}; }
 	inline static int degeneracy( const qType& q ) { return 1; }
 
-	inline static int spinorFactor( const qType& q ) { return +1; }
+	inline static int spinorFactor() { return +1; }
 	///@{
 	/**
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.
@@ -97,6 +100,7 @@ public:
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3) {return 1.;};
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3);
 
 	inline static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
 								  int        q1_z, int        q2_z,        int q3_z);
@@ -107,6 +111,8 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+								const qType& q4, const qType& q5, const qType& q6);
 
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
@@ -131,6 +137,10 @@ public:
 									 const qType& q4, const qType& q5, const qType& q6,
 									 const qType& q7, const qType& q8, const qType& q9,
 									 const qType& q10, const qType& q11, const qType& q12);
+	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 	///@}
 
 	/** 
@@ -400,6 +410,41 @@ coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 }
 
 template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+		   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+			  const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+				  const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
 template<std::size_t M>
 bool ZN<Kind,N,Scalar>::
 compare ( const std::array<ZN<Kind,N,Scalar>::qType,M>& q1, const std::array<ZN<Kind,N,Scalar>::qType,M>& q2 )
@@ -443,13 +488,13 @@ validate ( const std::array<ZN<Kind,N,Scalar>::qType,M>& qs )
 
 } //end namespace Sym
 
-#ifndef STREAM_OPERATOR_ARR_1_INT
+/*#ifndef STREAM_OPERATOR_ARR_1_INT
 #define STREAM_OPERATOR_ARR_1_INT
 std::ostream& operator<< (std::ostream& os, const typename Sym::ZN<double>::qType &q)
 {
 	os << q[0];
 	return os;
 }
-#endif
+#endif*/
 
 #endif

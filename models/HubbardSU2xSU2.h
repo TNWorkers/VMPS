@@ -97,7 +97,7 @@ public:
 const map<string,any> HubbardSU2xSU2::defaults = 
 {
 	{"t",1.}, {"tRung",1.}, {"tPrimePrime",0.}, 
-	{"U",0.},
+	{"Uph",0.},
 	{"V",0.}, {"Vrung",0.},
 	{"J",0.}, {"Jrung",0.},
 	{"X",0.}, {"Xrung",0.},
@@ -249,17 +249,17 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		
 		// Local terms: Hubbard-U, t⟂, V⟂, J⟂
 		
-		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", orbitals, loc%Lcell);
 		param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
-		labellist[loc].push_back(U.label);
+		labellist[loc].push_back(Uph.label);
 		labellist[loc].push_back(tperp.label);
 		labellist[loc].push_back(Vperp.label);
 		labellist[loc].push_back(Jperp.label);
 		
-		auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction(F[loc].HubbardHamiltonian(U.a, tperp.a, Vperp.a, Jperp.a));
+		auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction(F[loc].HubbardHamiltonian(Uph.a, tperp.a, Vperp.a, Jperp.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: t, V, J, X

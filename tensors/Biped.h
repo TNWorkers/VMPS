@@ -192,6 +192,8 @@ public:
 	
 	void addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_POSITION BP = SAME_PLACE);
 	
+	void addScale_extend (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs);
+	
 	/**
 	 * This functions perform a contraction of \p this and \p A, which is a standard Matrix multiplication in this case.
 	 * \param A : other Biped which is contracted together with \p this.
@@ -1290,6 +1292,82 @@ addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_P
 				{
 					Mtmp = block[q];
 					addPos(factor * Mrhs.block[it->second], Mtmp, POS);
+				}
+			}
+			else if (block[q].size() == 0 and Mrhs.block[it->second].size() != 0)
+			{
+				Mtmp = factor * Mrhs.block[it->second]; // 0+factor*Mrhs
+			}
+			else if (block[q].size() != 0 and Mrhs.block[it->second].size() == 0)
+			{
+				Mtmp = block[q]; // M1+0
+			}
+			// else: block[q].size() == 0 and Mrhs.block[it->second].size() == 0 -> do nothing -> Mtmp.size() = 0
+		}
+		else
+		{
+			Mtmp = block[q]; // M1+0
+		}
+		
+		if (Mtmp.size() != 0)
+		{
+			Mout.push_back({{in[q], out[q]}}, Mtmp);
+		}
+	}
+	
+	if (matching_blocks.size() != Mrhs.dim)
+	{
+		for (size_t q=0; q<Mrhs.size(); ++q)
+		{
+			auto it = find(matching_blocks.begin(), matching_blocks.end(), q);
+			if (it == matching_blocks.end())
+			{
+				if (Mrhs.block[q].size() != 0)
+				{
+					Mout.push_back({{Mrhs.in[q], Mrhs.out[q]}}, factor * Mrhs.block[q]); // 0+factor*Mrhs
+				}
+			}
+		}
+	}
+	
+	*this = Mout;
+}
+
+/**Adds two Bipeds block- and coefficient-wise.
+Extends the result if the block sizes don't match.
+*/
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+addScale_extend (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs)
+{
+	vector<size_t> matching_blocks;
+	Biped<Symmetry,MatrixType_> Mout;
+	
+	for (size_t q=0; q<dim; ++q)
+	{
+		auto it = Mrhs.dict.find({{in[q], out[q]}});
+		if (it != Mrhs.dict.end())
+		{
+			matching_blocks.push_back(it->second);
+		}
+		
+		MatrixType_ Mtmp;
+		if (it != Mrhs.dict.end())
+		{
+			if (block[q].size() != 0 and Mrhs.block[it->second].size() != 0)
+			{
+				if (block[q].rows() == Mrhs.block[it->second].rows() and block[q].cols()==Mrhs.block[it->second].cols())
+				{
+					Mtmp = block[q] + factor * Mrhs.block[it->second]; // M1+factor*Mrhs
+				}
+				else
+				{
+					int maxrows = max(block[q].rows(),Mrhs.block[it->second].rows());
+					int maxcols = max(block[q].cols(),Mrhs.block[it->second].cols());
+					Mtmp.resize(maxrows,maxcols);
+					Mtmp.setZero();
+					Mtmp.topLeftCorner(block[q].rows(),block[q].cols()) = block[q];
+					Mtmp.topLeftCorner(Mrhs.block[it->second].rows(),Mrhs.block[it->second].cols()) += factor * Mrhs.block[it->second];
 				}
 			}
 			else if (block[q].size() == 0 and Mrhs.block[it->second].size() != 0)

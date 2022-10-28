@@ -121,13 +121,12 @@ public:
 	Mpo<Symmetry,Scalar> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> nssq (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry,Scalar> nhsq (size_t locx, size_t locy=0) const;
-	template<class Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type s (size_t locx, size_t locy=0) const;
 	
 	template<SPIN_INDEX sigma, typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type n (size_t locx, size_t locy=0) const;
 	
-	Mpo<Symmetry,Scalar> n (size_t locx, size_t locy=0) const;
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type n (size_t locx, size_t locy=0) const;
 	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -1150,14 +1149,6 @@ dtot() const
 }
 
 template<typename Symmetry, typename Scalar>
-template<class Dummy>
-typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
-s (size_t locx, size_t locy) const
-{
-	return make_local(locx,locy,  F[locx].n(locy)-2.*F[locx].d(locy), 1., PROP::BOSONIC, PROP::HERMITIAN);
-}
-
-template<typename Symmetry, typename Scalar>
 template<SPIN_INDEX sigma, typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 n (size_t locx, size_t locy) const
@@ -1166,10 +1157,10 @@ n (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry, typename Scalar>
-Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 n (size_t locx, size_t locy) const
 {
-//	cout << "n=" << F[locx].n(locy) << endl;
 	return make_local(locx,locy, F[locx].n(locy), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 

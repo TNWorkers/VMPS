@@ -531,8 +531,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					if (qR != R.dict.end())
 					{
 						bool ALL_BLOCKS_ARE_EMPTY = true;
-                        auto qW = get<3>(ix[n]);
-
+						auto qW = get<3>(ix[n]);
+						
 						for (int r=0; r<W[s1][s2][k].block[qW].outerSize(); ++r)
 						for (typename MpoMatrixType::InnerIterator iW(W[s1][s2][k].block[qW],r); iW; ++iW)
 						{
@@ -554,7 +554,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 							                     L.mid(qL), qOp[k], get<0>(ix[n])[2],
 							                     Abra[s1].in[get<1>(ix[n])], qloc[s1], Abra[s1].out[get<1>(ix[n])])
 							                     :1.;
-
+							
 							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};

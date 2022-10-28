@@ -360,7 +360,7 @@ template <typename Symmetry_>
 FermionBase<Symmetry_>::
 FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_SINGLE, int mfactor)
 :FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_SINGLE, mfactor), N_orbitals(L_input)
-{	
+{
 	//create basis for zero orbitals
 	typename Symmetry::qType Q=Symmetry::qvacuum();
 	Eigen::Index inner_dim = 1;

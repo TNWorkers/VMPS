@@ -3004,115 +3004,211 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
-		/*set<qarray<Nq> > Rmid_set;
-		for (size_t qR=0; qR<H->R.size(); ++qR)
-		{
-			Rmid_set.insert(H->R.mid(qR));
-		}*/
-		
-		//Qbasis<Symmetry> QbasisR(Rmid_set, H->W[0][0][0][0].rows());
-		Qbasis<Symmetry> QbasisW;
-		QbasisW.pullData(H->W,0);
-		auto QbasisP = inbase[loc].combine(QbasisW);
-		
-		// create tensor P
-		#ifndef DMRG_DONT_USE_OPENMP
-		#pragma omp parallel for
-		#endif
-		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
-		for (size_t k=0; k<H->qOp.size(); ++k)
-		{
-			if (H->W[s1][s2][k].size() == 0) {continue;}
-			for (size_t qR=0; qR<H->R.size(); ++qR)
-			{
-				auto qAs = Symmetry::reduceSilent(H->R.in(qR),Symmetry::flip(qloc[loc][s2]));
-				for (const auto& qA : qAs)
-				{
-					qarray2<Symmetry::Nq> quple1 = {qA, H->R.in(qR)};
-					auto itA = A[loc][s2].dict.find(quple1);
-					
-					if (itA != A[loc][s2].dict.end())
-					{
-						auto qWs = Symmetry::reduceSilent(H->R.mid(qR), Symmetry::flip(H->qOp[k]));
-						
-						for (const auto& qW : qWs)
-						{
-							auto qPs = Symmetry::reduceSilent(qA,qW);
-							
-							for (const auto& qP : qPs)
-							{
-								if (qP > QinTop[loc] or qP < QinBot[loc]) {continue;}
-								
-								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
-								                                         qW, H->qOp[k], H->R.mid(qR),
-								                                         qP, qloc[loc][s1], H->R.out(qR));
-
-								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
-								
-                                auto dict_entry = H->W[s1][s2][k].dict.find({qW,H->R.mid(qR)});
-                                if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
-								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
-								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
-								{
-									size_t a = iW.row();
-									size_t b = iW.col();
-									size_t Prows = QbasisP.inner_dim(qP);
-									if(Prows==0) { continue;}
-									size_t Pcols = H->R.block[qR][b][0].cols();
-									if(Pcols==0) { continue;}
-									size_t Arows = A[loc][s2].block[itA->second].rows();
-									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
-									
-									MatrixType Mtmp(Prows,Pcols);
-									Mtmp.setZero();
-									
-									if (stitch >= Prows) {continue;}
-									if (H->R.block[qR][b][0].size() != 0)
-									{
-										Mtmp.block(stitch + a*Arows,0, Arows,Pcols) += (this->alpha_rsvd * 
-										                                                factor_cgc * 
-										                                                iW.value()) * 
-										                                                A[loc][s2].block[itA->second] * 
-										                                                H->R.block[qR][b][0];
-									}
-									
-									
-									// VectorXd norms = Mtmp.rowwise().norm();
-//									vector<int> indices(Mtmp.rows());
-//									iota(indices.begin(), indices.end(), 0);
-									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
-									
-									// int Nret = min(static_cast<int>(0.1*Prows),20);
-									// Nret = max(Nret,1);
-									// Nret = min(Mtmp.rows(), Nret);
-									int Nret = (this->max_Nrich<0)? Mtmp.rows():
-									                                min(static_cast<int>(Mtmp.rows()), this->max_Nrich);
-									
-//									MatrixType Mret(Nret,Mtmp.cols());
-//									for (int i=0; i<Nret; ++i)
+//		Qbasis<Symmetry> QbasisW;
+//		QbasisW.pullData(H->W,0);
+//		auto QbasisP = inbase[loc].combine(QbasisW);
+//		
+//		// create tensor P
+//		#ifndef DMRG_DONT_USE_OPENMP
+//		#pragma omp parallel for
+//		#endif
+//		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+//		for (size_t k=0; k<H->qOp.size(); ++k)
+//		{
+//			if (H->W[s1][s2][k].size() == 0) {continue;}
+//			for (size_t qR=0; qR<H->R.size(); ++qR)
+//			{
+//				auto qAs = Symmetry::reduceSilent(H->R.in(qR),Symmetry::flip(qloc[loc][s2]));
+//				for (const auto& qA : qAs)
+//				{
+//					qarray2<Symmetry::Nq> quple1 = {qA, H->R.in(qR)};
+//					auto itA = A[loc][s2].dict.find(quple1);
+//					
+//					if (itA != A[loc][s2].dict.end())
+//					{
+//						auto qWs = Symmetry::reduceSilent(H->R.mid(qR), Symmetry::flip(H->qOp[k]));
+//						
+//						for (const auto& qW : qWs)
+//						{
+//							auto qPs = Symmetry::reduceSilent(qA,qW);
+//							
+//							for (const auto& qP : qPs)
+//							{
+//								if (qP > QinTop[loc] or qP < QinBot[loc]) {continue;}
+//								
+//								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+//								                                         qW, H->qOp[k], H->R.mid(qR),
+//								                                         qP, qloc[loc][s1], H->R.out(qR));
+//								
+//								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+//								
+//								auto dict_entry = H->W[s1][s2][k].dict.find({qW,H->R.mid(qR)});
+//								if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
+//								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+//								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
+//								{
+//									size_t a = iW.row();
+//									size_t b = iW.col();
+//									size_t Prows = QbasisP.inner_dim(qP);
+//									if(Prows==0) { continue;}
+//									size_t Pcols = H->R.block[qR][b][0].cols();
+//									if(Pcols==0) { continue;}
+//									size_t Arows = A[loc][s2].block[itA->second].rows();
+//									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+//									
+//									MatrixType Mtmp(Prows,Pcols);
+//									Mtmp.setZero();
+//									
+//									if (stitch >= Prows) {continue;}
+//									if (H->R.block[qR][b][0].size() != 0)
 //									{
-//										Mret.row(i) = Mtmp.row(indices[i]);
+//										Mtmp.block(stitch + a*Arows,0, Arows,Pcols) += (this->alpha_rsvd * 
+//										                                                factor_cgc * 
+//										                                                iW.value()) * 
+//										                                                A[loc][s2].block[itA->second] * 
+//										                                                H->R.block[qR][b][0];
 //									}
-									if( Nret < Mtmp.rows() ) { Mtmp = Mtmp.topRows(Nret).eval(); }
-									if (Mtmp.size() != 0)
+//									
+//									
+//									// VectorXd norms = Mtmp.rowwise().norm();
+////									vector<int> indices(Mtmp.rows());
+////									iota(indices.begin(), indices.end(), 0);
+//									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
+//									
+//									// int Nret = min(static_cast<int>(0.1*Prows),20);
+//									// Nret = max(Nret,1);
+//									// Nret = min(Mtmp.rows(), Nret);
+//									int Nret = (this->max_Nrich<0)? Mtmp.rows():
+//									                                min(static_cast<int>(Mtmp.rows()), this->max_Nrich);
+//									
+////									MatrixType Mret(Nret,Mtmp.cols());
+////									for (int i=0; i<Nret; ++i)
+////									{
+////										Mret.row(i) = Mtmp.row(indices[i]);
+////									}
+//									if( Nret < Mtmp.rows() ) { Mtmp = Mtmp.topRows(Nret).eval(); }
+//									if (Mtmp.size() != 0)
+//									{
+//										qarray2<Symmetry::Nq> qupleP = {qP, H->R.out(qR)};
+//										auto it = P[s1].dict.find(qupleP);
+//										if (it != P[s1].dict.end())
+//										{
+//											if (P[s1].block[it->second].rows() == 0)
+//											{
+//												P[s1].block[it->second] = Mtmp;
+//											}
+//											else
+//											{
+//												P[s1].block[it->second] += Mtmp;
+//											}
+//										}
+//										else
+//										{
+//											P[s1].push_back(qupleP, Mtmp);
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+		
+		vector<vector<Biped<Symmetry,MatrixType> > > Pt(H->Terms.size());
+		for (size_t t=0; t<H->Terms.size(); ++t)
+		{
+			Pt[t].resize(qloc[loc].size());
+		}
+		
+		for (size_t t=0; t<H->Terms.size(); ++t)
+		{
+			Qbasis<Symmetry> QbasisW;
+			QbasisW.pullData(H->Terms[t].W,0);
+			auto QbasisP = inbase[loc].combine(QbasisW);
+			
+			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+			for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+			for (size_t k=0; k<H->Terms[t].qOp.size(); ++k)
+			{
+				if (H->Terms[t].W[s1][s2][k].size() == 0) {continue;}
+				for (size_t qR=0; qR<H->Terms[t].R.size(); ++qR)
+				{
+					auto qAs = Symmetry::reduceSilent(H->Terms[t].R.in(qR),Symmetry::flip(qloc[loc][s2]));
+					for (const auto& qA : qAs)
+					{
+						qarray2<Symmetry::Nq> quple1 = {qA, H->Terms[t].R.in(qR)};
+						auto itA = A[loc][s2].dict.find(quple1);
+						
+						if (itA != A[loc][s2].dict.end())
+						{
+							auto qWs = Symmetry::reduceSilent(H->Terms[t].R.mid(qR), Symmetry::flip(H->Terms[t].qOp[k]));
+							
+							for (const auto& qW : qWs)
+							{
+								auto qPs = Symmetry::reduceSilent(qA,qW);
+								
+								for (const auto& qP : qPs)
+								{
+									if (qP > QinTop[loc] or qP < QinBot[loc]) {continue;}
+									
+									Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+										                                     qW, H->Terms[t].qOp[k], H->Terms[t].R.mid(qR),
+										                                     qP, qloc[loc][s1], H->Terms[t].R.out(qR));
+									
+									if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+									
+									auto dict_entry = H->Terms[t].W[s1][s2][k].dict.find({qW,H->Terms[t].R.mid(qR)});
+									if(dict_entry == H->Terms[t].W[s1][s2][k].dict.end()) continue;
+									for (int spInd=0; spInd<H->Terms[t].W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+									for (typename SparseMatrix<Scalar>::InnerIterator iW(H->Terms[t].W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
 									{
-										qarray2<Symmetry::Nq> qupleP = {qP, H->R.out(qR)};
-										auto it = P[s1].dict.find(qupleP);
-										if (it != P[s1].dict.end())
+										size_t a = iW.row();
+										size_t b = iW.col();
+										size_t Prows = QbasisP.inner_dim(qP);
+										if(Prows==0) { continue;}
+										size_t Pcols = H->Terms[t].R.block[qR][b][0].cols();
+										if(Pcols==0) { continue;}
+										size_t Arows = A[loc][s2].block[itA->second].rows();
+										size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+										
+										MatrixType Mtmp(Prows,Pcols);
+										Mtmp.setZero();
+										
+										if (stitch >= Prows) {continue;}
+										if (H->Terms[t].R.block[qR][b][0].size() != 0)
 										{
-											if (P[s1].block[it->second].rows() == 0)
+											Mtmp.block(stitch + a*Arows,0, Arows,Pcols) += (this->alpha_rsvd * 
+												                                            factor_cgc * 
+												                                            iW.value()) * 
+												                                            A[loc][s2].block[itA->second] * 
+												                                            H->Terms[t].R.block[qR][b][0];
+										}
+										
+										int Nret = (this->max_Nrich<0)? Mtmp.rows():
+											                            min(static_cast<int>(Mtmp.rows()), this->max_Nrich);
+										
+										if( Nret < Mtmp.rows() ) { Mtmp = Mtmp.topRows(Nret).eval(); }
+										if (Mtmp.size() != 0)
+										{
+											qarray2<Symmetry::Nq> qupleP = {qP, H->Terms[t].R.out(qR)};
+											auto it = Pt[t][s1].dict.find(qupleP);
+											if (it != Pt[t][s1].dict.end())
 											{
-												P[s1].block[it->second] = Mtmp;
+												if (Pt[t][s1].block[it->second].rows() == 0)
+												{
+													Pt[t][s1].block[it->second] = Mtmp;
+												}
+												else
+												{
+													Pt[t][s1].block[it->second] += Mtmp;
+												}
 											}
 											else
 											{
-												P[s1].block[it->second] += Mtmp;
+												Pt[t][s1].push_back(qupleP, Mtmp);
 											}
-										}
-										else
-										{
-											P[s1].push_back(qupleP, Mtmp);
 										}
 									}
 								}
@@ -3122,6 +3218,20 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
+		
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			P[s] = Pt[0][s];
+		}
+		
+		for (size_t t=1; t<H->Terms.size(); ++t)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			P[s].addScale_extend(1.,Pt[t][s]);
+		}
+		
+		if (H->Terms.size() > 0) for (size_t s=0; s<qloc[loc].size(); ++s) P[s] = P[s].cleaned();
+		
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t qP=0; qP<P[s].size(); ++qP)
@@ -3218,119 +3328,217 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
-		/*set<qarray<Nq> > Lmid_set;
-		for (size_t qL=0; qL<H->L.size(); ++qL)
-		{
-			Lmid_set.insert(H->L.mid(qL));
-		}
+//		Qbasis<Symmetry> QbasisW;
+//		QbasisW.pullData(H->W, 1);
+//		auto QbasisP = outbase[loc].combine(QbasisW);
+//		
+//		// create tensor P
+//		#ifndef DMRG_DONT_USE_OPENMP
+//		#pragma omp parallel for
+//		#endif
+//		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+//		for (size_t k=0; k<H->qOp.size(); ++k)
+//		{
+//			if (H->W[s1][s2][k].size() == 0) {continue;}
+//			for (size_t qL=0; qL<H->L.size(); ++qL)
+//			{
+//				auto qAs = Symmetry::reduceSilent(H->L.out(qL),qloc[loc][s2]);
+//				for (const auto& qA : qAs)
+//				{
+//					qarray2<Symmetry::Nq> quple1 = {H->L.out(qL), qA};
+//					auto itA = A[loc][s2].dict.find(quple1);
+//					
+//					if (itA != A[loc][s2].dict.end())
+//					{
+//						auto qWs = Symmetry::reduceSilent(H->L.mid(qL), H->qOp[k]);
+//						
+//						for (const auto& qW : qWs)
+//						{
+//							auto qPs = Symmetry::reduceSilent(qA,qW);
+//							
+//							for (const auto& qP : qPs)
+//							{
+//								if (qP > QoutTop[loc] or qP < QoutBot[loc]) {continue;}
+//								
+//								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+//								                                         H->L.mid(qL), H->qOp[k], qW,
+//								                                         H->L.in(qL), qloc[loc][s1], qP);
+//								
+//								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+//								
+//								auto dict_entry = H->W[s1][s2][k].dict.find({H->L.mid(qL),qW});
+//								if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
+//								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+//								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
+//								{
+//									size_t a = iW.row();
+//									size_t b = iW.col();
+//									
+//									size_t Prows = H->L.block[qL][a][0].rows();
+//									if(Prows==0) { continue; }
+//									size_t Pcols = QbasisP.inner_dim(qP);
+//									if(Pcols==0) { continue; }
+//									size_t Acols = A[loc][s2].block[itA->second].cols();
+//									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+//									
+//									MatrixType Mtmp(Prows,Pcols);
+//									Mtmp.setZero();
+//									
+//									if (stitch >= Pcols) {continue;}
+//									if (H->L.block[qL][a][0].rows() != 0 and
+//									    H->L.block[qL][a][0].cols() != 0)
+//									{
+//										Mtmp.block(0,stitch+b*Acols, Prows,Acols) += (this->alpha_rsvd * 
+//										                                             factor_cgc * 
+//										                                             iW.value()) * 
+//										                                             H->L.block[qL][a][0] * 
+//										                                             A[loc][s2].block[itA->second];
+//									}
+//									
+//									// VectorXd norms = Mtmp.colwise().norm();
+////									vector<int> indices(Mtmp.cols());
+////									iota(indices.begin(), indices.end(), 0);
+//									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
+////									
+//////									int Nret = min(static_cast<int>(0.1*Pcols),20);
+//////									Nret = max(Nret,1);
+//////									Nret = min(Mtmp.cols(), Nret);
+//									int Nret = (this->max_Nrich<0)? Mtmp.cols():
+//									                                min(static_cast<int>(Mtmp.cols()), this->max_Nrich);
+//									
+////									MatrixType Mret(Mtmp.rows(),Nret);
+////									for (int i=0; i<Nret; ++i)
+////									{
+////										Mret.col(i) = Mtmp.col(indices[i]);
+////									}
+////									Mtmp = Mret;
+//									if( Nret < Mtmp.cols() ) { Mtmp = Mtmp.leftCols(Nret).eval(); }
+//									
+//									if (Mtmp.size() != 0)
+//									{
+//										qarray2<Symmetry::Nq> qupleP = {H->L.in(qL), qP};
+//										auto it = P[s1].dict.find(qupleP);
+//										if (it != P[s1].dict.end())
+//										{
+//											if (P[s1].block[it->second].rows() == 0)
+//											{
+//												P[s1].block[it->second] = Mtmp;
+//											}
+//											else
+//											{
+//												P[s1].block[it->second] += Mtmp;
+//											}
+//										}
+//										else
+//										{
+//											P[s1].push_back(qupleP, Mtmp);
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
 		
-		Qbasis<Symmetry> QbasisL(Lmid_set, H->W[0][0][0].cols());*/
+		vector<vector<Biped<Symmetry,MatrixType> > > Pt(H->Terms.size());
+		for (size_t t=0; t<H->Terms.size(); ++t) Pt[t].resize(qloc[loc].size());
 		
-		Qbasis<Symmetry> QbasisW;
-		QbasisW.pullData(H->W, 1);
-		auto QbasisP = outbase[loc].combine(QbasisW);
-		
-		// create tensor P
 		#ifndef DMRG_DONT_USE_OPENMP
 		#pragma omp parallel for
 		#endif
-		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
-		for (size_t k=0; k<H->qOp.size(); ++k)
+		for (size_t t=0; t<H->Terms.size(); ++t)
 		{
-			if (H->W[s1][s2][k].size() == 0) {continue;}
-			for (size_t qL=0; qL<H->L.size(); ++qL)
+			Qbasis<Symmetry> QbasisW;
+			QbasisW.pullData(H->Terms[t].W, 1);
+			auto QbasisP = outbase[loc].combine(QbasisW);
+			
+			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+			for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+			for (size_t k=0; k<H->Terms[t].qOp.size(); ++k)
 			{
-				auto qAs = Symmetry::reduceSilent(H->L.out(qL),qloc[loc][s2]);
-				for (const auto& qA : qAs)
+				if (H->Terms[t].W[s1][s2][k].size() == 0) {continue;}
+				for (size_t qL=0; qL<H->Terms[t].L.size(); ++qL)
 				{
-					qarray2<Symmetry::Nq> quple1 = {H->L.out(qL), qA};
-					auto itA = A[loc][s2].dict.find(quple1);
-					
-					if (itA != A[loc][s2].dict.end())
+					auto qAs = Symmetry::reduceSilent(H->Terms[t].L.out(qL),qloc[loc][s2]);
+					for (const auto& qA : qAs)
 					{
-						auto qWs = Symmetry::reduceSilent(H->L.mid(qL), H->qOp[k]);
+						qarray2<Symmetry::Nq> quple1 = {H->Terms[t].L.out(qL), qA};
+						auto itA = A[loc][s2].dict.find(quple1);
 						
-						for (const auto& qW : qWs)
+						if (itA != A[loc][s2].dict.end())
 						{
-							auto qPs = Symmetry::reduceSilent(qA,qW);
+							auto qWs = Symmetry::reduceSilent(H->Terms[t].L.mid(qL), H->Terms[t].qOp[k]);
 							
-							for (const auto& qP : qPs)
+							for (const auto& qW : qWs)
 							{
-								if (qP > QoutTop[loc] or qP < QoutBot[loc]) {continue;}
+								auto qPs = Symmetry::reduceSilent(qA,qW);
 								
-								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
-								                                         H->L.mid(qL), H->qOp[k], qW,
-								                                         H->L.in(qL), qloc[loc][s1], qP);
-								
-								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
-								
-								auto dict_entry = H->W[s1][s2][k].dict.find({H->L.mid(qL),qW});
-								if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
-								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
-								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
+								for (const auto& qP : qPs)
 								{
-									size_t a = iW.row();
-									size_t b = iW.col();
+									if (qP > QoutTop[loc] or qP < QoutBot[loc]) {continue;}
 									
-									size_t Prows = H->L.block[qL][a][0].rows();
-									if(Prows==0) { continue; }
-									size_t Pcols = QbasisP.inner_dim(qP);
-									if(Pcols==0) { continue; }
-									size_t Acols = A[loc][s2].block[itA->second].cols();
-									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+									Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+										                                     H->Terms[t].L.mid(qL), H->Terms[t].qOp[k], qW,
+										                                     H->Terms[t].L.in(qL), qloc[loc][s1], qP);
 									
-									MatrixType Mtmp(Prows,Pcols);
-									Mtmp.setZero();
+									if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 									
-									if (stitch >= Pcols) {continue;}
-									if (H->L.block[qL][a][0].rows() != 0 and
-									    H->L.block[qL][a][0].cols() != 0)
+									auto dict_entry = H->Terms[t].W[s1][s2][k].dict.find({H->Terms[t].L.mid(qL),qW});
+									if(dict_entry == H->Terms[t].W[s1][s2][k].dict.end()) continue;
+									for (int spInd=0; spInd<H->Terms[t].W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+									for (typename SparseMatrix<Scalar>::InnerIterator iW(H->Terms[t].W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
 									{
-										Mtmp.block(0,stitch+b*Acols, Prows,Acols) += (this->alpha_rsvd * 
-										                                             factor_cgc * 
-										                                             iW.value()) * 
-										                                             H->L.block[qL][a][0] * 
-										                                             A[loc][s2].block[itA->second];
-									}
-									
-									// VectorXd norms = Mtmp.colwise().norm();
-//									vector<int> indices(Mtmp.cols());
-//									iota(indices.begin(), indices.end(), 0);
-									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
-//									
-////									int Nret = min(static_cast<int>(0.1*Pcols),20);
-////									Nret = max(Nret,1);
-////									Nret = min(Mtmp.cols(), Nret);
-									int Nret = (this->max_Nrich<0)? Mtmp.cols():
-									                                min(static_cast<int>(Mtmp.cols()), this->max_Nrich);
-									
-//									MatrixType Mret(Mtmp.rows(),Nret);
-//									for (int i=0; i<Nret; ++i)
-//									{
-//										Mret.col(i) = Mtmp.col(indices[i]);
-//									}
-//									Mtmp = Mret;
-									if( Nret < Mtmp.cols() ) { Mtmp = Mtmp.leftCols(Nret).eval(); }
-									
-									if (Mtmp.size() != 0)
-									{
-										qarray2<Symmetry::Nq> qupleP = {H->L.in(qL), qP};
-										auto it = P[s1].dict.find(qupleP);
-										if (it != P[s1].dict.end())
+										size_t a = iW.row();
+										size_t b = iW.col();
+										
+										size_t Prows = H->Terms[t].L.block[qL][a][0].rows();
+										if(Prows==0) { continue; }
+										size_t Pcols = QbasisP.inner_dim(qP);
+										if(Pcols==0) { continue; }
+										size_t Acols = A[loc][s2].block[itA->second].cols();
+										size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+										
+										MatrixType Mtmp(Prows,Pcols);
+										Mtmp.setZero();
+										
+										if (stitch >= Pcols) {continue;}
+										if (H->Terms[t].L.block[qL][a][0].rows() != 0 and
+											H->Terms[t].L.block[qL][a][0].cols() != 0)
 										{
-											if (P[s1].block[it->second].rows() == 0)
+											Mtmp.block(0,stitch+b*Acols, Prows,Acols) += (this->alpha_rsvd * 
+												                                         factor_cgc * 
+												                                         iW.value()) * 
+												                                         H->Terms[t].L.block[qL][a][0] * 
+												                                         A[loc][s2].block[itA->second];
+										}
+										
+										int Nret = (this->max_Nrich<0)? Mtmp.cols():
+											                            min(static_cast<int>(Mtmp.cols()), this->max_Nrich);
+										
+										if( Nret < Mtmp.cols() ) { Mtmp = Mtmp.leftCols(Nret).eval(); }
+										
+										if (Mtmp.size() != 0)
+										{
+											qarray2<Symmetry::Nq> qupleP = {H->Terms[t].L.in(qL), qP};
+											auto it = Pt[t][s1].dict.find(qupleP);
+											if (it != Pt[t][s1].dict.end())
 											{
-												P[s1].block[it->second] = Mtmp;
+												if (Pt[t][s1].block[it->second].rows() == 0)
+												{
+													Pt[t][s1].block[it->second] = Mtmp;
+												}
+												else
+												{
+													Pt[t][s1].block[it->second] += Mtmp;
+												}
 											}
 											else
 											{
-												P[s1].block[it->second] += Mtmp;
+												Pt[t][s1].push_back(qupleP, Mtmp);
 											}
-										}
-										else
-										{
-											P[s1].push_back(qupleP, Mtmp);
 										}
 									}
 								}
@@ -3340,6 +3548,19 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
+		
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			P[s] = Pt[0][s];
+		}
+		
+		for (size_t t=1; t<H->Terms.size(); ++t)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			P[s].addScale_extend(1.,Pt[t][s]);
+		}
+		
+		if (H->Terms.size() > 0) for (size_t s=0; s<qloc[loc].size(); ++s) P[s] = P[s].cleaned();
 		
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)

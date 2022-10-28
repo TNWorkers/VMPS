@@ -2,39 +2,64 @@
 #define DMRGPIVOTMATRIX1
 
 #include "pivot/DmrgPivotVector.h"
+#include "tensors/DmrgIndexGymnastics.h"
 //include "DmrgTypedefs.h"
 //include "tensors/Biped.h"
 //include "tensors/Multipede.h"
 
 //-----------<definitions>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
-struct PivotMatrix1
+struct PivotMatrix1Terms
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W;
-	
-	vector<std::array<size_t,2> >          qlhs;
-	vector<vector<std::array<size_t,6> > > qrhs;
-	vector<vector<Scalar> >                factor_cgcs;
+	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > > > > W;
 	
 	vector<qarray<Symmetry::Nq> > qloc;
 	vector<qarray<Symmetry::Nq> > qOp;
+};
+
+template<typename Symmetry, typename Scalar, typename MpoScalar=double>
+struct PivotMatrix1
+{
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+//	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > > > > W;
+//	
+//	vector<qarray<Symmetry::Nq> > qloc;
+//	vector<qarray<Symmetry::Nq> > qOp;
 	
-	// stuff for excited states
+	vector<PivotMatrix1Terms<Symmetry,Scalar,MpoScalar> > Terms;
+	
+	//---<pre-calculated, if Terms.size() == 1>---
+	vector<std::array<size_t,2> >          qlhs;
+	vector<vector<std::array<size_t,6> > > qrhs;
+	vector<vector<Scalar> >                factor_cgcs;
+	//--------------------------------
+	
+	//---<stuff for excited states>---
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
 	double Epenalty = 0;
+	//--------------------------------
 	
 	template<typename OtherScalar>
 	PivotMatrix1<Symmetry,OtherScalar,OtherScalar> cast() const
 	{
 		PivotMatrix1<Symmetry,OtherScalar,OtherScalar> Pout;
 		
-		Pout.L = L.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
-		Pout.R = R.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
-//		Pout.W = W;
+		Pout.Terms.resize(Terms.size());
+		
+		for (size_t t=0; t<Terms.size(); ++t)
+		{
+			Pout.Terms[t].L = Terms[t].L.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+			Pout.Terms[t].R = Terms[t].R.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+//			Pout.W = W;
+			
+			Pout.Terms[t].qloc = Terms[t].qloc;
+			Pout.Terms[t].qOp  = Terms[t].qOp;
+		}
 		
 		Pout.qlhs = qlhs;
 		Pout.qrhs = qrhs;
@@ -47,10 +72,27 @@ struct PivotMatrix1
 			Pout.factor_cgcs[i][j] = factor_cgcs[i][j];
 		}
 		
-		Pout.qloc = qloc;
-		Pout.qOp = qOp;
+//		Pout.qloc = qloc;
+//		Pout.qOp = qOp;
 		
 		return Pout;
+	}
+	
+	double memory (MEMUNIT memunit) const
+	{
+		double res = 0.;
+		for (size_t t=0; t<Terms.size(); ++t)
+		{
+			res += Terms[t].L.memory(memunit);
+			res += Terms[t].R.memory(memunit);
+			for (size_t s1=0; s1<Terms[t].W.size(); ++s1)
+			for (size_t s2=0; s2<Terms[t].W[s1].size(); ++s2)
+			for (size_t k=0; k<Terms[t].W[s1][s2].size(); ++k)
+			{
+				res += Terms[t].W[s1][s2][k].memory(memunit);
+			}
+		}
+		return res;
 	}
 };
 
@@ -60,69 +102,153 @@ void HxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //	Vout.outerResize(Vin);
 	Vout = Vin;
 	OxV(H,Vin,Vout);
-//	for (size_t s=0; s<Vin.data.size(); ++s)
-//	{
-//		cout << "s=" << s << endl;
-//		cout << Vin.data[s].print(false) << endl;
-//		cout << Vout.data[s].print(false) << endl;
-//	}
-//	cout << endl;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
 	for (size_t s=0; s<Vout.data.size(); ++s) {Vout.data[s].setZero();}
+	vector<PivotVector<Symmetry,Scalar> > Vt(H.Terms.size());
+	for (size_t t=0; t<H.Terms.size(); ++t) Vt[t] = Vout;
 	
-//	cout << "1site H.qlhs.size()=" << H.qlhs.size() << endl;
-	#ifdef DMRG_PIVOT1_PARALLELIZE
-	#pragma omp parallel for schedule(dynamic)
-	#endif
-	for (size_t q=0; q<H.qlhs.size(); ++q)
+	vector<std::array<size_t,2> >          qlhs;
+	vector<vector<std::array<size_t,6> > > qrhs;
+	vector<vector<Scalar> >                factor_cgcs;
+	
+//	precalc_blockStructure<Symmetry,Scalar,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > 
+//	(H.L, Vin.data, H.W, Vin.data, H.R, H.qloc, H.qOp, qlhs, qrhs, factor_cgcs);
+//	//cout << "qlhs.size()=" << qlhs.size() << endl;
+//	
+//	#ifdef DMRG_PIVOT1_PARALLELIZE
+//	#pragma omp parallel for schedule(dynamic)
+//	#endif
+//	for (size_t q=0; q<qlhs.size(); ++q)
+//	{
+//		size_t s1 = qlhs[q][0];//H.qlhs[q][0];
+//		size_t q1 = qlhs[q][1];//H.qlhs[q][1];
+//		
+//		for (size_t p=0; p<qrhs[q].size(); ++p)
+//		{
+//			size_t s2 = qrhs[q][p][0];//H.qrhs[q][p][0];
+//			size_t q2 = qrhs[q][p][1];//H.qrhs[q][p][1];
+//			size_t qL = qrhs[q][p][2];//H.qrhs[q][p][2];
+//			size_t qR = qrhs[q][p][3];//H.qrhs[q][p][3];
+//			size_t k  = qrhs[q][p][4];//H.qrhs[q][p][4];
+//			size_t qW = qrhs[q][p][5];//H.qrhs[q][p][5];
+//			
+//			for (int r=0; r<H.W[s1][s2][k].block[qW].outerSize(); ++r)
+//			for (typename Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>::InnerIterator iW(H.W[s1][s2][k].block[qW],r); iW; ++iW)
+//			{
+//				if (H.L.block[qL][iW.row()][0].size() != 0 and 
+//				    H.R.block[qR][iW.col()][0].size() != 0 and
+//				    Vin.data[s2].block[q2].size() !=0)
+//				{
+////					print_size(H.L.block[qL][iW.row()][0],"H.L.block[qL][iW.row()][0]");
+////					print_size(Vin.data[s2].block[q2], "Vin.data[s2].block[q2]");
+////					print_size(H.R.block[qR][iW.col()][0], "H.R.block[qR][iW.col()][0]");
+////					cout << endl;
+//					
+//					if (Vout.data[s1].block[q1].rows() != H.L.block[qL][iW.row()][0].rows() or
+//					    Vout.data[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
+//					{
+//						Vout.data[s1].block[q1].noalias() = factor_cgcs[q][p] * iW.value() * 
+//						                                   (H.L.block[qL][iW.row()][0] * 
+//						                                    Vin.data[s2].block[q2] * 
+//						                                    H.R.block[qR][iW.col()][0]);
+//					}
+//					else
+//					{
+//						Vout.data[s1].block[q1].noalias() += factor_cgcs[q][p] * iW.value() * 
+//						                                    (H.L.block[qL][iW.row()][0] * 
+//						                                     Vin.data[s2].block[q2] * 
+//						                                     H.R.block[qR][iW.col()][0]);
+//					}
+//				}
+//			}
+//		}
+//	}
+	
+	for (size_t t=0; t<H.Terms.size(); ++t)
 	{
-		size_t s1 = H.qlhs[q][0];
-		size_t q1 = H.qlhs[q][1];
+		vector<std::array<size_t,2> >          qlhs;
+		vector<vector<std::array<size_t,6> > > qrhs;
+		vector<vector<Scalar> >                factor_cgcs;
 		
-		for (size_t p=0; p<H.qrhs[q].size(); ++p)
+		if (H.Terms.size() == 1)
 		{
-			size_t s2 = H.qrhs[q][p][0];
-			size_t q2 = H.qrhs[q][p][1];
-			size_t qL = H.qrhs[q][p][2];
-			size_t qR = H.qrhs[q][p][3];
-			size_t k  = H.qrhs[q][p][4];
-            size_t qW = H.qrhs[q][p][5];
+			qlhs = H.qlhs;
+			qrhs = H.qrhs;
+			factor_cgcs = H.factor_cgcs;
+		}
+		else
+		{
+			precalc_blockStructure<Symmetry,Scalar,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> >
+			(H.Terms[t].L, Vin.data, H.Terms[t].W, Vin.data, H.Terms[t].R, H.Terms[t].qloc, H.Terms[t].qOp, qlhs, qrhs, factor_cgcs);
+			//cout << "t=" << t << ", qlhs.size()=" << qlhs.size() << endl;
+		}
+		
+		#ifdef DMRG_PIVOT1_PARALLELIZE
+		#pragma omp parallel for schedule(dynamic)
+		#endif
+		for (size_t q=0; q<qlhs.size(); ++q)
+		{
+			size_t s1 = qlhs[q][0];//H.Terms[t].qlhs[q][0];
+			size_t q1 = qlhs[q][1];//H.Terms[t].qlhs[q][1];
 			
-			for (int r=0; r<H.W[s1][s2][k].block[qW].outerSize(); ++r)
-			for (typename Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>::InnerIterator iW(H.W[s1][s2][k].block[qW],r); iW; ++iW)
+			for (size_t p=0; p<qrhs[q].size(); ++p)
 			{
-				if (H.L.block[qL][iW.row()][0].size() != 0 and 
-				    H.R.block[qR][iW.col()][0].size() != 0 and
-				    Vin.data[s2].block[q2].size() !=0)
+				size_t s2 = qrhs[q][p][0];//H.Terms[t].qrhs[q][p][0];
+				size_t q2 = qrhs[q][p][1];//H.Terms[t].qrhs[q][p][1];
+				size_t qL = qrhs[q][p][2];//H.Terms[t].qrhs[q][p][2];
+				size_t qR = qrhs[q][p][3];//H.Terms[t].qrhs[q][p][3];
+				size_t k  = qrhs[q][p][4];//H.Terms[t].qrhs[q][p][4];
+				size_t qW = qrhs[q][p][5];//H.Terms[t].qrhs[q][p][5];
+				
+				for (int r=0; r<H.Terms[t].W[s1][s2][k].block[qW].outerSize(); ++r)
+				for (typename Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>::InnerIterator iW(H.Terms[t].W[s1][s2][k].block[qW],r); iW; ++iW)
 				{
-//					print_size(H.L.block[qL][iW.row()][0],"H.L.block[qL][iW.row()][0]");
+//					print_size(H.Terms[t].L.block[qL][iW.row()][0],"H.Terms[t].L.block[qL][iW.row()][0]");
 //					print_size(Vin.data[s2].block[q2], "Vin.data[s2].block[q2]");
-//					print_size(H.R.block[qR][iW.col()][0], "H.R.block[qR][iW.col()][0]");
+//					print_size(H.Terms[t].R.block[qR][iW.col()][0], "H.Terms[t].R.block[qR][iW.col()][0]");
 //					cout << endl;
 					
-					if (Vout.data[s1].block[q1].rows() != H.L.block[qL][iW.row()][0].rows() or
-					    Vout.data[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
+					if (H.Terms[t].L.block[qL][iW.row()][0].size() != 0 and 
+						H.Terms[t].R.block[qR][iW.col()][0].size() != 0 and
+						Vin.data[s2].block[q2].size() !=0)
 					{
-						Vout.data[s1].block[q1].noalias() = H.factor_cgcs[q][p] * iW.value() * 
-						                                   (H.L.block[qL][iW.row()][0] * 
-						                                    Vin.data[s2].block[q2] * 
-						                                    H.R.block[qR][iW.col()][0]);
-					}
-					else
-					{
-						Vout.data[s1].block[q1].noalias() += H.factor_cgcs[q][p] * iW.value() * 
-						                                    (H.L.block[qL][iW.row()][0] * 
-						                                     Vin.data[s2].block[q2] * 
-						                                     H.R.block[qR][iW.col()][0]);
+						if (Vt[t].data[s1].block[q1].rows() != H.Terms[t].L.block[qL][iW.row()][0].rows() or
+							Vt[t].data[s1].block[q1].cols() != H.Terms[t].R.block[qR][iW.col()][0].cols())
+						{
+							Vt[t].data[s1].block[q1].noalias() = factor_cgcs[q][p] * iW.value() * 
+								                               (H.Terms[t].L.block[qL][iW.row()][0] * 
+								                                Vin.data[s2].block[q2] * 
+								                                H.Terms[t].R.block[qR][iW.col()][0]);
+						}
+						else
+						{
+							Vt[t].data[s1].block[q1].noalias() += factor_cgcs[q][p] * iW.value() * 
+								                                (H.Terms[t].L.block[qL][iW.row()][0] * 
+								                                 Vin.data[s2].block[q2] * 
+								                                 H.Terms[t].R.block[qR][iW.col()][0]);
+						}
 					}
 				}
 			}
 		}
 	}
+	
+	for (size_t s=0; s<Vout.size(); ++s)
+	{
+		Vout[s] = Vt[0][s];
+	}
+	
+	for (size_t t=1; t<H.Terms.size(); ++t)
+	for (size_t s=0; s<Vout.size(); ++s)
+	{
+		Vout[s].addScale(1.,Vt[t][s]);
+	}
+	
+	if (H.Terms.size() > 0) for (size_t s=0; s<Vout.size(); ++s) Vout[s] = Vout[s].cleaned();
 	
 //	for (size_t s=0; s<Vin.data.size(); ++s)
 //	for (size_t q=0; q<Vin.data[s].dim; ++q)
@@ -145,6 +271,7 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		}
 //		cout << "overlap=" << overlap << endl;
 		
+		// explicit variant:
 		for (size_t s=0; s<H.A0proj[n].size(); ++s)
 		for (size_t q=0; q<H.A0proj[n][s].dim; ++q)
 		{
@@ -156,6 +283,11 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 				Vout.data[s].block[qA->second] += H.Epenalty * overlap * H.A0proj[n][s].block[q];
 			}
 		}
+//		// using Biped::addScale:
+//		for (size_t s=0; s<H.A0proj[n].size(); ++s)
+//		{
+//			Vout.data[s].addScale(H.Epenalty*overlap, H.A0proj[n][s]);
+//		}
 	}
 }
 

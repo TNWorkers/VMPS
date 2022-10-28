@@ -277,6 +277,14 @@ Scalar localSumTrivial (int i)
 	return 1.;
 }
 
+/**Solves the quadratic equation
+Stot*(Stot+1) = x, where x is obtained numerically and Stot is required
+*/
+double calc_S_from_SSp1 (double x)
+{
+	return -0.5+sqrt(0.25+x);
+}
+
 // template<typename Symmetry>
 // void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
 // {

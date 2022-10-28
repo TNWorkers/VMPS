@@ -1,18 +1,20 @@
-double calc_Stot (const MODEL &H, const MODEL::StateXd &Psi)
-{
-	double res = 0.;
-	#pragma omp parallel for collapse(2) reduction(+:res)
-	for (int i=0; i<Psi.length(); ++i)
-	for (int j=0; j<Psi.length(); ++j)
-	{
-		res += avg(Psi, H.SdagS(i,j), Psi);
-	}
-	return res;
-}
+//double calc_Stot (const MODEL &H, const MODEL::StateXd &Psi)
+//{
+//	double res = 0.;
+//	#pragma omp parallel for collapse(2) reduction(+:res)
+//	for (int i=0; i<Psi.length(); ++i)
+//	for (int j=0; j<Psi.length(); ++j)
+//	{
+//		res += avg(Psi, H.SdagS(i,j), Psi);
+//	}
+//	return res;
+//}
 
 struct SaveData
 {
 	VectorXd Savg;
+	VectorXd Szavg;
+	VectorXd Sxavg;
 	MatrixXd SdagS;
 	double SdagStot;
 	double E;
@@ -21,12 +23,14 @@ struct SaveData
 	double overlap;
 	double fidelity;
 	double dJ;
-	VectorXd E_excited, var_excited;
+	VectorXd E_excited, var_excited, SdagStot_excited;
 	
 	void save (string label)
 	{
 		HDF5Interface target(label+".h5",WRITE);
 		target.save_vector(Savg,"Savg","");
+		target.save_vector(Sxavg,"Sxavg","");
+		target.save_vector(Szavg,"Szavg","");
 		target.save_matrix(SdagS,"SdagS","");
 		target.save_scalar(E,"E","");
 		target.save_scalar(e,"e","");
@@ -39,6 +43,7 @@ struct SaveData
 		{
 			target.save_vector(E_excited,"E_excited","");
 			target.save_vector(var_excited,"var_excited","");
+			target.save_vector(SdagStot_excited,"SdagStot_excited","");
 		}
 		target.close();
 	}
@@ -91,7 +96,11 @@ int main (int argc, char* argv[])
 	int Neigen = args.get<int>("Neigen",1);
 	bool CALC_VAR = args.get<bool>("CALC_VAR",true);
 	bool CALC_CORR = args.get<bool>("CALC_CORR",false);
+	#if defined(USING_U0)
 	bool CALC_STOT = args.get<bool>("CALC_STOT",true);
+	#else
+	bool CALC_STOT = args.get<bool>("CALC_STOT",false);
+	#endif
 	bool CALC_AVG = args.get<bool>("CALC_AVG",false);
 	bool CALC_GS = args.get<bool>("CALC_GS",true);
 	
@@ -290,7 +299,9 @@ int main (int argc, char* argv[])
 					double resz = avg(g.state, H.Sz(l), g.state);
 					double res = sqrt(resx*resx+resz*resz);
 					data.Savg(l) = res;
-					lout << l << "\t" << res << endl;
+					data.Sxavg(l) = resx;
+					data.Szavg(l) = resz;
+					lout << l << "\t" << resx << "\t" << resz << endl;
 				}
 				#endif
 			}
@@ -319,6 +330,17 @@ int main (int argc, char* argv[])
 				lout << "SdagS=" << SdagStot << endl;
 				data.SdagStot = SdagStot;
 			}
+			#if defined(USING_U1) or defined(USING_U0)
+			if (CALC_STOT)
+			{
+				double Stot_pm = avg(g.state, H.Scomptot(SP), H.Scomptot(SM), g.state);
+				double Stot_mp = avg(g.state, H.Scomptot(SM), H.Scomptot(SP), g.state);
+				double Stot_zz = avg(g.state, H.Scomptot(SZ), H.Scomptot(SZ), g.state);
+				
+				data.SdagStot = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
+				lout << termcolor::blue << "SdagStot=" << data.SdagStot << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot) << termcolor::reset << endl;
+			}
+			#endif
 			
 			g.state.entropy_skim();
 			lout << g.state.entropy().transpose() << endl;
@@ -326,30 +348,6 @@ int main (int argc, char* argv[])
 			ArrayXd Sspec = g.state.entanglementSpectrumLoc(L/2).second;
 			std::sort(Sspec.data(), Sspec.data()+Sspec.size(), std::greater<double>());
 			lout << Sspec.head(min(int(Sspec.rows()),30)) << endl;
-			// excited states
-			if (Neigen>1)
-			{
-				vector<Eigenstate<MODEL::StateXd>> spectrum(Neigen);
-				spectrum[0] = g;
-				vector<MODEL::Solver> DMRGex(Neigen);
-				
-				for (int i=1; i<Neigen; ++i)
-				{
-					cout << "i=" << i << endl;
-					DMRGex[i] = MODEL::Solver(VERB);
-					DMRGex[i].GlobParam = GlobParam;
-					DMRGex[i].DynParam = DynParam;
-					DMRGex[i].userSetGlobParam();
-					DMRGex[i].userSetDynParam();
-					for (int j=0; j<i; ++j)
-					{
-						DMRGex[i].push_back(spectrum[j].state);
-					}
-					DMRGex[i].edgeState(H, spectrum[i], Q, LANCZOS::EDGE::GROUND);
-					lout << "SdagS=" << calc_Stot(H,spectrum[i].state) << endl;
-				}
-				lout << endl;
-			}
 		}
 	}
 	else // PBC
@@ -423,7 +421,7 @@ int main (int argc, char* argv[])
 			}
 			if (CALC_AVG)
 			{
-				vector<tuple<int,double>> Savg;
+				vector<tuple<int,double>> Savg, Sxavg, Szavg;
 				for (int l=0; l<L; ++l)
 				{
 					int lorig = CMK.get_inverse()[l];
@@ -443,20 +441,33 @@ int main (int argc, char* argv[])
 					if (COMPRESS)
 					{
 						Savg.push_back(make_tuple(lorig,res));
+						Sxavg.push_back(make_tuple(lorig,resx));
+						Szavg.push_back(make_tuple(lorig,resz));
 					}
 					else
 					{
 						Savg.push_back(make_tuple(l,res));
+						Sxavg.push_back(make_tuple(l,resx));
+						Szavg.push_back(make_tuple(l,resz));
 					}
 				}
 				std::sort(Savg.begin(), Savg.end());
+				std::sort(Sxavg.begin(), Sxavg.end());
+				std::sort(Szavg.begin(), Szavg.end());
 				data.Savg.resize(L);
+				data.Sxavg.resize(L);
+				data.Szavg.resize(L);
 				
 				lout << "sorted:" << endl;
 				for (int l=0; l<Savg.size(); ++l)
 				{
 					data.Savg(l) = get<1>(Savg[l]);
-					lout << get<0>(Savg[l]) << "\t" << get<1>(Savg[l]) << endl;
+					//lout << get<0>(Savg[l]) << "\t" << get<1>(Savg[l]) << endl;
+					#ifdef USING_SU2
+					lout << "l=" << get<0>(Savg[l]) << ", S=" << get<1>(Savg[l]) << endl;
+					#else
+					lout << "l=" << get<0>(Savg[l]) << ", Sx=" << get<1>(Sxavg[l]) << ", Sz=" << get<1>(Szavg[l]) << endl;
+					#endif
 				}
 			}
 			if (CALC_VAR)
@@ -466,45 +477,46 @@ int main (int argc, char* argv[])
 				data.var = var;
 			}
 			
-			if (CALC_CORR)
-			{
-				data.SdagS.resize(L,L);
-				data.SdagS.setZero();
-				#pragma omp parallel for schedule(dynamic)
-				for (int i=0; i<L; ++i)
-				for (int j=0; j<i; ++j)
-				{
-					#if defined(USE_WIG_SU2_COEFFS)
-					wig_thread_temp_init(2*Slimit);
-					#endif
-					
-					int inew = CMK.get_transform()[i];
-					int jnew = CMK.get_transform()[j];
-					double res = avg(g.state, H.SdagS(inew,jnew), g.state);
-//					#ifdef USING_SU2
-//					double avgi = avg(g.state, H.S(inew), g.state) * S/sqrt(S*(S+1.));
-//					double avgj = avg(g.state, H.S(jnew), g.state) * S/sqrt(S*(S+1.));
-//					#else
-//					double avgi = avg(g.state, H.Scomp(SZ,inew), g.state);
-//					double avgj = avg(g.state, H.Scomp(SZ,jnew), g.state);
+//			if (CALC_CORR)
+//			{
+//				data.SdagS.resize(L,L);
+//				data.SdagS.setZero();
+//				#pragma omp parallel for schedule(dynamic)
+//				for (int i=0; i<L; ++i)
+//				for (int j=0; j<i; ++j)
+//				{
+//					#if defined(USE_WIG_SU2_COEFFS)
+//					wig_thread_temp_init(2*Slimit);
 //					#endif
-					data.SdagS(i,j) = res;// - avgi*avgj;
-					data.SdagS(j,i) = res;// - avgi*avgj;
-//					#pragma omp critical
-//					{
-//						lout << "i=" << i << ", j=" << j << ", SdagS=" << res << endl;
-//					}
-				}
-				for (int i=0; i<L; ++i)
-				{
-					data.SdagS(i,i) = 0.5*(D-1) * 0.5*(D+1);
-				}
-				
-				//lout << data.SdagS.col(0) << endl;
-				double SdagStot = data.SdagS.sum();
-				lout << "SdagStot=" << SdagStot << " => Stot=" << -0.5+sqrt(0.25+SdagStot) << endl;
-				data.SdagStot = SdagStot;
-			}
+//					
+//					int inew = CMK.get_transform()[i];
+//					int jnew = CMK.get_transform()[j];
+//					double res = avg(g.state, H.SdagS(inew,jnew), g.state);
+////					#ifdef USING_SU2
+////					double avgi = avg(g.state, H.S(inew), g.state) * S/sqrt(S*(S+1.));
+////					double avgj = avg(g.state, H.S(jnew), g.state) * S/sqrt(S*(S+1.));
+////					#else
+////					double avgi = avg(g.state, H.Scomp(SZ,inew), g.state);
+////					double avgj = avg(g.state, H.Scomp(SZ,jnew), g.state);
+////					#endif
+//					data.SdagS(i,j) = res;// - avgi*avgj;
+//					data.SdagS(j,i) = res;// - avgi*avgj;
+////					#pragma omp critical
+////					{
+////						lout << "i=" << i << ", j=" << j << ", SdagS=" << res << endl;
+////					}
+//				}
+//				for (int i=0; i<L; ++i)
+//				{
+//					data.SdagS(i,i) = 0.5*(D-1) * 0.5*(D+1);
+//				}
+//				
+//				//lout << data.SdagS.col(0) << endl;
+//				double SdagStot = data.SdagS.sum();
+//				double Stot = calc_S_from_SSp1(SdagStot);
+//				lout << termcolor::blue << "SdagStot=" << SdagStot << " => Stot=" << Stot << termcolor::reset << endl;
+//				data.SdagStot = SdagStot;
+//			}
 			#if defined(USING_U1) or defined(USING_U0)
 			if (CALC_STOT)
 			{
@@ -512,45 +524,54 @@ int main (int argc, char* argv[])
 				double Stot_mp = avg(g.state, H.Scomptot(SM), H.Scomptot(SP), g.state);
 				double Stot_zz = avg(g.state, H.Scomptot(SZ), H.Scomptot(SZ), g.state);
 				
-				double SdagStot = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
-				lout << "SdagStot=" << SdagStot << " => Stot=" << -0.5+sqrt(0.25+SdagStot) << endl;
+				data.SdagStot = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
+				lout << termcolor::blue << "SdagStot=" << data.SdagStot << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot) << termcolor::reset << endl;
 			}
 			#endif
-			
-			// excited states
-			if (Neigen>1)
+		}
+	}
+	
+	// EXCITED STATES
+	if (Neigen>1)
+	{
+		vector<Eigenstate<MODEL::StateXd>> spectrum(Neigen);
+		spectrum[0] = g;
+		vector<MODEL::Solver> DMRGex(Neigen);
+		
+		data.E_excited.resize(Neigen-1);
+		data.var_excited.resize(Neigen-1);
+		data.SdagStot_excited.resize(Neigen-1);
+		
+		for (int i=1; i<Neigen; ++i)
+		{
+			cout << "i=" << i << endl;
+			DMRGex[i] = MODEL::Solver(VERB);
+			DMRGex[i].GlobParam = GlobParam;
+			DMRGex[i].DynParam = DynParam;
+			DMRGex[i].userSetGlobParam();
+			DMRGex[i].userSetDynParam();
+			for (int j=0; j<i; ++j)
 			{
-				vector<Eigenstate<MODEL::StateXd>> spectrum(Neigen);
-				spectrum[0] = g;
-				vector<MODEL::Solver> DMRGex(Neigen);
+				DMRGex[i].push_back(spectrum[j].state);
+			}
+			DMRGex[i].edgeState(H, spectrum[i], Q, LANCZOS::EDGE::GROUND);
+			
+			if (CALC_VAR)
+			{
+				data.var_excited(i-1) = abs(avg(spectrum[i].state,H,g.state,2)-pow(spectrum[i].energy,2))/L;
+				lout << "varE=" << data.var_excited(i-1) << endl;
+			}
+			if (CALC_STOT)
+			{
+				double Stot_pm = avg(spectrum[i].state, H.Scomptot(SP), H.Scomptot(SM), spectrum[i].state);
+				double Stot_mp = avg(spectrum[i].state, H.Scomptot(SM), H.Scomptot(SP), spectrum[i].state);
+				double Stot_zz = avg(spectrum[i].state, H.Scomptot(SZ), H.Scomptot(SZ), spectrum[i].state);
 				
-				data.E_excited.resize(Neigen-1);
-				data.var_excited.resize(Neigen-1);
-				
-				for (int i=1; i<Neigen; ++i)
-				{
-					cout << "i=" << i << endl;
-					DMRGex[i] = MODEL::Solver(VERB);
-					DMRGex[i].GlobParam = GlobParam;
-					DMRGex[i].DynParam = DynParam;
-					DMRGex[i].userSetGlobParam();
-					DMRGex[i].userSetDynParam();
-					for (int j=0; j<i; ++j)
-					{
-						DMRGex[i].push_back(spectrum[j].state);
-					}
-					DMRGex[i].edgeState(H, spectrum[i], Q, LANCZOS::EDGE::GROUND);
-					
-					double var = abs(avg(spectrum[i].state,H,spectrum[i].state,2)-pow(spectrum[i].energy,2))/L;
-					
-					data.E_excited(i-1) = spectrum[i].energy;
-					data.var_excited(i-1) = var;
-					
-					lout << "i=" << i << ", E=" << data.E_excited(i-1) << ", E/L=" << data.E_excited(i-1)/L << ", var=" << var << endl;
-				}
-				lout << endl;
+				data.SdagStot_excited(i-1) = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
+				lout << termcolor::blue << "i=" << i << ", SdagStot=" << data.SdagStot_excited(i-1) << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot_excited(i-1)) << termcolor::reset << endl;
 			}
 		}
+		lout << endl;
 	}
 	
 	data.save(make_string(wd,"obs/",base,"_Mlimit=",GlobParam.Mlimit));

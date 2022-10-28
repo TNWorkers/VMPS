@@ -3,7 +3,7 @@
 #pragma message("LapackManager")
 #endif
 
-#define USE_WIG_SU2_COEFFS
+//#define USE_WIG_SU2_COEFFS
 
 #define USE_OLD_COMPRESSION
 #define USE_HDF5_STORAGE
