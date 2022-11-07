@@ -730,7 +730,6 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	// Irrelevant for infinite boundary conditions.
 	for (size_t l=0; l<L; ++l)
 	{
-		//cout << "OxV_exact, l=" << l << endl;
 		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l),
@@ -870,31 +869,49 @@ Hamiltonian prod (const Hamiltonian &H1, const Hamiltonian &H2, const qarray<Ham
 template<typename Symmetry, typename Scalar=double>
 Mpo<Symmetry,Scalar> sum (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
-	MpoTerms<Symmetry,Scalar> Terms1 = H1;
-	Terms1.set_verbosity(VERBOSITY);
-	Terms1.calc(1);
-	MpoTerms<Symmetry,Scalar> Terms2 = H2;
-	Terms2.set_verbosity(VERBOSITY);
-	Terms2.calc(1);
-	MpoTerms<Symmetry,Scalar> Sum_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
-	Mpo<Symmetry,Scalar> Sum_asMpo(Sum_asTerms);
-	return Sum_asMpo;
+	Mpo<Symmetry,Scalar> res;
+	if      ( H1.HAS_W() and !H2.HAS_W()) res = H1;
+	else if (!H1.HAS_W() and  H2.HAS_W()) res = H2;
+	else
+	{
+		MpoTerms<Symmetry,Scalar> Terms1 = H1;
+		Terms1.set_verbosity(VERBOSITY);
+		Terms1.calc(1);
+		MpoTerms<Symmetry,Scalar> Terms2 = H2;
+		Terms2.set_verbosity(VERBOSITY);
+		Terms2.calc(1);
+		MpoTerms<Symmetry,Scalar> Sum_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
+		res = Mpo<Symmetry,Scalar>(Sum_asTerms);
+	}
+	return res;
 }
 
 template<typename Symmetry, typename Scalar=double>
 Mpo<Symmetry,Scalar> diff (const Mpo<Symmetry,Scalar> &H1, const Mpo<Symmetry,Scalar> &H2, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
-	MpoTerms<Symmetry,Scalar> Terms1 = H1;
-	Terms1.set_verbosity(VERBOSITY);
-	Terms1.calc(1);
-	auto minusH2 = H2;
-	minusH2.scale(-1.);
-	MpoTerms<Symmetry,Scalar> Terms2 = minusH2;
-	Terms2.set_verbosity(VERBOSITY);
-	Terms2.calc(1);
-	MpoTerms<Symmetry,Scalar> Diff_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
-	Mpo<Symmetry,Scalar> Diff_asMpo(Diff_asTerms);
-	return Diff_asMpo;
+	
+	Mpo<Symmetry,Scalar> res;
+	if      ( H1.HAS_W() and !H2.HAS_W()) res = H1;
+	else if (!H1.HAS_W() and  H2.HAS_W())
+	{
+		MpoTerms<Symmetry,Scalar> minusH2 = H2;
+		minusH2.scale(-1.);
+		res = Mpo<Symmetry,Scalar>(minusH2);
+	}
+	else
+	{
+		MpoTerms<Symmetry,Scalar> Terms1 = H1;
+		Terms1.set_verbosity(VERBOSITY);
+		Terms1.calc(1);
+		auto minusH2 = H2;
+		minusH2.scale(-1.);
+		MpoTerms<Symmetry,Scalar> Terms2 = minusH2;
+		Terms2.set_verbosity(VERBOSITY);
+		Terms2.calc(1);
+		MpoTerms<Symmetry,Scalar> Diff_asTerms = MpoTerms<Symmetry,Scalar>::sum(Terms1,Terms2);
+		res = Mpo<Symmetry,Scalar>(Diff_asTerms);
+	}
+	return res;
 }
 
 template<typename Symmetry, typename Scalar=double>

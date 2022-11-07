@@ -135,6 +135,7 @@ public:
 	
 	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
 	
+	inline bool HAS_W() const {return this->GOT_W;};
 	
 	boost::multi_array<Scalar,4> H2site(std::size_t loc, bool HALF_THE_LOCAL_TERM=false) const {assert(false and "Method H2site is deprecated.");}
 	

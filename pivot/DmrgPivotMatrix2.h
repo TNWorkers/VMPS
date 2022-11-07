@@ -155,6 +155,9 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //		}
 //	}
 	
+	#ifdef DMRG_PARALLELIZE_TERMS
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t t=0; t<H.Terms.size(); ++t)
 	{
 		vector<std::array<size_t,2> >           qlhs;
@@ -232,8 +235,11 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		Vout[s] = Vt[0][s];
 	}
 	
-	for (size_t t=1; t<H.Terms.size(); ++t)
+	#ifdef DMRG_PARALLELIZE_TERMS
+	#pragma omp parallel for
+	#endif
 	for (size_t s=0; s<Vout.size(); ++s)
+	for (size_t t=1; t<H.Terms.size(); ++t)
 	{
 		Vout[s].addScale(1.,Vt[t][s]);
 	}

@@ -26,13 +26,13 @@ public:
 	///@{
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type c (size_t locx, size_t locy=0, double factor=1.) const;
-
+	
 	template<SPIN_INDEX sigma, class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type c (size_t locx, size_t locy=0, double factor=1.) const;
-
+	
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>>::type cdag (size_t locx, size_t locy=0, double factor=std::sqrt(2.)) const;
-
+	
 	template<SPIN_INDEX sigma, class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdag (size_t locx, size_t locy=0, double factor=1.) const;
 	///@}

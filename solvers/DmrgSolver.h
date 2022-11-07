@@ -529,6 +529,7 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 	{
 		lout << PrepTimer.info("• initial state & sweep") << endl;
 		size_t standard_precision = cout.precision();
+		lout <<                          "• #MPO terms : " << H.size() << endl;
 		lout << std::setprecision(15) << "• initial energy        : E₀=" << Eold << std::setprecision(standard_precision) << endl;
 		lout <<                          "• initial state         : " << Vout.state.info() << endl;
 		lout <<                          "• initial fluctuation strength  : α_rsvd=";
@@ -986,9 +987,9 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 		}
 		if (overlaps.rows() > 0)
 		{
-			if (gap<0) termcolor::red;
+			if (gap<0) lout << termcolor::red;
 			lout << "gap=" << gap << ", overlaps=" << overlaps.transpose() << endl;
-			if (gap<0) termcolor::reset;
+			if (gap<0) lout << termcolor::reset;
 		}
 		lout << errorCalcInfo.str();
 		lout << Vout.state.info() << endl;

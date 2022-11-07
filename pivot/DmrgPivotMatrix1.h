@@ -168,6 +168,11 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //		}
 //	}
 	
+	//Stopwatch<> Timer1;
+	
+	#ifdef DMRG_PARALLELIZE_TERMS
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t t=0; t<H.Terms.size(); ++t)
 	{
 		vector<std::array<size_t,2> >          qlhs;
@@ -237,18 +242,29 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		}
 	}
 	
+	//double t1 = Timer1.time();
+	//cout << "multiplication: " << t1 << endl;
+	//Stopwatch<> Timer2;
+	
 	for (size_t s=0; s<Vout.size(); ++s)
 	{
 		Vout[s] = Vt[0][s];
 	}
 	
-	for (size_t t=1; t<H.Terms.size(); ++t)
+	#ifdef DMRG_PARALLELIZE_TERMS
+	#pragma omp parallel for
+	#endif
 	for (size_t s=0; s<Vout.size(); ++s)
+	for (size_t t=1; t<H.Terms.size(); ++t)
 	{
 		Vout[s].addScale(1.,Vt[t][s]);
 	}
 	
 	if (H.Terms.size() > 0) for (size_t s=0; s<Vout.size(); ++s) Vout[s] = Vout[s].cleaned();
+	
+	//double t2 = Timer2.time();
+	//cout << "sum: " << t2 << endl;
+	//cout << "t2/t1=" << t2/t1 << endl;
 	
 //	for (size_t s=0; s<Vin.data.size(); ++s)
 //	for (size_t q=0; q<Vin.data[s].dim; ++q)
