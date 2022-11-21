@@ -239,9 +239,9 @@ int main (int argc, char* argv[])
 		data.nDN(i) = real(avg(g.state, H0.n<DN>(i), g.state));
 		data.nh(i)  = real(avg(g.state, H0.nh(i), g.state));
 	}
-	lout << "nUP=" << data.nUP(i).transpose() << endl;
-	lout << "nDN=" << data.nDN(i).transpose() << endl;
-	lout << "nh=" << data.nh(i).transpose() << endl;
+	lout << "nUP=" << data.nUP().transpose() << endl;
+	lout << "nDN=" << data.nDN().transpose() << endl;
+	lout << "nh=" << data.nh().transpose() << endl;
 	
 	data.Ekin = real(avg(g.state, Hkin, g.state));
 	data.ekin = data.Ekin/L;
