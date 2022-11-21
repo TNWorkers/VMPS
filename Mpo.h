@@ -124,8 +124,11 @@ public:
 	inline OperatorType localOperator() const {return LocalOp;}
 	inline void set_localOperator (OperatorType LocalOp_input) {LocalOp = LocalOp_input;}
 	
-	static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys, const qType& Q=Symmetry::qvacuum());
+	static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys, const qType& Q=Symmetry::qvacuum()); // static Identity, needs basis
+	Mpo<Symmetry,Scalar> Identity() const {return Identity(this->locBasis());}; // Identity for basis of the given class
+	
 	static Mpo<Symmetry,Scalar> Zero(const std::vector<std::vector<qType>>& qPhys);
+	Mpo<Symmetry,Scalar> Zero() const {return Zero(this->locBasis());};
 	
 	inline bool IS_UNITARY() const {return UNITARY;};
 	

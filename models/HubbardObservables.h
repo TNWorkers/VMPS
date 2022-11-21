@@ -57,10 +57,10 @@ public:
 	typename std::conditional<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type cdagc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
 	
-	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+//	template<typename Dummy = Symmetry>
+//	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	// Mpo<Symmetry,Scalar> triplet (size_t locx, size_t locy=0) const;
 	///@}
@@ -234,6 +234,7 @@ protected:
 	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const;
 	
 	vector<FermionBase<Symmetry> > F;
+	vector<SUB_LATTICE> G;
 };
 
 template<typename Symmetry, typename Scalar>
@@ -258,6 +259,14 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 		                             P.get<bool>("REMOVE_EMPTY",l%Lcell),
 		                             P.get<bool>("REMOVE_SINGLE",l%Lcell),
 		                             P.get<int>("mfactor",l%Lcell));
+	}
+	
+	G.resize(L);
+	if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
+	else // set default (-1)^l
+	{
+		G[0] = static_cast<SUB_LATTICE>(1);
+		for (int l=1; l<L; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
 	}
 }
 
@@ -629,7 +638,9 @@ c (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
 	{
-		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		//auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loscx+locy)));
+		assert(locy==0);
+		auto Gxy = G[locx];
 		return make_local(locx,locy, F[locx].c(Gxy,locy), factor, PROP::FERMIONIC);
 	}
 	else
@@ -645,7 +656,9 @@ c (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
 	{
-		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		//auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		assert(locy==0);
+		auto Gxy = G[locx];
 		return make_local(locx,locy, F[locx].c(sigma,Gxy,locy), factor, PROP::FERMIONIC);
 	}
 	else
@@ -677,7 +690,9 @@ cdag (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
 	{
-		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		//auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		assert(locy==0);
+		auto Gxy = G[locx];
 		return make_local(locx,locy, F[locx].cdag(Gxy,locy), factor, PROP::FERMIONIC);
 	}
 	else
@@ -693,7 +708,9 @@ cdag (size_t locx, size_t locy, double factor) const
 {
 	if constexpr(Dummy::IS_CHARGE_SU2())
 	{
-		auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		//auto Gxy = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+		assert(locy==0);
+		auto Gxy = G[locx];
 		return make_local(locx,locy, F[locx].cdag(sigma,Gxy,locy), factor, PROP::FERMIONIC);
 	}
 	else
@@ -729,8 +746,9 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else if constexpr (Dummy::IS_SPIN_SU2() and Dummy::IS_CHARGE_SU2())
 	{
-		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+		assert(locy1==0 and locy2==0);
+		SUB_LATTICE Gx1y1 = G[locx1]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+		SUB_LATTICE Gx2y2 = G[locx2]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
 		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(Gx1y1,locy1), F[locx2].c(Gx2y2,locy2), Symmetry::qvacuum(), sqrt(2.)*sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
 	else
@@ -741,6 +759,44 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 		return out;
 	}
 }
+
+template<typename Symmetry, typename Scalar>
+template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
+{
+	if constexpr (Dummy::ABELIAN)
+	{
+		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1.*factor, PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+	else
+	{
+		assert(locy1==0 and locy2==0);
+		SUB_LATTICE Gx1y1 = G[locx1]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+		SUB_LATTICE Gx2y2 = G[locx2]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), std::sqrt(2.)*factor, PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+}
+
+//template<typename Symmetry, typename Scalar>
+//template<typename Dummy>
+//typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+//cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+//{
+//	if constexpr (Dummy::ABELIAN)
+//	{
+//		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+//		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+//	}
+//	else
+//	{
+//		assert(locy1==0 and locy2==0);
+//		auto Gx1y1 = G[locx1]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+//		auto Gx2y2 = G[locx2]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+//		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
+//	}
+//}
 
 // n(j)*cdag(i)*c(j)
 // = cdag(i)*n(j)*c(j) for i!=0
@@ -799,24 +855,6 @@ cdagn_c (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	else
 	{
 		throw;
-	}
-}
-
-template<typename Symmetry, typename Scalar>
-template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
-cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	if constexpr (Dummy::ABELIAN)
-	{
-		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
-		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
-	}
-	else
-	{
-		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
 }
 
@@ -884,24 +922,6 @@ cdagcdagcc (size_t locx1, size_t locx2, size_t locx3, size_t locx4, double facto
 		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
 }*/
-
-template<typename Symmetry, typename Scalar>
-template<typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
-cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	if constexpr (Dummy::ABELIAN)
-	{
-		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
-		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
-	}
-	else
-	{
-		auto Gx1y1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-		auto Gx2y2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
-	}
-}
 
 template<typename Symmetry, typename Scalar>
 template<typename Dummy>
@@ -1193,8 +1213,9 @@ template<typename Dummy>
 typename std::enable_if<Dummy::NO_CHARGE_SYM(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 Tx (size_t locx, size_t locy) const
 {
-	auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-	return make_local(locx,locy, F[locx].Tx(locy,G), 1., PROP::BOSONIC, PROP::HERMITIAN);
+	//auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+	assert(locy==0);
+	return make_local(locx,locy, F[locx].Tx(locy,G[locx]), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1202,8 +1223,9 @@ template<typename Dummy>
 typename std::enable_if<Dummy::NO_CHARGE_SYM(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 iTy (size_t locx, size_t locy) const
 {
-	auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-	return make_local(locx,locy, F[locx].iTy(locy,G), 1. , PROP::BOSONIC, PROP::HERMITIAN); //0.5*pow(-1,locx+locy)*(F[locx].cdagcdag(locy)-F[locx].cc(locy))
+	//auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+	assert(locy==0);
+	return make_local(locx,locy, F[locx].iTy(locy,G[locx]), 1. , PROP::BOSONIC, PROP::HERMITIAN); //0.5*pow(-1,locx+locy)*(F[locx].cdagcdag(locy)-F[locx].cc(locy))
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1211,8 +1233,9 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 Tm (size_t locx, size_t locy) const
 {
-	auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-	return make_local(locx,locy, F[locx].Tm(locy,G), 1., PROP::BOSONIC, PROP::NON_HERMITIAN);
+	//auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+	assert(locy==0);
+	return make_local(locx,locy, F[locx].Tm(locy,G[locx]), 1., PROP::BOSONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1220,8 +1243,9 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 Tp (size_t locx, size_t locy) const
 {
-	auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
-	return make_local(locx,locy, F[locx].Tp(locy,G), 1., PROP::BOSONIC, PROP::NON_HERMITIAN);
+	//auto G = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx+locy)));
+	assert(locy==0);
+	return make_local(locx,locy, F[locx].Tp(locy,G[locx]), 1., PROP::BOSONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1229,9 +1253,10 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
-	auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-	auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-	return make_corr(locx1,locx2,locy1,locy2, fac*F[locx1].Tp(locy1,G1), F[locx2].Tm(locy2,G2), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::NON_HERMITIAN);
+	//auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+	//auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+	assert(locy1==0 and locy2==0);
+	return make_corr(locx1,locx2,locy1,locy2, fac*F[locx1].Tp(locy1,G[locx1]), F[locx2].Tm(locy2,G[locx2]), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1239,9 +1264,10 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
-	auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
-	auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
-	return make_corr(locx1,locx2,locy1,locy2, fac*F[locx1].Tm(locy1,G1), F[locx2].Tp(locy2,G2), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::NON_HERMITIAN);
+	//auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+	//auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+	assert(locy1==0 and locy2==0);
+	return make_corr(locx1,locx2,locy1,locy2, fac*F[locx1].Tm(locy1,G[locx1]), F[locx2].Tp(locy2,G[locx2]), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

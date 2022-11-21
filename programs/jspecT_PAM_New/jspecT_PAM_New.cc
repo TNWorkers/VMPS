@@ -130,8 +130,9 @@ void push_term (int i, int j, complex<double> lambda, double tol_OxV, DMRG::VERB
 {
 	if (i>=0 and i<H.length() and j>=0 and j<H.length())
 	{
-//		cout << "push term at i=" << i << ", j=" << j << ", lambda=" << lambda << endl;
-		//cout << H.cdagc(i,j).info() << endl;
+		cout << "push term at i=" << i << ", j=" << j << ", lambda=" << lambda << endl;
+		cout << H.cdagc(i,j).info() << endl;
+		
 		MODELC::StateXcd OxVres;
 		OxV_exact(H.cdagc(i,j), target, OxVres, tol_OxV, CVERB, 200, 1);
 		states.push_back(OxVres);
@@ -145,6 +146,7 @@ void push_operator (int i, int j, complex<double> lambda, const MODELC &H, vecto
 	{
 		//cout << "push operator at i=" << i << ", j=" << j << ", lambda=" << lambda << endl;
 		//cout << H.cdagc(i,j).info() << endl;
+		
 		operators.push_back(H.cdagc(i,j));
 		factors.push_back(lambda);
 	}
@@ -680,27 +682,29 @@ int main (int argc, char* argv[])
 		double tol_OxV = 2.; // val>1 = do not compress
 		auto PhiT = SpecMan.get_PhiT();
 		
-		/////////////////////
-		bool TEST_EIGEN = args.get<bool>("TEST_EIGEN",false);
-		if (TEST_EIGEN)
-		{
-			// test that PhiT is an eigenstate:
-			auto avgHp = avg(PhiT, Hp, PhiT);
-			auto avgHpHp = (maxPower==2)? avg(PhiT, Hp, PhiT, 2) : avg(PhiT, Hp, Hp, PhiT);
-			double test = abs(avgHpHp-avgHp);
-			if (test < 1e-4)
-			{
-				lout << termcolor::green;
-			}
-			else
-			{
-				lout << termcolor::red;
-			}
-			lout << "avgHpHp=" << avgHpHp << endl;
-			lout << "avgHp=" << avgHp << ", avgHp^2=" << avgHp*avgHp << endl;
-			lout << "eigenstate test for PhiT: " << abs(avgHpHp-avgHp*avgHp) << termcolor::reset << endl;
-		}
-		/////////////////////
+//		/////////////////////
+//		bool TEST_EIGEN = args.get<bool>("TEST_EIGEN",false);
+//		if (TEST_EIGEN)
+//		{
+//			// test that PhiT is an eigenstate:
+//			auto avgHp = avg(PhiT, Hp, PhiT);
+//			auto avgHpHp = (maxPower==2)? avg(PhiT, Hp, PhiT, 2) : avg(PhiT, Hp, Hp, PhiT);
+//			double test = abs(avgHpHp-avgHp);
+//			if (test < 1e-4)
+//			{
+//				lout << termcolor::green;
+//			}
+//			else
+//			{
+//				lout << termcolor::red;
+//			}
+//			lout << "avgHpHp=" << avgHpHp << endl;
+//			lout << "avgHp=" << avgHp << ", avgHp^2=" << avgHp*avgHp << endl;
+//			lout << "eigenstate test for PhiT: " << abs(avgHpHp-avgHp*avgHp) << termcolor::reset << endl;
+//		}
+//		/////////////////////
+		
+		lout << termcolor::blue << endl << "//////////// GENERATING MPOS AND APPLYING LOCAL J ////////////" << termcolor::reset << endl << endl;
 		
 		auto [Psi, Op, Fac] = apply_J(2*j0, spec1, L, dLphys, tol_OxV, Hp, PhiT, tcc, tff, tfc, Ec, Ef-0.5*U, U, MlimitBra);
 		auto Optot = sum_all_Ops(Op,Fac);
@@ -708,28 +712,88 @@ int main (int argc, char* argv[])
 		lout << endl;
 		lout << "Op.size()=" << Op.size() << endl;
 		lout << "Fac.size()=" << Fac.size() << endl;
-		lout << "avg<spec>=" << calc_Joverlap(PhiT, {PhiT}, Op, Fac) << endl;
+		lout << "Psi.size()=" << Psi.size() << endl;
+		//lout << "avg<spec>=" << calc_Joverlap(PhiT, {PhiT}, Op, Fac) << endl;
 		lout << endl;
-		lout << JappWatch.info("Applying J to ground state for j0 done!") << endl << endl;
+		lout << JappWatch.info("Applying local J to ground state for j0 done!") << endl << endl;
 		
-	//	for (int i=0; i<Psi2.size(); ++i)
-	//	{
-			//Psi2[i].eps_svd = tol_compr;
-			//Psi2[i].max_Nsv = max(Psi2[i].calc_Mmax(),Mstart);
-			//lout << i << "\t" << Psi2[i].info() << endl;
-	//	}
-	//	lout << endl;
+		vector<Mpo<MODELC::Symmetry,complex<double>>> Op_alt;
+		vector<complex<double>> Fac_alt;
+		MODELC::StateXcd Psi_alt;
+		for (int i=2; i<L-2; i+=2)
+		{
+			auto nmid = sum(H_Tfin.n(i*dLphys), H_Tfin.n((i+1)*dLphys));
+			auto commut = diff(prod(H_Tfin,nmid), prod(nmid,H_Tfin));
+			
+			Op_alt.push_back(commut);
+			complex<double> factor = 1.i*double(i)/double(dLphys);
+			Fac_alt.push_back(factor);
+			
+			if (i == 2*j0)
+			{
+//				auto commut_tmp = commut;
+//				commut_tmp.scale(factor);
+//				OxV_exact(commut_tmp, PhiT, Psi_alt, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+				
+				
+//				MODELC::StateXcd OxVres;
+//				OxV_exact(commut, PhiT, OxVres, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+//				Compadre.lincomboCompress({OxVres}, {factor}, Psi_alt, PhiT, PhiT.calc_Mmax(), 50ul, MlimitBra, 1e-6, 32);
+				
+				
+//				MODELC::StateXcd OxVres1;
+//				OxV_exact(H_Tfin.cdagc(i*dLphys,(i+2)*dLphys), PhiT, OxVres1, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+//				
+//				MODELC::StateXcd OxVres2;
+//				OxV_exact(H_Tfin.cdagc(i*dLphys,(i-2)*dLphys), PhiT, OxVres2, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+//				
+//				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+//				Compadre.lincomboCompress({OxVres1,OxVres2}, {-1.i,+1.i}, Psi_alt, PhiT, PhiT.calc_Mmax(), 50ul, MlimitBra, 1e-6, 32);
+				
+				
+				MODELC::StateXcd OxVres1;
+				OxV_exact(prod(H_Tfin,nmid), PhiT, OxVres1, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+				
+				MODELC::StateXcd OxVres2;
+				OxV_exact(prod(nmid,H_Tfin), PhiT, OxVres2, tol_OxV, DMRG::VERBOSITY::HALFSWEEPWISE, 200, 1);
+				
+				MpsCompressor<MODEL::Symmetry,complex<double>,complex<double>> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+				Compadre.lincomboCompress({OxVres1,OxVres2}, {factor,-factor}, Psi_alt, PhiT, PhiT.calc_Mmax(), 50ul, MlimitBra, 1e-6, 32);
+			}
+		}
+		//Psi_alt = Psi[0];
+		auto Optot_alt = sum_all_Ops(Op_alt,Fac_alt);
+//		lout << "Optot=" << endl << Optot.info() << endl;
+//		lout << "Optot_alt=" << endl << Optot_alt.info() << endl;
 		
 		Psi[0].eps_truncWeight = tol_compr_forw;
 		Psi[0].min_Nsv = Psi[0].calc_Mmax();
 		Psi[0].max_Nsv = MlimitKet;
+		lout << endl;
 		lout << "Psi: " << "min_Nsv=" << Psi[0].min_Nsv << ", max_Nsv=" << Psi[0].max_Nsv << endl;
 		lout << Psi[0].info() << endl;
 		
+		Psi_alt.eps_truncWeight = tol_compr_forw;
+		Psi_alt.min_Nsv = Psi_alt.calc_Mmax();
+		Psi_alt.max_Nsv = MlimitKet;
+		lout << "Psi_alt: " << "min_Nsv=" << Psi_alt.min_Nsv << ", max_Nsv=" << Psi_alt.max_Nsv << endl;
+		lout << Psi_alt.info() << endl;
+		
+		lout << "dot(Psi[0],Psi_alt)=" << dot(Psi[0],Psi_alt) << endl << endl;
+		
+		lout << termcolor::blue << endl << "//////////// APPLYING JTOT ////////////" << termcolor::reset << endl << endl;
+		
 		MODEL::StateXcd PhiTtmp;
 		HxV(Optot, PhiT, PhiTtmp);
+		
+		MODEL::StateXcd PhiTtmp_alt;
+		HxV(Optot_alt, PhiT, PhiTtmp_alt);
+		
 		PhiT = PhiTtmp;
-		lout << "Jtot*PhiT=" << PhiT.info() << endl;
+		MODEL::StateXcd PhiT_alt = PhiTtmp_alt;
+		
+		lout << "state Jtot*PhiT=" << endl << PhiT.info() << endl << endl;
 		
 		PhiT.eps_truncWeight = tol_compr_back;
 		PhiT.min_Nsv = min(MlimitBra,PhiT.calc_Mmax());
@@ -737,8 +801,23 @@ int main (int argc, char* argv[])
 		lout << "Phi: " << "min_Nsv=" << PhiT.min_Nsv << ", max_Nsv=" << PhiT.max_Nsv << endl;
 		lout << PhiT.info() << endl;
 		
+		PhiT_alt.eps_truncWeight = tol_compr_back;
+		PhiT_alt.min_Nsv = min(MlimitBra,PhiT_alt.calc_Mmax());
+		PhiT_alt.max_Nsv = MlimitBra;
+		lout << PhiT_alt.info() << endl;
+		
+		lout << "dot(PhiT,PhiT)=" << dot(PhiT, PhiT) << endl;
+		lout << "dot(PhiT,Psi[0])=" << dot(PhiT,Psi[0]) << endl;
+		lout << "(L/2.-1.)*dot(PhiT,Psi[0])=" << (L/2.-1.)*dot(PhiT,Psi[0]) << endl;
+		lout << endl;
+		lout << "dot(PhiT,Psi_alt)=" << dot(PhiT,Psi_alt) << endl;
+		lout << "(L/2.-1.)*dot(PhiT,Psi_alt)=" << (L/2.-1.)*dot(PhiT,Psi_alt) << endl;
+		
 		TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd> TDVP_forw(Hp,Psi[0]);
 		TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd> TDVP_back(Hp,PhiT);
+		
+		TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd> TDVP_forw_alt(Hp,Psi_alt);
+		TDVPPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>,MODELC::StateXcd> TDVP_back_alt(Hp,PhiT_alt);
 		
 		EntropyObserver<MODELC::StateXcd> Sobs;
 		vector<bool> TWO_SITE;
@@ -746,12 +825,21 @@ int main (int argc, char* argv[])
 		Sobs = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
 		TWO_SITE = Sobs.TWO_SITE(0, Psi[0], 1.);
 		
+		EntropyObserver<MODELC::StateXcd> Sobs_alt;
+		vector<bool> TWO_SITE_alt;
+		
+		Sobs_alt = EntropyObserver<MODELC::StateXcd>(Hp.length(), Nt, VERB, tol_DeltaS);
+		TWO_SITE_alt = Sobs.TWO_SITE(0, Psi_alt, 1.);
+		
 		MatrixXd Joverlap(0,3);
 		MatrixXd Stateinfo(0,7);
 		double time = 0.;
 		int it_forw = 0;
 		int it = 0;
 		
+		MatrixXd Joverlap_alt(0,3);
+		
+		lout << termcolor::blue << endl << "//////////// PROPAGATION ////////////" << termcolor::reset << endl << endl;
 		//////////// PROPAGATION ////////////
 		
 		Stopwatch<> TpropTimer;
@@ -781,6 +869,14 @@ int main (int argc, char* argv[])
 				
 				lout << "save results at t=" << time << ", res=" << res << endl;
 				
+				Joverlap_alt.conservativeResize(Joverlap_alt.rows()+1,Joverlap_alt.cols());
+				complex<double> res_alt = dot(PhiT_alt,Psi_alt);
+				Joverlap_alt(Joverlap_alt.rows()-1,0) = time;
+				Joverlap_alt(Joverlap_alt.rows()-1,1) = res_alt.real();
+				Joverlap_alt(Joverlap_alt.rows()-1,2) = res_alt.imag();
+				lout << "res_alt=" << res_alt << endl;
+				saveMatrix(Joverlap_alt,make_string(wd,"alt_",spec+"t_",base,"_",tbase,".dat"));
+				
 				saveMatrix(Joverlap,make_string(wd,spec+"t_",base,"_",tbase,".dat"));
 				saveMatrix(Stateinfo,make_string(wd,"StateInfo",spec+"t_",base,"_",tbase,".dat"));
 				
@@ -790,10 +886,12 @@ int main (int argc, char* argv[])
 				if (tol_DeltaS == 0.)
 				{
 					TDVP_forw.t_step(Hp, Psi[0], -1.i*dt, 1);
+					TDVP_forw_alt.t_step(Hp, Psi_alt, -1.i*dt, 1);
 				}
 				else
 				{
 					TDVP_forw.t_step_adaptive(Hp, Psi[0], -1.i*dt, TWO_SITE, 1);
+					TDVP_forw_alt.t_step_adaptive(Hp, Psi_alt, -1.i*dt, TWO_SITE, 1);
 				}
 				it += 1;
 				it_forw += 1;
@@ -810,6 +908,10 @@ int main (int argc, char* argv[])
 					auto PsiTmp = Psi[0]; PsiTmp.entropy_skim();
 					lout << "ket: ";
 					TWO_SITE = Sobs.TWO_SITE(it_forw, PsiTmp);
+					
+					auto PsiTmp_alt = Psi_alt; PsiTmp_alt.entropy_skim();
+					lout << "ket: ";
+					TWO_SITE_alt = Sobs_alt.TWO_SITE(it_forw, PsiTmp_alt);
 				}
 				
 				lout << "propagated to t=" << time  << endl;
@@ -839,6 +941,14 @@ int main (int argc, char* argv[])
 				
 				lout << "save results at t=" << time << ", res=" << res << endl;
 				
+				Joverlap_alt.conservativeResize(Joverlap_alt.rows()+1,Joverlap_alt.cols());
+				complex<double> res_alt = dot(PhiT_alt,Psi_alt);
+				Joverlap_alt(Joverlap_alt.rows()-1,0) = time;
+				Joverlap_alt(Joverlap_alt.rows()-1,1) = res_alt.real();
+				Joverlap_alt(Joverlap_alt.rows()-1,2) = res_alt.imag();
+				lout << "res_alt=" << res_alt << endl;
+				saveMatrix(Joverlap_alt,make_string(wd,"alt_",spec+"t_",base,"_",tbase,".dat"));
+				
 				saveMatrix(Joverlap,make_string(wd,spec+"t_",base,"_",tbase,".dat"));
 				saveMatrix(Stateinfo,make_string(wd,"StateInfo",spec+"t_",base,"_",tbase,".dat"));
 				
@@ -846,6 +956,7 @@ int main (int argc, char* argv[])
 				
 				//-----------------------------------------------------------
 				TDVP_back.t_step(Hp, PhiT, +1.i*dt, 1);
+				TDVP_back_alt.t_step(Hp, PhiT_alt, +1.i*dt, 1);
 				it += 1;
 				//-----------------------------------------------------------
 				

@@ -66,6 +66,7 @@ public:
 		size_t Lcell = P.size();
 		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->calc(P.get<size_t>("maxPower"));
 		this->precalc_TwoSiteData();
 	};
 	
@@ -73,7 +74,7 @@ public:
 	///@}
 	
 	template<typename Symmetry_> 
-	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P,
 	                           PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
@@ -139,7 +140,7 @@ PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC 
 	
 	PushType<SiteOperator<Symmetry,complex<double>>,complex<double>> pushlist;
 	std::vector<std::vector<std::string>> labellist;
-	PeierlsHubbardSU2charge::set_operators(F, P, pushlist, labellist, boundary);
+	PeierlsHubbardSU2charge::set_operators(F, G, P, pushlist, labellist, boundary); // F, G are set in HubbardObservables
 	//add_operators(F, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
@@ -150,7 +151,7 @@ PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC 
 
 template<typename Symmetry_>
 void PeierlsHubbardSU2charge::
-set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = F.size();
@@ -167,13 +168,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		std::size_t nextn_orbitals = F[lp2].orbitals();
 		std::size_t nnextn_orbitals = F[lp3].orbitals();
 		
-		vector<SUB_LATTICE> G(N_sites);
-		if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
-		else // set default (-1)^l
-		{
-			G[0] = static_cast<SUB_LATTICE>(1);
-			for (int l=1; l<N_sites; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
-		}
+//		vector<SUB_LATTICE> G(N_sites);
+//		if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
+//		else // set default (-1)^l
+//		{
+//			G[0] = static_cast<SUB_LATTICE>(1);
+//			for (int l=1; l<N_sites; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
+//		}
 		
 //		auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
 //		auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
@@ -233,17 +234,19 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (size_t i=0; i<N_sites; i++)
 			{
 				//auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
-				cup_ranges[i] = F[i].c(UP,G[i],0).template cast<complex<double> >();;
+				cup_ranges[i] = F[i].c(UP,G[i],0).template cast<complex<double> >();
 			}
 			for (size_t i=0; i<N_sites; i++)
 			{
 				//auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
-				cdn_ranges[i] = F[i].c(DN,G[i],0).template cast<complex<double> >();;
+				cdn_ranges[i] = F[i].c(DN,G[i],0).template cast<complex<double> >();
 			}
 			
-			vector<SiteOperatorQ<Symmetry_,MatrixType> > first {cdagup_sign_local, cdagdn_sign_local};
-			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {cup_ranges,cdn_ranges};
-			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.),- std::sqrt(2.)}, {false, false}, PROP::FERMIONIC);
+			vector<SiteOperatorQ<Symmetry_,MatrixType> >          frst {cdagup_sign_local, cdagdn_sign_local};
+			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {cup_ranges,        cdn_ranges};
+//			cout << ", F[loc].cdag(UP," << G[loc] << ",0)=" << endl << MatrixXd(F[loc].cdag(UP,G[loc],0).template plain<double>().data) << endl;
+//			cout << "F[loc].c(UP," << G[loc] << ",0)=" << endl << MatrixXd(F[loc].c(UP,G[loc],0).template plain<double>().data) << endl;
+			push_full("tFull", "tᵢⱼ", frst, last, {-std::sqrt(2.),-std::sqrt(2.)}, {false, false}, PROP::FERMIONIC);
 		}
 		if (P.HAS("Jfull"))
 		{

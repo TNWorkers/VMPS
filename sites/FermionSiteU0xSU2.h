@@ -27,12 +27,12 @@ public:
 	OperatorType F_1s() const {return F_1s_;}
 	
 	OperatorType c_1s(SPIN_INDEX sigma, SUB_LATTICE G) const
-		{
-			if (sigma == UP and G == A) {return cupA_1s_;}
-			else if (sigma == UP and G == B) {return cupB_1s_;}
-			else if (sigma == DN and G == A) {return cdnA_1s_;}
-			return cdnB_1s_; //else if sigma==DN and G==B
-		}
+	{
+		if      (sigma == UP and G == A) {return cupA_1s_;}
+		else if (sigma == UP and G == B) {return cupB_1s_;}
+		else if (sigma == DN and G == A) {return cdnA_1s_;}
+		return cdnB_1s_; //else if sigma==DN and G==B
+	}
 	OperatorType cdag_1s(SPIN_INDEX sigma, SUB_LATTICE G) const {return c_1s(sigma, G).adjoint();}
 
 	OperatorType n_1s() const {return n_1s(UP) + n_1s(DN);}
@@ -104,7 +104,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 	nh_1s_ = OperatorType({1},basis_1s_,"nh");
 	T_1s_ = OperatorType({3},basis_1s_,"T");
 	
-	// create operators one orbitals	
+	// create operators for one orbital
 	if (!UPH_IS_INFINITE) Id_1s_("holon", "holon") = 1.;
 	Id_1s_("up", "up") = 1.;
 	Id_1s_("dn", "dn") = 1.;
@@ -112,9 +112,9 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 	if (!UPH_IS_INFINITE) F_1s_("holon", "holon") = 1.;
 	F_1s_("up", "up") = -1.;
 	F_1s_("dn", "dn") = -1.;
-
+	
 	if (!UPH_IS_INFINITE) nh_1s_("holon","holon") = 1.;
-
+	
 	if (!UPH_IS_INFINITE) T_1s_( "holon", "holon" ) = std::sqrt(0.75);
 	
 	if (!UPH_IS_INFINITE) cupA_1s_( "dn", "holon" ) = sqrt(2.);
@@ -122,15 +122,20 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 	
 	if (!UPH_IS_INFINITE) cdnA_1s_( "up", "holon" ) = sqrt(2.);
 	if (!UPH_IS_INFINITE) cdnA_1s_( "holon", "dn" ) = 1.;
-
+	
 	if (!UPH_IS_INFINITE) cupB_1s_( "dn", "holon" ) = -1.*sqrt(2.);
 	if (!UPH_IS_INFINITE) cupB_1s_( "holon", "up" ) = -1.;
 	
 	if (!UPH_IS_INFINITE) cdnB_1s_( "up", "holon" ) = -1.*sqrt(2.);
 	if (!UPH_IS_INFINITE) cdnB_1s_( "holon", "dn" ) = 1.;
-
-	nup_1s_  = std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1});
-	ndn_1s_	 = std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1});
+	
+	nup_1s_ = std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1});
+	ndn_1s_ = std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1});
+	
+//	cout << "cupA_1s_=" << endl << MatrixXd(cupA_1s_.plain<double>().data) << endl << endl;
+//	cout << "cdagupA_1s_=" << endl << MatrixXd(cupA_1s_.adjoint().plain<double>().data) << endl << endl;
+//	cout << "cdagupA_1s_*cupA_1s_=" << endl << MatrixXd(OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}).plain<double>().data) << endl << endl;
+//	cout << "cdagdnA_1s_*cdnA_1s_=" << endl << MatrixXd(OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}).plain<double>().data) << endl << endl;
 	
 	Sz_1s_ = 0.5 * (std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}) - std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}));
 	Sp_1s_ = -std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cdnA_1s_,{1});

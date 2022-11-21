@@ -3582,12 +3582,12 @@ prod (const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bot
 		}
 		else
 		{
-			out.set_name(top.get_name()+"*"+bottom.get_name());
+			out.set_name("⦅"+top.get_name()+"⦆*⦅"+bottom.get_name()+"⦆");
 		}
 	}
 	else if ((top.get_name()+"\n+"+bottom.get_name()).length() >= MAX_SUMPROD_STRINGLENGTH and top.get_name().substr(top.get_name().length()-5) != "[...]")
 	{
-		out.set_name(top.get_name()+"\n+[...]");
+		out.set_name(top.get_name()+"\n*[...]");
 	}
 	else
 	{

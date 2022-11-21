@@ -66,6 +66,7 @@ public:
 		size_t Lcell = P.size();
 		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
+		this->calc(P.get<size_t>("maxPower"));
 		this->precalc_TwoSiteData();
 	};
 	
@@ -73,7 +74,7 @@ public:
 	///@}
 	
 	template<typename Symmetry_> 
-	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P,
 	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
@@ -118,7 +119,7 @@ HubbardSU2charge (const size_t &L, const vector<Param> &params, const BC &bounda
  HubbardObservables(L,params,HubbardSU2charge::defaults),
  ParamReturner(HubbardSU2charge::sweep_defaults)
 {
-	ParamHandler P(params,defaults);	
+	ParamHandler P(params,defaults);
 	size_t Lcell = P.size();
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -139,7 +140,7 @@ HubbardSU2charge (const size_t &L, const vector<Param> &params, const BC &bounda
 	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
 	std::vector<std::vector<std::string>> labellist;
-	HubbardSU2charge::set_operators(F, P, pushlist, labellist, boundary);
+	HubbardSU2charge::set_operators(F, G, P, pushlist, labellist, boundary); // F, G are set in HubbardObservables
 	//add_operators(F, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
@@ -150,7 +151,7 @@ HubbardSU2charge (const size_t &L, const vector<Param> &params, const BC &bounda
 
 template<typename Symmetry_>
 void HubbardSU2charge::
-set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = F.size();
@@ -167,13 +168,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		std::size_t nextn_orbitals = F[lp2].orbitals();
 		std::size_t nnextn_orbitals = F[lp3].orbitals();
 		
-		vector<SUB_LATTICE> G(N_sites);
-		if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
-		else // set default (-1)^l
-		{
-			G[0] = static_cast<SUB_LATTICE>(1);
-			for (int l=1; l<N_sites; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
-		}
+//		vector<SUB_LATTICE> G(N_sites);
+//		if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
+//		else // set default (-1)^l
+//		{
+//			G[0] = static_cast<SUB_LATTICE>(1);
+//			for (int l=1; l<N_sites; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
+//		}
 		
 //		auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
 //		auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
@@ -237,9 +238,9 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				cdn_ranges[i] = F[i].c(DN,G[i],0);
 			}
 			
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdagup_sign_local, cdagdn_sign_local};
-			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {cup_ranges,cdn_ranges};
-			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.),- std::sqrt(2.)}, PROP::FERMIONIC);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> >          frst {cdagup_sign_local, cdagdn_sign_local};
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {cup_ranges,        cdn_ranges};
+			push_full("tFull", "tᵢⱼ", frst, last, {-std::sqrt(2.),-std::sqrt(2.)}, PROP::FERMIONIC);
 		}
 		if (P.HAS("Jfull"))
 		{

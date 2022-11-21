@@ -184,8 +184,8 @@ int main (int argc, char* argv[])
 	
 	i0 = args.get<int>("i0",L/2);
 	
-	GlobParam.Dinit  = args.get<int>("Dmin",2);
-	GlobParam.Dlimit = args.get<int>("Dmax",100);
+	GlobParam.Minit  = args.get<int>("Minit",2);
+	GlobParam.Mlimit = args.get<int>("Mlimit",100);
 	GlobParam.Qinit = args.get<int>("Qinit",10);
 	GlobParam.min_halfsweeps = args.get<int>("Imin",6);
 	GlobParam.max_halfsweeps = args.get<int>("Imax",20);
@@ -427,8 +427,8 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
-				densityMatrix_U1A(i,j) = avg(g_U1.state, H_U1.cdagc<UP>(i,j), g_U1.state)+
-				                         avg(g_U1.state, H_U1.cdagc<DN>(i,j), g_U1.state);
+				densityMatrix_U1A(i,j) = avg(g_U1.state, H_U1.cdagc<UP,UP>(i,j), g_U1.state)+
+				                         avg(g_U1.state, H_U1.cdagc<DN,DN>(i,j), g_U1.state);
 			}
 			
 			for (size_t i=0; i<L; ++i) 

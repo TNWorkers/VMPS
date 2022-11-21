@@ -85,7 +85,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 	T_1s_ = OperatorType({1,3},basis_1s_,"T");
 	S_1s_ = OperatorType({3,1},basis_1s_,"S");
 	
-	// create operators one orbitals	
+	// create operators one orbitals
 	if (!UPH_IS_INFINITE) Id_1s_("holon", "holon") = 1.;
 	Id_1s_("spinon", "spinon") = 1.;
 	

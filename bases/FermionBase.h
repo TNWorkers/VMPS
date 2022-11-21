@@ -431,7 +431,8 @@ template <typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdag (std::size_t orbital) const
 {
-	return c(orbital).adjoint();
+	//return c(orbital).adjoint();
+	return make_operator(this->cdag_1s(),orbital,PROP::FERMIONIC, "c†");
 }
 
 template <typename Symmetry_>
@@ -461,6 +462,7 @@ typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),SiteOpe
 c (SPIN_INDEX sigma, SUB_LATTICE G, std::size_t orbital) const
 {
 	stringstream ss;
+	ss << "c" << sigma << G;
 	return make_operator(this->c_1s(sigma,G),orbital,PROP::FERMIONIC, ss.str());
 }
 
@@ -469,7 +471,10 @@ template <typename Dummy>
 typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry_, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdag (SPIN_INDEX sigma, SUB_LATTICE G, std::size_t orbital) const
 {
-	return c(sigma,G,orbital).adjoint();
+	//return c(sigma,G,orbital).adjoint();
+	stringstream ss;
+	ss << "c†" << sigma << G;
+	return make_operator(this->cdag_1s(sigma,G),orbital,PROP::FERMIONIC, ss.str());
 }
 
 template <typename Symmetry_>
@@ -487,7 +492,10 @@ template <typename Dummy>
 typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry_, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 cdag (SUB_LATTICE G, std::size_t orbital) const
 {
-	return c(G,orbital).adjoint();
+//	return c(G,orbital).adjoint();
+	stringstream ss;
+	ss << "c†" << G;
+	return make_operator(this->cdag_1s(G),orbital,PROP::FERMIONIC,ss.str());
 }
 
 template <typename Symmetry_>

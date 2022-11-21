@@ -163,12 +163,13 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	Heff.resize(N_sites);
 //	Heff[0].L.setVacuum();
 //	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vinout.Qtarget(), Vinout.Qtarget(), Symmetry::qvacuum()});
-	Heff[0].L         = Vinout.get_boundaryTensor(DMRG::DIRECTION::LEFT);
-	Heff[N_sites-1].R = Vinout.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+	for (int l=0; l<N_sites; ++l) Heff[l].Terms.resize(1);
+	Heff[0].Terms[0].L         = Vinout.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+	Heff[N_sites-1].Terms[0].R = Vinout.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Heff[l].W = H.W[l];
+		Heff[l].Terms[0].W = H.W[l];
 	}
 	
 	//----- workaround sign bug >>>>>
@@ -274,7 +275,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		                                       Vinout.A[loc2], Vinout.locBasis(loc2),
 		                                       Vinout.QoutTop[loc1], Vinout.QoutBot[loc1]);
 		t_contr += Wc.time(SECONDS);
-		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
+		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].Terms[0].L, Heff[loc2].Terms[0].R, 
 		                                                  H.W_at(loc1), H.W_at(loc2), 
 		                                                  H.locBasis(loc1), H.locBasis(loc2), 
 		                                                  H.opBasis(loc1), H.opBasis(loc2));
@@ -285,7 +286,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 //		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 //		                        H.TSD[loc1], 
 //		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-		precalc_blockStructure (Heff2.L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff2.R, 
+		precalc_blockStructure (Heff2.Terms[0].L, Apair.data, Heff2.Terms[0].W12, Heff2.Terms[0].W34, Apair.data, Heff2.Terms[0].R, 
 		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 		t_ohead += Woh2.time(SECONDS);
@@ -313,7 +314,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		    (CURRENT_DIRECTION==DMRG::DIRECTION::LEFT and pivot != 0))
 		{
 			Stopwatch<> Woh1;
-			precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
+			precalc_blockStructure (Heff[pivot].Terms[0].L, Vinout.A[pivot], Heff[pivot].Terms[0].W, Vinout.A[pivot], Heff[pivot].Terms[0].R, 
 			                        H.locBasis(pivot), H.opBasis(pivot), 
 			                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 			t_ohead += Woh1.time(SECONDS);
@@ -476,7 +477,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		// 1-site propagation
 		PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 		Stopwatch<> Woh1;
-		precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
+		precalc_blockStructure (Heff[pivot].Terms[0].L, Vinout.A[pivot], Heff[pivot].Terms[0].W, Vinout.A[pivot], Heff[pivot].Terms[0].R, 
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 		t_ohead += Woh1.time(SECONDS);
 		
@@ -514,8 +515,8 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			
 			PivotMatrix0<Symmetry,TimeScalar,MpoScalar> Heff0;
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
-			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
-			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].Terms[0].L, Heff[old_pivot].Terms[0].R):
+			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].Terms[0].L, Heff[old_pivot-1].Terms[0].R);
 			
 			Stopwatch<> W0;
 //			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 0-site algorithm
@@ -571,7 +572,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	                                       Vinout.A[loc2], Vinout.locBasis(loc2),
 	                                       Vinout.QoutTop[loc1], Vinout.QoutBot[loc1]);
 	t_contr += Wc.time(SECONDS);
-	PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
+	PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].Terms[0].L, Heff[loc2].Terms[0].R, 
 	                                                  H.W_at(loc1), H.W_at(loc2), 
 	                                                  H.locBasis(loc1), H.locBasis(loc2), 
 	                                                  H.opBasis(loc1), H.opBasis(loc2));
@@ -582,7 +583,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 //	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 //	                        H.TSD[loc1], 
 //	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-	precalc_blockStructure (Heff2.L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff2.R, 
+	precalc_blockStructure (Heff2.Terms[0].L, Apair.data, Heff2.Terms[0].W12, Heff2.Terms[0].W34, Apair.data, Heff2.Terms[0].R, 
 	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	t_ohead += Woh2.time(SECONDS);
@@ -610,7 +611,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	    (CURRENT_DIRECTION==DMRG::DIRECTION::LEFT and pivot != 0))
 	{
 		Stopwatch<> Woh1;
-		precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
+		precalc_blockStructure (Heff[pivot].Terms[0].L, Vinout.A[pivot], Heff[pivot].Terms[0].W, Vinout.A[pivot], Heff[pivot].Terms[0].R, 
 		                        H.locBasis(pivot), H.opBasis(pivot), 
 		                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 		t_ohead += Woh1.time(SECONDS);
@@ -645,8 +646,9 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 	// 1-site propagation
 	PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 	Stopwatch<> Woh1;
-	precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
-	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
+	precalc_blockStructure (Heff[pivot].Terms[0].L, Vinout.A[pivot], Heff[pivot].Terms[0].W, Vinout.A[pivot], Heff[pivot].Terms[0].R, 
+	                        H.locBasis(pivot), H.opBasis(pivot),
+	                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	t_ohead += Woh1.time(SECONDS);
 	
 //	test_edge_eigenvector(Asingle);
@@ -719,22 +721,22 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 		{
 			if (old_pivot+1 == N_sites)
 			{
-				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(HeffLast.L, Heff[old_pivot].R);
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(HeffLast.Terms[0].L, Heff[old_pivot].Terms[0].R);
 			}
 			else
 			{
-				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R);
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].Terms[0].L, Heff[old_pivot].Terms[0].R);
 			}
 		}
 		else
 		{
 			if (old_pivot-1 == -1)
 			{
-				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, HeffFrst.R);
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].Terms[0].L, HeffFrst.Terms[0].R);
 			}
 			else
 			{
-				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].Terms[0].L, Heff[old_pivot-1].Terms[0].R);
 			}
 		}
 		
@@ -871,11 +873,11 @@ build_L (const Hamiltonian &H, const VectorType &Vinout, int loc)
 	{
 		if (loc == N_sites)
 		{
-			contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), HeffLast.L);
+			contract_L(Heff[loc-1].Terms[0].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), HeffLast.Terms[0].L);
 		}
 		else
 		{
-			contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+			contract_L(Heff[loc-1].Terms[0].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].Terms[0].L);
 		}
 	}
 }
@@ -888,11 +890,11 @@ build_R (const Hamiltonian &H, const VectorType &Vinout, int loc)
 	{
 		if (loc == -1)
 		{
-			contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), HeffFrst.R);
+			contract_R(Heff[loc+1].Terms[0].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), HeffFrst.Terms[0].R);
 		}
 		else
 		{
-			contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+			contract_R(Heff[loc+1].Terms[0].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].Terms[0].R);
 		}
 	}
 }

@@ -1076,7 +1076,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		lout << endl << endl;
 	}
 	
-	lout << "min_halfsweeps=" << min_halfsweeps << endl;
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
