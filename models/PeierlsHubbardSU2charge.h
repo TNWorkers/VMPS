@@ -244,8 +244,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_L
 			
 			vector<SiteOperatorQ<Symmetry_,MatrixType> >          frst {cdagup_sign_local, cdagdn_sign_local};
 			vector<vector<SiteOperatorQ<Symmetry_,MatrixType> > > last {cup_ranges,        cdn_ranges};
-//			cout << ", F[loc].cdag(UP," << G[loc] << ",0)=" << endl << MatrixXd(F[loc].cdag(UP,G[loc],0).template plain<double>().data) << endl;
-//			cout << "F[loc].c(UP," << G[loc] << ",0)=" << endl << MatrixXd(F[loc].c(UP,G[loc],0).template plain<double>().data) << endl;
 			push_full("tFull", "tᵢⱼ", frst, last, {-std::sqrt(2.),-std::sqrt(2.)}, {false, false}, PROP::FERMIONIC);
 		}
 		if (P.HAS("Jfull"))

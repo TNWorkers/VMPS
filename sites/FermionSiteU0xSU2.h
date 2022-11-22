@@ -134,7 +134,9 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 	
 //	cout << "cupA_1s_=" << endl << MatrixXd(cupA_1s_.plain<double>().data) << endl << endl;
 //	cout << "cdagupA_1s_=" << endl << MatrixXd(cupA_1s_.adjoint().plain<double>().data) << endl << endl;
-//	cout << "cdagupA_1s_*cupA_1s_=" << endl << MatrixXd(OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}).plain<double>().data) << endl << endl;
+//	cout << "sqrt(0.5)*cdagupA_1s_*cupA_1s_=" << endl << sqrt(0.5)*MatrixXd(OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}).plain<double>().data) << endl << endl;
+//	cout << "sqrt(0.5)*cdagdnA_1s_*cdnA_1s_=" << endl << sqrt(0.5)*MatrixXd(OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}).plain<double>().data) << endl << endl;
+//	cout << "sqrt(0.5)*cdagupB_1s_*cupB_1s_=" << endl << sqrt(0.5)*MatrixXd(OperatorType::prod(cupB_1s_.adjoint(),cupB_1s_,{1}).plain<double>().data) << endl << endl;
 //	cout << "cdagdnA_1s_*cdnA_1s_=" << endl << MatrixXd(OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}).plain<double>().data) << endl << endl;
 	
 	Sz_1s_ = 0.5 * (std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}) - std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}));

@@ -46,6 +46,10 @@ struct SaveData
 		nUP.resize(L); nUP.setZero();
 		nDN.resize(L); nDN.setZero();
 		nh.resize(L); nh.setZero();
+		Sp.resize(L); Sp.setZero();
+		Sm.resize(L); Sm.setZero();
+		Sx.resize(L); Sx.setZero();
+		Sy.resize(L); Sy.setZero();
 	};
 	
 	double var;
@@ -53,6 +57,8 @@ struct SaveData
 	double Ekin, ekin;
 	
 	VectorXd nUP, nDN, nh;
+	VectorXcd Sp, Sm;
+	VectorXd Sx, Sy;
 	
 	double absAvgU, argAvgU, j;
 	
@@ -69,6 +75,10 @@ struct SaveData
 		target.save_vector(nUP,"nUP","");
 		target.save_vector(nDN,"nDN","");
 		target.save_vector(nh,"nh","");
+		target.save_vector(Sp,"Sp","");
+		target.save_vector(Sm,"Sm","");
+		target.save_vector(Sx,"Sx","");
+		target.save_vector(Sy,"Sy","");
 		
 		target.save_scalar(absAvgU,"absAvgU","");
 		target.save_scalar(argAvgU,"argAvgU","");
@@ -161,6 +171,8 @@ int main (int argc, char* argv[])
 	ArrayXXcd tFullc = tFull.cast<complex<double> >();
 	params.push_back({"tFull",tFullc});
 	
+	if (L<=20) lout << tFull << endl;
+	
 	#if defined(USING_SU2_COMPLEX)
 	vector<SUB_LATTICE> G(L);
 	G[0] = static_cast<SUB_LATTICE>(1);
@@ -175,11 +187,6 @@ int main (int argc, char* argv[])
 	lout << endl;
 	params.push_back({"G",G});
 	#endif
-	
-	if (L<=20)
-	{
-		lout << tFullc << endl;
-	}
 	
 	auto params_kin = params;
 	MODEL Hkin(L,params_kin);
@@ -238,14 +245,28 @@ int main (int argc, char* argv[])
 		data.nUP(i) = real(avg(g.state, H0.n<UP>(i), g.state));
 		data.nDN(i) = real(avg(g.state, H0.n<DN>(i), g.state));
 		data.nh(i)  = real(avg(g.state, H0.nh(i), g.state));
+		data.Sp(i) = avg(g.state, H0.Sp(i), g.state);
+		data.Sm(i) = avg(g.state, H0.Sm(i), g.state);
+		data.Sx(i) = real(avg(g.state, H0.Scomp(SX,i), g.state));
+		data.Sy(i) = real(-1.i*avg(g.state, H0.Scomp(iSY,i), g.state));
 	}
 	lout << "nUP=" << data.nUP.transpose() << endl;
 	lout << "nDN=" << data.nDN.transpose() << endl;
 	lout << "nh=" << data.nh.transpose() << endl;
+	lout << "Sp=" << data.Sp.transpose() << endl;
+	lout << "Sm=" << data.Sm.transpose() << endl;
+	lout << "Sx=" << data.Sx.transpose() << endl;
+	lout << "Sy=" << data.Sy.transpose() << endl;
+	
+	for (int i=0; i!=1; i=get_next(i,L))
+	{
+		lout << "i=" << i << ", nn<UP>=" << real(avg(g.state, H0.n<UP>(i), H0.n<UP>(get_next(i,L)), g.state)) << ", nn<DN>=" << real(avg(g.state, H0.n<DN>(i), H0.n<DN>(get_next(i,L)), g.state)) << endl;
+	}
 	
 	data.Ekin = real(avg(g.state, Hkin, g.state));
 	data.ekin = data.Ekin/L;
 	lout << "Ekin=" << data.Ekin << endl;
+	lout << endl;
 	
 	/*for (int l=0; l<L-1; ++l)
 	{
@@ -297,21 +318,40 @@ int main (int argc, char* argv[])
 		}
 		lout << Lambda.real() << endl;
 		
+		lout << endl;
+		
+		lout << "pow=1" << endl;
 		lout << avg(g.state, cdagc_ij_ji<UP>(Htmp,0,1), g.state) << endl;
-		lout << avg(g.state, cdagc_ij_ji<UP>(Htmp,0,3), g.state) << endl;
 		
-		lout << avg(g.state, cdagc_ij_ji<UP>(Htmp,0,2), cdagc_ij_ji<UP>(Htmp,0,2), g.state) << endl;
-		lout << avg(g.state, cdagc_ij_ji<UP>(Htmp,0,2), cdagc_ij_ji<UP>(Htmp,0,2), g.state) << endl;
+		lout << "pow=2" << endl;
+		lout << avg(g.state, cdagc_ij_ji<UP>(Htmp,0,1), cdagc_ij_ji<UP>(Htmp,0,1), g.state) << endl;
 		
-		Mpo<MODEL::Symmetry,MODEL::Scalar_> Tforw = Htmp.cdagc<UP,UP>(0,get_next(0,L));
-		for (int i=get_next(0,L); i!=0; i=get_next(i,L))
-		{
-			Tforw = sum(Tforw,Htmp.cdagc<UP,UP>(i,get_next(i,L)));
-		}
-		lout << Tforw.info() << endl;
+		lout << "MPO pow=2" << endl;
+		auto Ctmp = cdagc_ij_ji<UP>(Htmp,0,1);
+		Ctmp.calc(2);
+		lout << avg(g.state, Ctmp, g.state, 2) << endl;
 		
-		lout << avg(g.state, Ushift_up, g.state) << endl;
-		lout << avg(g.state, Tforw, g.state) << endl;
+		lout << "n-formula:" << endl;
+		lout << avg(g.state, Htmp.n<UP>(0), g.state) + avg(g.state, Htmp.n<UP>(1), g.state) -2.*avg(g.state, Htmp.n<UP>(0), Htmp.n<UP>(1), g.state) << endl;
+		lout << "ncorr=" << avg(g.state, Htmp.n<UP>(0), Htmp.n<UP>(1), g.state) << endl;
+		
+		lout << "OxV_exact" << endl;
+		MODEL::StateXcd Psitmp;
+		OxV_exact(cdagc_ij_ji<UP>(Htmp,0,1), g.state, Psitmp, 2., DMRG::VERBOSITY::SILENT);
+		lout << "pow=1: " << dot(g.state,Psitmp) << endl;
+		lout << "pow=2: " << dot(Psitmp,Psitmp) << endl;
+		
+		lout << endl;
+		
+//		Mpo<MODEL::Symmetry,MODEL::Scalar_> Tforw = Htmp.cdagc<UP,UP>(0,get_next(0,L));
+//		for (int i=get_next(0,L); i!=0; i=get_next(i,L))
+//		{
+//			Tforw = sum(Tforw,Htmp.cdagc<UP,UP>(i,get_next(i,L)));
+//		}
+//		lout << Tforw.info() << endl;
+//		
+//		lout << avg(g.state, Ushift_up, g.state) << endl;
+//		lout << avg(g.state, Tforw, g.state) << endl;
 	}
 	/////// Test stuff ///////
 	
