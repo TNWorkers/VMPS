@@ -10,6 +10,16 @@ int get_next (int i, int L)
 	return res;
 }
 
+int get_next_cell (int i, int L, int Lcell)
+{
+	int res = i;
+	for (int j=0; j<Lcell; ++j)
+	{
+		res = get_next(res,L);
+	}
+	return res;
+}
+
 template<SPIN_INDEX sigma>
 Mpo<MODEL::Symmetry,MODEL::Scalar_> P (const MODEL &H, int i, int j)
 {
@@ -106,9 +116,17 @@ int main (int argc, char* argv[])
 	double U = args.get<double>("U",1.);
 	double t = args.get<double>("t",1.);
 	double fp = args.get<double>("fp",0.);
+	double m = args.get<int>("m",0);
+	double mp = args.get<int>("mp",0);
+	int Lcell  = (m==0 )? 1:L/m;
+	int Lcellp = (mp==0)? 1:L/mp;
+	assert(L%Lcell==0 and L%Lcellp==0 and "Incommensurate unit cell!");
+	int Ncells = L/Lcell;
+	lout << "Lcell=" << Lcell << ", Lcellp=" << Lcellp << endl;
+	
 	bool TEST = args.get<bool>("TEST",false);
 	
-	string phigFile = args.get<string>("phigFile","");
+	/*string phigFile = args.get<string>("phigFile","");
 	string phipFile = args.get<string>("phipFile","");
 	VectorXd phig(L), phip(L);
 	if (phigFile == "")
@@ -126,6 +144,18 @@ int main (int argc, char* argv[])
 	else
 	{
 		phip = loadMatrix(phipFile);
+	}*/
+	
+	VectorXi dict(L);
+	VectorXcd phase(L), phaseq(L);
+	int i=0;
+	for (int l=0; l<L; ++l)
+	{
+		phase (i) = exp(1.i*2.*M_PI/double(Lcell) *double(l));
+		phaseq(i) = exp(1.i*2.*M_PI/double(Lcellp)*double(l));
+		lout << i << "\t" << l << "\t" << phase(i) << "\t" << phaseq(i) << endl;
+		dict(l) = i;
+		i = get_next(i,L);
 	}
 	
 	double tol_compr = args.get<double>("tol_compr",1e-7);
@@ -134,7 +164,7 @@ int main (int argc, char* argv[])
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd);
-	string base = make_string("L=",L,"_t=",t,"_U=",U,"_fp=",fp);
+	string base = make_string("L=",L,"_t=",t,"_U=",U,"_fp=",fp,"_m=",m);
 	lout << base << endl;
 	lout.set(base+".log",wd+"log");
 	
@@ -173,7 +203,6 @@ int main (int argc, char* argv[])
 	
 	if (L<=20) lout << tFull << endl;
 	
-	#if defined(USING_SU2_COMPLEX)
 	vector<SUB_LATTICE> G(L);
 	G[0] = static_cast<SUB_LATTICE>(1);
 	for (int l=1; l<=L-3; l+=2)
@@ -186,7 +215,6 @@ int main (int argc, char* argv[])
 	for (int l=0; l<L; ++l) lout << G[l];
 	lout << endl;
 	params.push_back({"G",G});
-	#endif
 	
 	auto params_kin = params;
 	MODEL Hkin(L,params_kin);
@@ -196,31 +224,31 @@ int main (int argc, char* argv[])
 	lout << "Htmp:" << Htmp.info() << endl;
 	
 	Mpo<MODEL::Symmetry,MODEL::Scalar_> Hmpo0 = Htmp;
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Hmpop = Htmp;
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Hmpoq = Htmp;
 	
 	if (fp != 0.)
 	{
 		for (int i=0; i<L; ++i)
 		{
-			Mpo<MODEL::Symmetry,MODEL::Scalar_> SFp = Htmp.Sp(i); SFp.scale(fp*exp(+1.i*M_PI*phig[i]));
-			Mpo<MODEL::Symmetry,MODEL::Scalar_> SFm = Htmp.Sm(i); SFm.scale(fp*exp(-1.i*M_PI*phig[i]));
+			Mpo<MODEL::Symmetry,MODEL::Scalar_> SFp = Htmp.Sp(i); SFp.scale(fp*     phase(i));
+			Mpo<MODEL::Symmetry,MODEL::Scalar_> SFm = Htmp.Sm(i); SFm.scale(fp*conj(phase(i)));
 			Mpo<MODEL::Symmetry,MODEL::Scalar_> Sftot = sum(SFp,SFm);
 			
 			Hmpo0 = sum(Hmpo0,Sftot);
 			
-			SFp = Htmp.Sp(i); SFp.scale(fp*exp(+1.i*M_PI*phip[i]));
-			SFm = Htmp.Sm(i); SFm.scale(fp*exp(-1.i*M_PI*phip[i]));
+			SFp = Htmp.Sp(i); SFp.scale(fp*     phaseq(i));
+			SFm = Htmp.Sm(i); SFm.scale(fp*conj(phaseq(i)));
 			Sftot = sum(SFp,SFm);
 			
-			Hmpop = sum(Hmpop,Sftot);
+			Hmpoq = sum(Hmpoq,Sftot);
 		}
 	}
 	
 	MODEL H0(Hmpo0,params);
 	lout << "H0:" << H0.info() << endl;
 	
-	MODEL Hp(Hmpop,params);
-	lout << "Hp:" << Hp.info() << endl;
+	MODEL Hq(Hmpoq,params);
+	lout << "Hquench:" << Hq.info() << endl;
 	
 	Eigenstate<MODEL::StateXcd> g;
 	MODEL::Solver DMRG(VERB);
@@ -240,27 +268,33 @@ int main (int argc, char* argv[])
 	lout << endl << "var/L=" << data.var << endl << endl;
 	
 	/////// Observables ///////
-	for (int i=0; i<L; ++i)
+	for (int l=0; l<L; ++l) lout << G[l]; lout << endl;
+	
+	for (int l=0; l<L; ++l)
 	{
-		data.nUP(i) = real(avg(g.state, H0.n<UP>(i), g.state));
-		data.nDN(i) = real(avg(g.state, H0.n<DN>(i), g.state));
-		data.nh(i)  = real(avg(g.state, H0.nh(i), g.state));
-		data.Sp(i) = avg(g.state, H0.Sp(i), g.state);
-		data.Sm(i) = avg(g.state, H0.Sm(i), g.state);
-		data.Sx(i) = real(avg(g.state, H0.Scomp(SX,i), g.state));
-		data.Sy(i) = real(-1.i*avg(g.state, H0.Scomp(iSY,i), g.state));
+		int i = dict(l);
+		data.nUP(l) = real(avg(g.state, H0.n<UP>(i), g.state));
+		data.nDN(l) = real(avg(g.state, H0.n<DN>(i), g.state));
+		data.nh(l)  = real(avg(g.state, H0.nh(i), g.state));
+		data.Sp(l) = avg(g.state, H0.Sp(i), g.state);
+		data.Sm(l) = avg(g.state, H0.Sm(i), g.state);
+		data.Sx(l) = real(avg(g.state, H0.Scomp(SX,i), g.state));
+		data.Sy(l) = real(-1.i*avg(g.state, H0.Scomp(iSY,i), g.state));
 	}
 	lout << "nUP=" << data.nUP.transpose() << endl;
 	lout << "nDN=" << data.nDN.transpose() << endl;
 	lout << "nh=" << data.nh.transpose() << endl;
-	lout << "Sp=" << data.Sp.transpose() << endl;
-	lout << "Sm=" << data.Sm.transpose() << endl;
+	//lout << "Sp=" << data.Sp.transpose() << endl;
+	//lout << "Sm=" << data.Sm.transpose() << endl;
 	lout << "Sx=" << data.Sx.transpose() << endl;
 	lout << "Sy=" << data.Sy.transpose() << endl;
 	
-	for (int i=0; i!=1; i=get_next(i,L))
+	if (TEST)
 	{
-		lout << "i=" << i << ", nn<UP>=" << real(avg(g.state, H0.n<UP>(i), H0.n<UP>(get_next(i,L)), g.state)) << ", nn<DN>=" << real(avg(g.state, H0.n<DN>(i), H0.n<DN>(get_next(i,L)), g.state)) << endl;
+		for (int i=0; i!=1; i=get_next(i,L))
+		{
+			lout << "i=" << i << ", nn<UP>=" << real(avg(g.state, H0.n<UP>(i), H0.n<UP>(get_next(i,L)), g.state)) << ", nn<DN>=" << real(avg(g.state, H0.n<DN>(i), H0.n<DN>(get_next(i,L)), g.state)) << endl;
+		}
 	}
 	
 	data.Ekin = real(avg(g.state, Hkin, g.state));
@@ -284,9 +318,20 @@ int main (int argc, char* argv[])
 	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up = Htmp.Identity();
 	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn = Htmp.Identity();
 	//Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift = Htmp.Identity();
-	for (int i=0; i!=1; i=get_next(i,L))
+//	for (int i=0; i!=1; i=get_next(i,L))
+//	{
+//		int j = get_next(i,L);
+//		Ushift_up = prod(P<UP>(Htmp,i,j),Ushift_up);
+//		Ushift_dn = prod(P<DN>(Htmp,i,j),Ushift_dn);
+//		//Ushift = prod(Ushift_up,Ushift_dn);
+//	}
+	
+	for (int ic=0; ic<Ncells-1; ++ic)
+	for (int ii=0; ii<Lcell; ++ii)
 	{
-		int j = get_next(i,L);
+		int i = dict(ic*Lcell+ii);
+		int j = get_next_cell(i,L,Lcell);
+		lout << "exchange " << i << " and " << j << endl;
 		Ushift_up = prod(P<UP>(Htmp,i,j),Ushift_up);
 		Ushift_dn = prod(P<DN>(Htmp,i,j),Ushift_dn);
 		//Ushift = prod(Ushift_up,Ushift_dn);
@@ -302,7 +347,7 @@ int main (int argc, char* argv[])
 	lout << termcolor::blue << "<Ushift>: " << "abs=" << data.absAvgU << ", arg=" << data.argAvgU << ", j=" << data.j << termcolor::reset << endl;
 	
 	/////// Save data ///////
-	data.save(make_string("HubbardRing_",base,".h5"));
+	data.save(make_string("HubbardRing_",base));
 	
 	/////// Test stuff ///////
 	if (TEST)
@@ -359,7 +404,7 @@ int main (int argc, char* argv[])
 	{
 		auto Psi = g.state.cast<complex<double> >();
 		Psi.eps_truncWeight = tol_compr;
-		TDVPPropagator<MODEL,MODEL::Symmetry,MODEL::Scalar_,complex<double>,Mps<MODEL::Symmetry,complex<double>>> TDVP(Hp,Psi);
+		TDVPPropagator<MODEL,MODEL::Symmetry,MODEL::Scalar_,complex<double>,Mps<MODEL::Symmetry,complex<double>>> TDVP(Hq,Psi);
 		
 		double dt = 0.1;
 		double tmax = 20.;
@@ -374,14 +419,14 @@ int main (int argc, char* argv[])
 			double time = *it;
 			nUPdata(it.index(),0) = time;
 			nDNdata(it.index(),0) = time;
-			double E = isReal(avg(Psi, Hp, Psi));
+			double E = isReal(avg(Psi, Hq, Psi));
 			
 			//int l = L/2;
 			//int l = 1  ; 
 			for (int l=0; l<L; ++l)
 			{
-				double nUP = isReal(avg(Psi, Hp.n<UP>(l), Psi));
-				double nDN = isReal(avg(Psi, Hp.n<DN>(l), Psi));
+				double nUP = isReal(avg(Psi, Hq.n<UP>(l), Psi));
+				double nDN = isReal(avg(Psi, Hq.n<DN>(l), Psi));
 				lout << "l=" << l << ", nUP=" << nUP << ", nDN=" << nDN << endl;
 				//it << nUP, nDN, E;
 				nUPdata(it.index(),1+l) = nUP;
@@ -390,7 +435,7 @@ int main (int argc, char* argv[])
 			//it.save("n(t)_l1.dat");
 			
 			Stopwatch<> Timer;
-			TDVP.t_step(Hp, Psi, 1.i*dt);
+			TDVP.t_step(Hq, Psi, 1.i*dt);
 			lout << Timer.info(make_string("propagated to t=",*it)) << endl;
 			lout << TDVP.info() << endl;
 			lout << Psi.info() << endl;
