@@ -117,12 +117,12 @@ int main (int argc, char* argv[])
 	double t = args.get<double>("t",1.);
 	double fp = args.get<double>("fp",0.);
 	double m = args.get<int>("m",0);
-	double mp = args.get<int>("mp",0);
+	double mq = args.get<int>("mq",0);
 	int Lcell  = (m==0 )? 1:L/m;
-	int Lcellp = (mp==0)? 1:L/mp;
-	assert(L%Lcell==0 and L%Lcellp==0 and "Incommensurate unit cell!");
+	int Lcellq = (mq==0)? 1:L/mq;
+	assert(L%Lcell==0 and L%Lcellq==0 and "Incommensurate unit cell!");
 	int Ncells = L/Lcell;
-	lout << "Lcell=" << Lcell << ", Lcellp=" << Lcellp << endl;
+	lout << "Lcell=" << Lcell << ", Lcellq=" << Lcellq << endl;
 	
 	bool TEST = args.get<bool>("TEST",false);
 	
@@ -152,8 +152,8 @@ int main (int argc, char* argv[])
 	for (int l=0; l<L; ++l)
 	{
 		phase (i) = exp(1.i*2.*M_PI/double(Lcell) *double(l));
-		phaseq(i) = exp(1.i*2.*M_PI/double(Lcellp)*double(l));
-		lout << i << "\t" << l << "\t" << phase(i) << "\t" << phaseq(i) << endl;
+		phaseq(i) = exp(1.i*2.*M_PI/double(Lcellq)*double(l));
+		lout << l << "\t" << i << "\t" << phase(i) << "\t" << phaseq(i) << endl;
 		dict(l) = i;
 		i = get_next(i,L);
 	}
@@ -171,9 +171,9 @@ int main (int argc, char* argv[])
 	SaveData data(L);
 	
 	DMRG::CONTROL::GLOB GlobParam;
+	GlobParam.Qinit = args.get<size_t>("Qinit",20ul);
 	GlobParam.Minit = args.get<size_t>("Minit",20ul);
 	GlobParam.Mlimit = args.get<size_t>("Mlimit",400ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",20ul);
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
 	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-6);
@@ -189,7 +189,7 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",6); //GlobParam.max_halfsweeps-3
+	size_t end_2site = args.get<size_t>("end_2site",6);
 	size_t period_2site = args.get<size_t>("period_2site",1ul);
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
@@ -315,32 +315,70 @@ int main (int argc, char* argv[])
 	}*/
 	
 	/////// Angular momentum ///////
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up = Htmp.Identity();
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn = Htmp.Identity();
-	//Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift = Htmp.Identity();
-//	for (int i=0; i!=1; i=get_next(i,L))
-//	{
-//		int j = get_next(i,L);
-//		Ushift_up = prod(P<UP>(Htmp,i,j),Ushift_up);
-//		Ushift_dn = prod(P<DN>(Htmp,i,j),Ushift_dn);
-//		//Ushift = prod(Ushift_up,Ushift_dn);
-//	}
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up  = Htmp.Identity();
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn  = Htmp.Identity();
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift     = Htmp.Identity();
 	
-	for (int ic=0; ic<Ncells-1; ++ic)
-	for (int ii=0; ii<Lcell; ++ii)
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up_dag = Htmp.Identity();
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn_dag = Htmp.Identity();
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dag    = Htmp.Identity();
+	for (int i=0; i!=1; i=get_next(i,L))
 	{
-		int i = dict(ic*Lcell+ii);
+		int j = get_next(i,L);
+		auto Pup = P<UP>(Htmp,i,j);
+		auto Pdn = P<DN>(Htmp,i,j);
+		
+		Ushift_up = prod(Pup,Ushift_up);
+		Ushift_dn = prod(Pdn,Ushift_dn);
+		Ushift    = prod(Ushift_up,Ushift_dn);
+		
+		Ushift_up_dag = prod(Ushift_up_dag,Pup);
+		Ushift_dn_dag = prod(Ushift_dn_dag,Pdn);
+		Ushift_dag    = prod(Ushift_dn_dag,Ushift_up_dag);
+	}
+	Ushift.UNITARY = true;
+	Ushift_dag.UNITARY = true;
+	
+	/*for (int outer=0; outer<Ncells-1; ++outer)
+	for (int inner=0; inner<Lcell; ++inner)
+	{
+		int i = dict(outer*Lcell+inner);
 		int j = get_next_cell(i,L,Lcell);
 		lout << "exchange " << i << " and " << j << endl;
 		Ushift_up = prod(P<UP>(Htmp,i,j),Ushift_up);
 		Ushift_dn = prod(P<DN>(Htmp,i,j),Ushift_dn);
 		//Ushift = prod(Ushift_up,Ushift_dn);
-	}
+	}*/
 	lout << Ushift_up.info() << endl;
 	lout << Ushift_dn.info() << endl;
-	//lout << Ushift.info() << endl;
+	lout << Ushift.info() << endl;
 	
-	complex<double> avgUshift = avg(g.state, Ushift_up, Ushift_dn, g.state);
+	complex<double> avgUshift; 
+	if (Lcell == 1)
+	{
+		avgUshift = avg(g.state, Ushift, g.state);
+	}
+	else
+	{
+		lout << endl;
+		MODEL::StateXcd gforw = g.state;
+		MODEL::StateXcd gback = g.state;
+		int Nforw = (Lcell%2==0)? Lcell/2:Lcell/2+1;
+		int Nback = Lcell/2;
+		for (int i=0; i<Nforw; ++i)
+		{
+			lout << "shift forward " << i+1 << "/" << Nforw << endl;
+			//OxV_exact(Ushift, Psi1, Psi2, 1e-5, DMRG::VERBOSITY::ON_EXIT);
+			OxV(Ushift, Ushift, gforw, true, 1e-4, 50);
+		}
+		for (int i=0; i<Nback; ++i)
+		{
+			lout << "shift back " << i+1 << "/" << Nback << endl;
+			//OxV_exact(Ushift, Psi1, Psi2, 1e-5, DMRG::VERBOSITY::ON_EXIT);
+			OxV(Ushift_dag, Ushift_dag, gback, true, 1e-4, 50);
+		}
+		avgUshift = dot(gback,gforw);
+	}
 	data.absAvgU = abs(avgUshift);
 	data.argAvgU = arg(avgUshift);
 	data.j = L/(2*M_PI)*arg(avgUshift);

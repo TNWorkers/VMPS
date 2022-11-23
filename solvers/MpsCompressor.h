@@ -759,10 +759,10 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 				t_ohead += OheadTimer.time();
 				if (Vsqnorm < 1e-7)
 				{
-					if (CHOSEN_VERBOSITY > 0)
+					/*if (CHOSEN_VERBOSITY > 0)
 					{
 						lout << termcolor::bold << termcolor::yellow << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
-					}
+					}*/
 					Vout /= sqrt(Vsqnorm);
 				}
 				
@@ -1051,7 +1051,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		lout << Chronos.info("• preparation prodCompress") << endl;
 		size_t standard_precision = cout.precision();
 		lout <<                          "• initial state         : " << Vout.info() << endl;
-		lout << "• Bond dim. increase by ";
+		lout << "• bond dim. increase by ";
 		cout << termcolor::underline;
 		lout << Mincr;
 		cout << termcolor::reset;
@@ -1102,7 +1102,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				prodOptimize2(H,Vin,Vout);
-				
 			}
 			else
 			{
@@ -1273,10 +1272,10 @@ prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 	t_ohead += OheadTimer.time();
 	if (Vsqnorm < 1e-7)
 	{
-		if (CHOSEN_VERBOSITY > 0)
+		/*if (CHOSEN_VERBOSITY > 0)
 		{
 			lout << termcolor::bold << termcolor::yellow << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
-		}
+		}*/
 		Vout /= sqrt(Vsqnorm);
 	}
 	
