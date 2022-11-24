@@ -5,7 +5,7 @@
 #include "Mpo.h"
 #include "ParamHandler.h" // from HELPERS
 
-//include "DmrgLinearAlgebra.h"
+#include "DmrgLinearAlgebra.h" // is needed for P operator
 //include "DmrgExternal.h"
 //include "tensors/SiteOperator.h"
 
@@ -21,6 +21,10 @@ public:
 	HubbardObservables(){};
 	HubbardObservables (const size_t &L); // for inheritance purposes
 	HubbardObservables (const size_t &L, const vector<Param> &params, const std::map<string,std::any> &defaults);
+	///@}
+	
+	///@{
+	Mpo<Symmetry,Scalar> Id() const;
 	///@}
 	
 	///@{
@@ -220,6 +224,15 @@ public:
 	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
 	///@}
 	
+	// Fermionic permutation operators
+	///@{
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type P (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type P (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
+	
 protected:
 	
 	Mpo<Symmetry,Scalar> make_local (size_t locx, size_t locy, const OperatorType &Op, double factor =1., bool FERMIONIC=false, bool HERMITIAN=false) const;
@@ -411,6 +424,13 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	Mout.setLocalSum(OpsPlain, phases_x_factor);
 	
 	return Mout;
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
+Id () const
+{
+	return make_local(0,0, F[0].Id(), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1561,5 +1581,66 @@ typename Symmetry::qType HubbardObservables<Symmetry,Scalar>::getQ_ScompScomp(SP
 	if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
 	else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");}
 	return out;
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+P (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	Mpo<Symmetry,Scalar> res = Id(); //(1,1)
+	auto ntot = sum(n(locx1,locy1),
+	                n(locx2,locy2)); //(1,2)+(2,1)
+	auto hopping = sum(cdagc(locx1,locx2,locy1,locy2),
+	                   cdagc(locx2,locx1,locy2,locy1)); //(1,3)+(3,1)
+	
+	auto spin_exchange = SdagS(locx1,locx2,locy1,locy2); spin_exchange.scale(-2.); //(3,3)+(2,2)
+	auto dtot = sum(d(locx1,locy1),d(locx2,locy2)); //(2,2)
+	auto density_density = nn(locx1,locx2,locy1,locy2); density_density.scale(0.5); //(2,2)
+	
+	auto correlated_hopping1 = sum(cdagn_c(locx1,locx2,locy1,locy2),
+	                               cdag_nc(locx2,locx1,locy2,locy1)); //(2,3)+(3,2)
+	auto correlated_hopping2 = sum(cdag_nc(locx1,locx2,locy1,locy2),
+	                               cdagn_c(locx2,locx1,locy2,locy1)); //(3,2)+(3,2)
+	
+	auto pair_hopping = sum(prod(cdagcdag(locx1,locy1),cc(locx2,locy2)),
+	                        prod(cdagcdag(locx2,locy2),cc(locx1,locy1))); //(3,3)
+	
+	res = sum(res,hopping);
+	res = sum(res,spin_exchange);
+	res = sum(res,density_density);
+	res = sum(res,pair_hopping);
+	res = sum(res,dtot);
+	res = diff(res,ntot);
+	res = diff(res,correlated_hopping1);
+	res = diff(res,correlated_hopping2);
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+P (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	Mpo<Symmetry,Scalar> res_up = Id();
+	res_up = diff(res_up,n<UP>(locx1,locy1));
+	res_up = diff(res_up,n<UP>(locx2,locy2));
+	res_up = sum(res_up,cdagc<UP,UP>(locx1,locx2,locy1,locy2));
+	if (!Dummy::IS_CHARGE_SU2()) // for CHARGE_SU2, the adjoint should already be contained in cdagc
+	{
+		res_up = sum(res_up,cdagc<UP,UP>(locx2,locx1,locy2,locy1));
+	}
+	
+	Mpo<Symmetry,Scalar> res_dn = Id();
+	res_dn = diff(res_dn,n<DN>(locx1,locy1));
+	res_dn = diff(res_dn,n<DN>(locx2,locy2));
+	res_dn = sum(res_dn,cdagc<DN,DN>(locx1,locx2,locy1,locy2));
+	if (!Dummy::IS_CHARGE_SU2())
+	{
+		res_dn = sum(res_dn,cdagc<DN,DN>(locx2,locx1,locy2,locy1));
+	}
+	
+	return prod(res_up,res_dn);
 }
 #endif

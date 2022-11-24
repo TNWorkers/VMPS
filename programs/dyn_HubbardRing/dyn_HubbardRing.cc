@@ -20,22 +20,22 @@ int get_next_cell (int i, int L, int Lcell)
 	return res;
 }
 
-template<SPIN_INDEX sigma>
-Mpo<MODEL::Symmetry,MODEL::Scalar_> P (const MODEL &H, int i, int j)
-{
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> res = H.Identity();
-	
-	res = diff(res,H.n<sigma>(i));
-	res = diff(res,H.n<sigma>(j));
-	
-	res = sum(res,H.cdagc<sigma,sigma>(i,j));
-	
-	#if not defined(USING_SU2_COMPLEX)
-	res = sum(res,H.cdagc<sigma,sigma>(j,i));
-	#endif
-	
-	return res;
-}
+//template<SPIN_INDEX sigma>
+//Mpo<MODEL::Symmetry,MODEL::Scalar_> P (const MODEL &H, int i, int j)
+//{
+//	Mpo<MODEL::Symmetry,MODEL::Scalar_> res = H.Identity();
+//	
+//	res = diff(res,H.n<sigma>(i));
+//	res = diff(res,H.n<sigma>(j));
+//	
+//	res = sum(res,H.cdagc<sigma,sigma>(i,j));
+//	
+//	#if not defined(USING_SU2_COMPLEX)
+//	res = sum(res,H.cdagc<sigma,sigma>(j,i));
+//	#endif
+//	
+//	return res;
+//}
 
 // for testing purposes:
 template<SPIN_INDEX sigma>
@@ -60,6 +60,7 @@ struct SaveData
 		Sm.resize(L); Sm.setZero();
 		Sx.resize(L); Sx.setZero();
 		Sy.resize(L); Sy.setZero();
+		Sz.resize(L); Sz.setZero();
 	};
 	
 	double var;
@@ -68,7 +69,7 @@ struct SaveData
 	
 	VectorXd nUP, nDN, nh;
 	VectorXcd Sp, Sm;
-	VectorXd Sx, Sy;
+	VectorXd Sx, Sy, Sz;
 	
 	double absAvgU, argAvgU, j;
 	
@@ -89,6 +90,7 @@ struct SaveData
 		target.save_vector(Sm,"Sm","");
 		target.save_vector(Sx,"Sx","");
 		target.save_vector(Sy,"Sy","");
+		target.save_vector(Sz,"Sz","");
 		
 		target.save_scalar(absAvgU,"absAvgU","");
 		target.save_scalar(argAvgU,"argAvgU","");
@@ -113,7 +115,8 @@ int main (int argc, char* argv[])
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N);
 	#endif
 	lout << "Q=" << Q << endl;
-	double U = args.get<double>("U",1.);
+	double U = args.get<double>("U",4.);
+	double Bz = args.get<double>("Bz",0.);
 	double t = args.get<double>("t",1.);
 	double fp = args.get<double>("fp",0.);
 	double m = args.get<int>("m",0);
@@ -194,7 +197,6 @@ int main (int argc, char* argv[])
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	vector<Param> params;
-	params.push_back({"Uph",U});
 	params.push_back({"maxPower",2ul});
 	
 	ArrayXXd tFull = create_1D_PBC(L,t,0.,true);
@@ -218,7 +220,10 @@ int main (int argc, char* argv[])
 	
 	auto params_kin = params;
 	MODEL Hkin(L,params_kin);
-	lout << "Hkin=" << Hkin.info() << endl; 
+	lout << "Hkin=" << Hkin.info() << endl;
+	
+	params.push_back({"Uph",U});
+	params.push_back({"Bz",Bz});
 	
 	MODEL Htmp(L,params);
 	lout << "Htmp:" << Htmp.info() << endl;
@@ -243,6 +248,13 @@ int main (int argc, char* argv[])
 			Hmpoq = sum(Hmpoq,Sftot);
 		}
 	}
+	#if not defined(USING_SU2_COMPLEX)
+	for (int i=0; i<L; ++i)
+	{
+		Mpo<MODEL::Symmetry,MODEL::Scalar_> Bzterm = Htmp.Sz(i); Bzterm.scale(-Bz);
+		Hmpoq = sum(Hmpoq,Bzterm);
+	}
+	#endif
 	
 	MODEL H0(Hmpo0,params);
 	lout << "H0:" << H0.info() << endl;
@@ -280,6 +292,7 @@ int main (int argc, char* argv[])
 		data.Sm(l) = avg(g.state, H0.Sm(i), g.state);
 		data.Sx(l) = real(avg(g.state, H0.Scomp(SX,i), g.state));
 		data.Sy(l) = real(-1.i*avg(g.state, H0.Scomp(iSY,i), g.state));
+		data.Sz(l) = real(avg(g.state, H0.Sz(i), g.state));
 	}
 	lout << "nUP=" << data.nUP.transpose() << endl;
 	lout << "nDN=" << data.nDN.transpose() << endl;
@@ -288,6 +301,7 @@ int main (int argc, char* argv[])
 	//lout << "Sm=" << data.Sm.transpose() << endl;
 	lout << "Sx=" << data.Sx.transpose() << endl;
 	lout << "Sy=" << data.Sy.transpose() << endl;
+	lout << "Sz=" << data.Sz.transpose() << endl;
 	
 	if (TEST)
 	{
@@ -315,42 +329,16 @@ int main (int argc, char* argv[])
 	}*/
 	
 	/////// Angular momentum ///////
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up  = Htmp.Identity();
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn  = Htmp.Identity();
 	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift     = Htmp.Identity();
-	
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_up_dag = Htmp.Identity();
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dn_dag = Htmp.Identity();
-	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dag    = Htmp.Identity();
+	Mpo<MODEL::Symmetry,MODEL::Scalar_> Ushift_dag = Htmp.Identity();
 	for (int i=0; i!=1; i=get_next(i,L))
 	{
 		int j = get_next(i,L);
-		auto Pup = P<UP>(Htmp,i,j);
-		auto Pdn = P<DN>(Htmp,i,j);
-		
-		Ushift_up = prod(Pup,Ushift_up);
-		Ushift_dn = prod(Pdn,Ushift_dn);
-		Ushift    = prod(Ushift_up,Ushift_dn);
-		
-		Ushift_up_dag = prod(Ushift_up_dag,Pup);
-		Ushift_dn_dag = prod(Ushift_dn_dag,Pdn);
-		Ushift_dag    = prod(Ushift_dn_dag,Ushift_up_dag);
+		Ushift     = prod(Htmp.P(i,j),Ushift);
+		Ushift_dag = prod(Ushift_dag,Htmp.P(i,j));
 	}
 	Ushift.UNITARY = true;
 	Ushift_dag.UNITARY = true;
-	
-	/*for (int outer=0; outer<Ncells-1; ++outer)
-	for (int inner=0; inner<Lcell; ++inner)
-	{
-		int i = dict(outer*Lcell+inner);
-		int j = get_next_cell(i,L,Lcell);
-		lout << "exchange " << i << " and " << j << endl;
-		Ushift_up = prod(P<UP>(Htmp,i,j),Ushift_up);
-		Ushift_dn = prod(P<DN>(Htmp,i,j),Ushift_dn);
-		//Ushift = prod(Ushift_up,Ushift_dn);
-	}*/
-	lout << Ushift_up.info() << endl;
-	lout << Ushift_dn.info() << endl;
 	lout << Ushift.info() << endl;
 	
 	complex<double> avgUshift; 
@@ -381,8 +369,9 @@ int main (int argc, char* argv[])
 	}
 	data.absAvgU = abs(avgUshift);
 	data.argAvgU = arg(avgUshift);
-	data.j = L/(2*M_PI)*arg(avgUshift);
-	lout << termcolor::blue << "<Ushift>: " << "abs=" << data.absAvgU << ", arg=" << data.argAvgU << ", j=" << data.j << termcolor::reset << endl;
+	if (data.argAvgU < 0.) data.argAvgU += 2.*M_PI;
+	data.j = closest_int(L/(2.*M_PI)*data.argAvgU, 0,L) % L;
+	lout << termcolor::blue << "<Ushift>=" << avgUshift << ", abs=" << data.absAvgU << ", arg=" << data.argAvgU << ", j=" << data.j << termcolor::reset << endl;
 	
 	/////// Save data ///////
 	data.save(make_string("HubbardRing_",base));
@@ -416,7 +405,7 @@ int main (int argc, char* argv[])
 		
 		lout << "n-formula:" << endl;
 		lout << avg(g.state, Htmp.n<UP>(0), g.state) + avg(g.state, Htmp.n<UP>(1), g.state) -2.*avg(g.state, Htmp.n<UP>(0), Htmp.n<UP>(1), g.state) << endl;
-		lout << "ncorr=" << avg(g.state, Htmp.n<UP>(0), Htmp.n<UP>(1), g.state) << endl;
+		lout << "ncorr=" << avg(g.state, Htmp.n<UP>(0), Htmp.n<UP>(1), g.state) << "\t" << avg(g.state, Htmp.nn<UP,UP>(0,1), g.state) << endl;
 		
 		lout << "OxV_exact" << endl;
 		MODEL::StateXcd Psitmp;

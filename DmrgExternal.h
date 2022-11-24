@@ -285,6 +285,22 @@ double calc_S_from_SSp1 (double x)
 	return -0.5+sqrt(0.25+x);
 }
 
+int closest_int (double x, int min, int max)
+{
+	ArrayXd v(abs(max-min)+1);
+	
+	for (int i=0; i<v.rows(); ++i)
+	{
+		v(i) = double(min+i);
+	}
+	
+	v -= x;
+	v = v.cwiseAbs();
+	int res;
+	v.minCoeff(&res);
+	return res;
+}
+
 // template<typename Symmetry>
 // void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
 // {
