@@ -649,6 +649,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	HeffA.clear();
 	HeffA.resize(N_sites);
+	for (int l=0; l<N_sites; ++l) HeffA[l].Terms.resize(1);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
@@ -765,12 +766,13 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	HeffA.resize(1);
+	HeffA[0].Terms.resize(1);
 	Qbasis<Symmetry> inbase;
 	inbase.pullData(Vout.state.A[GAUGE::C][0],0);
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(Vout.state.A[GAUGE::C][0],1);
-	HeffA[0].L.setIdentity(dW, 1, inbase);
-	HeffA[0].R.setIdentity(dW, 1, outbase);
+	HeffA[0].Terms[0].L.setIdentity(dW, 1, inbase);
+	HeffA[0].Terms[0].R.setIdentity(dW, 1, outbase);
 	
 	// initial energy & error
 	eoldL = std::nan("");
@@ -1030,13 +1032,14 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 	// With a unit cell, Heff is a vector for each site
 	HeffC.clear();
 	HeffC.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l) HeffC[l].Terms.resize(1);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 //		HeffA[l].W = H.W[l];
 //		HeffC[l].W = H.W[l];
-		HeffA[l].W = H.get_W_power(power)[l];
-		HeffC[l].W = H.get_W_power(power)[l];
+		HeffA[l].Terms[0].W = H.get_W_power(power)[l];
+		HeffC[l].Terms[0].W = H.get_W_power(power)[l];
 	}
 	
 	// Make environment for the unit cell
@@ -1045,7 +1048,7 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 //	          HeffA[0].L, HeffA[N_sites-1].R);
 	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
 	          H.get_W_power(power), H.locBasis(), H.get_qOp_power(power), 
-	          HeffA[0].L, HeffA[N_sites-1].R);
+	          HeffA[0].Terms[0].L, HeffA[N_sites-1].Terms[0].R);
 	
 	// Make environment for each site of the unit cell
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
@@ -1062,10 +1065,10 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 //				           Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], 
 //				           H.locBasis(l-1), H.opBasis(l-1), 
 //				           HeffA[l].L);
-				contract_L(HeffA[l-1].L, 
+				contract_L(HeffA[l-1].Terms[0].L, 
 				           Vout.state.A[GAUGE::L][l-1], H.get_W_power(power)[l-1], Vout.state.A[GAUGE::L][l-1], 
 				           H.locBasis(l-1), H.get_qOp_power(power)[l-1], 
-				           HeffA[l].L);
+				           HeffA[l].Terms[0].L);
 			}
 		}
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
@@ -1078,18 +1081,18 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 //				           Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], 
 //				           H.locBasis(l+1), H.opBasis(l+1), 
 //				           HeffA[l].R);
-				contract_R(HeffA[l+1].R, 
+				contract_R(HeffA[l+1].Terms[0].R, 
 				           Vout.state.A[GAUGE::R][l+1], H.get_W_power(power)[l+1], Vout.state.A[GAUGE::R][l+1], 
 				           H.locBasis(l+1), H.get_qOp_power(power)[l+1], 
-				           HeffA[l].R);
+				           HeffA[l].Terms[0].R);
 			}
 		}
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		HeffC[l].L = HeffA[(l+1)%N_sites].L;
-		HeffC[l].R = HeffA[l].R;
+		HeffC[l].Terms[0].L = HeffA[(l+1)%N_sites].Terms[0].L;
+		HeffC[l].Terms[0].R = HeffA[l].Terms[0].R;
 	}
 }
 
@@ -1167,7 +1170,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	#endif
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
+		precalc_blockStructure (HeffA[l].Terms[0].L, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].W, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].R, 
 								H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 			
 		Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
@@ -1182,7 +1185,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-            #ifndef VUMPS_SOLVER_DONT_USE_OPENMP
+			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 			#pragma omp critical
 			#endif
 			{
@@ -1407,7 +1410,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	{		
 		build_cellEnv(H,Vout);
 		
-		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
+		precalc_blockStructure (HeffA[l].Terms[0].L, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].W, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].R, 
 		                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 		
 		Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
@@ -1657,7 +1660,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 		Atmp[s] = Atmp[s].cleaned();
 	}
 	
-	if (HeffA[0].W.size() == 0)
+	if (HeffA[0].Terms[0].W.size() == 0)
 	{
 		// contract_WW<Symmetry,Scalar> (H.W_at(0), H.locBasis(0), H.opBasis(0), 
 		//                               H.W_at(1), H.locBasis(1), H.opBasis(1),
@@ -1672,8 +1675,8 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 		HeffA[0].qlhs.clear();
 		HeffA[0].qrhs.clear();
 		HeffA[0].factor_cgcs.clear();
-		precalc_blockStructure (HeffA[0].L, Atmp, HeffA[0].W, Atmp, HeffA[0].R, 
-		                        HeffA[0].qloc, HeffA[0].qOp, 
+		precalc_blockStructure (HeffA[0].Terms[0].L, Atmp, HeffA[0].Terms[0].W, Atmp, HeffA[0].Terms[0].R, 
+		                        HeffA[0].Terms[0].qloc, HeffA[0].Terms[0].qOp, 
 		                        HeffA[0].qlhs, HeffA[0].qrhs, HeffA[0].factor_cgcs);
 	}
 	
@@ -1739,10 +1742,10 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > HeffLtmp, HeffRtmp;
-	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
-	HeffA[0].L = HeffLtmp;
-	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
-	HeffA[0].R = HeffRtmp;
+	contract_L(HeffA[0].Terms[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
+	HeffA[0].Terms[0].L = HeffLtmp;
+	contract_R(HeffA[0].Terms[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
+	HeffA[0].Terms[0].R = HeffRtmp;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -2018,10 +2021,10 @@ expand_basis (size_t loc, size_t DeltaM, const MpHamiltonian &H, Eigenstate<Umps
 	//Update the left environment if AL is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
 	if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
-		contract_L(HeffA[loc].L, 
+		contract_L(HeffA[loc].Terms[0].L, 
 		           Vout.state.A[GAUGE::L][loc], H.W[loc], Vout.state.A[GAUGE::L][loc], 
 		           H.locBasis(loc), H.opBasis(loc), 
-		           HeffA[(loc+1)%N_sites].L);
+		           HeffA[(loc+1)%N_sites].Terms[0].L);
 	}
 	
 	P.clear();
@@ -2036,10 +2039,10 @@ expand_basis (size_t loc, size_t DeltaM, const MpHamiltonian &H, Eigenstate<Umps
 	//Note: maybe we only have to update the right environment if loc=0, since we need the updated environment only when loc=N_sites-1 and consequentially loc+1=0.
 	if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
-		contract_R(HeffA[(loc+1)%N_sites].R,
+		contract_R(HeffA[(loc+1)%N_sites].Terms[0].R,
 		           Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
 		           H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
-		           HeffA[loc].R);
+		           HeffA[loc].Terms[0].R);
 	}
 	
 	Vout.state.update_outbase(loc,GAUGE::L);
@@ -2076,7 +2079,7 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Umps<Symmetry,Scalar> &Psi, V
 	Psi.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
 	Psi.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
 	
-	PivotMatrix2 H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+	PivotMatrix2 H2(HeffA[loc].Terms[0].L, HeffA[(loc+1)%N_sites].Terms[0].R, HeffA[loc].Terms[0].W, HeffA[(loc+1)%N_sites].Terms[0].W, 
 					H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
 	
 	vector<Biped<Symmetry,MatrixType> > AL;
@@ -2112,7 +2115,7 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Umps<Symmetry,Scalar> &Psi, V
 	PivotVector<Symmetry,Scalar> A2C(AL, H.locBasis(loc), 
 	                                 AR, H.locBasis((loc+1)%N_sites), 
 	                                 Psi.Qtop(loc), Psi.Qbot(loc));
-	precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
+	precalc_blockStructure (HeffA[loc].Terms[0].L, A2C.data, HeffA[loc].Terms[0].W, HeffA[(loc+1)%N_sites].Terms[0].W, A2C.data, HeffA[(loc+1)%N_sites].Terms[0].R, 
 	                        H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
 	                        H2.qlhs, H2.qrhs, H2.factor_cgcs);
 
@@ -2171,7 +2174,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	}
 	
 	Mps<Symmetry,Scalar> res = assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
-	                                        HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0);
+	                                        HeffA[0].Terms[0].L, HeffA[(Lhetero-1)%N_sites].Terms[0].R, x0);
 	
 	// build environment for square:
 //	build_cellEnv(H,V,2ul);
@@ -2463,7 +2466,7 @@ set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool
 		
 		if (LEFT)
 		{
-			Vout.Boundaries.L = HeffA[0].L;
+			Vout.Boundaries.L = HeffA[0].Terms[0].L;
 		}
 		else
 		{
@@ -2472,7 +2475,7 @@ set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool
 		}
 		if (RIGHT)
 		{
-			Vout.Boundaries.R = HeffA[N_sites-1].R;
+			Vout.Boundaries.R = HeffA[N_sites-1].Terms[0].R;
 		}
 		else
 		{

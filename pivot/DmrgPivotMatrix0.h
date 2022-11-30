@@ -18,7 +18,7 @@ struct PivotMatrix0
 	{}
 	
 	PivotMatrix0 (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H)
-	:L(H.L), R(H.R)
+	:L(H.Terms[0].L), R(H.Terms[0].R)
 	{}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
