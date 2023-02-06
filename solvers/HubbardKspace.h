@@ -84,19 +84,22 @@ public:
 	
 	string info() const;
 	
-	template<class Dummy = MODEL::Symmetry>
+	template<class Dummy = typename MODEL::Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),void>::type compute_raw();
 	
-	template<class Dummy = MODEL::Symmetry>
+	template<class Dummy = typename MODEL::Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_U1(),void>::type compute_raw();
 	
-	template<class Dummy = MODEL::Symmetry>
+	template<class Dummy = typename MODEL::Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),void>::type compute_MPO();
 	
-	template<class Dummy = MODEL::Symmetry>
+	template<class Dummy = typename MODEL::Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_U1(),void>::type compute_MPO();
 	
 	KspaceHTerms<MODEL> get_Hterms() const {return Hterms;};
+	
+	MODEL sum_all() const;
+	Mpo<typename MODEL::Symmetry,typename MODEL::Scalar_> sum_all_mpo() const;
 	
 private:
 	
@@ -1116,6 +1119,42 @@ compute_MPO()
 //		}
 //	}
 	Hterms.HubbardU_kspace = Terms.HubbardU_kspace;
+}
+
+template<typename MODEL>
+MODEL HubbardKspace<MODEL>::
+sum_all() const
+{
+	auto res = Terms.Hmpo_spin_exchange[0];
+	for (int s=1; s<Terms.Hmpo_spin_exchange.size(); ++s) res = sum(res,Terms.Hmpo_spin_exchange[s]);
+	for (int s=0; s<Terms.Hmpo_density_density.size(); ++s) res = sum(res,Terms.Hmpo_density_density[s]);
+	for (int s=0; s<Terms.Hmpo_pair_hopping.size(); ++s) res = sum(res,Terms.Hmpo_pair_hopping[s]);
+	for (int s=0; s<Terms.Hmpo_corr_hopping.size(); ++s) res = sum(res,Terms.Hmpo_corr_hopping[s]);
+	for (int s=0; s<Terms.Hmpo_corr_hopping3.size(); ++s) res = sum(res,Terms.Hmpo_corr_hopping3[s]);
+	for (int s=0; s<Terms.Hmpo_nonlocal_spin.size(); ++s) res = sum(res,Terms.Hmpo_nonlocal_spin[s]);
+	for (int s=0; s<Terms.Hmpo_doublon_decay.size(); ++s) res = sum(res,Terms.Hmpo_doublon_decay[s]);
+	for (int s=0; s<Terms.Hmpo_foursite.size(); ++s) res = sum(res,Terms.Hmpo_foursite[s]);
+	
+	vector<Param> dummy;
+	dummy.push_back({"maxPower",1ul});
+	
+	return MODEL(res,dummy);
+}
+
+template<typename MODEL>
+Mpo<typename MODEL::Symmetry,typename MODEL::Scalar_> HubbardKspace<MODEL>::
+sum_all_mpo() const
+{
+	auto res = Terms.Hmpo_spin_exchange[0];
+	for (int s=1; s<Terms.Hmpo_spin_exchange.size(); ++s) res = sum(res,Terms.Hmpo_spin_exchange[s]);
+	for (int s=0; s<Terms.Hmpo_density_density.size(); ++s) res = sum(res,Terms.Hmpo_density_density[s]);
+	for (int s=0; s<Terms.Hmpo_pair_hopping.size(); ++s) res = sum(res,Terms.Hmpo_pair_hopping[s]);
+	for (int s=0; s<Terms.Hmpo_corr_hopping.size(); ++s) res = sum(res,Terms.Hmpo_corr_hopping[s]);
+	for (int s=0; s<Terms.Hmpo_corr_hopping3.size(); ++s) res = sum(res,Terms.Hmpo_corr_hopping3[s]);
+	for (int s=0; s<Terms.Hmpo_nonlocal_spin.size(); ++s) res = sum(res,Terms.Hmpo_nonlocal_spin[s]);
+	for (int s=0; s<Terms.Hmpo_doublon_decay.size(); ++s) res = sum(res,Terms.Hmpo_doublon_decay[s]);
+	for (int s=0; s<Terms.Hmpo_foursite.size(); ++s) res = sum(res,Terms.Hmpo_foursite[s]);
+	return res;
 }
 
 #endif

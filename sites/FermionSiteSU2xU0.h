@@ -21,7 +21,7 @@ class FermionSite<Sym::SU2<Sym::SpinSU2> >
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input=1);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -56,25 +56,16 @@ protected:
 };
 
 FermionSite<Sym::SU2<Sym::SpinSU2> >::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input)
 {
-	bool UPH_IS_INFINITE = false;
-	bool U_IS_INFINITE = false;
+	bool REMOVE_SINGLE = (REMOVE_UP or REMOVE_DN)? true:false;
 	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q; //empty occupied state
 	Eigen::Index inner_dim;
 	std::vector<std::string> ident;
 	
-	if (!UPH_IS_INFINITE and U_IS_INFINITE)
-	{
-		Q = {1};
-		inner_dim = 1;
-		ident.push_back("empty");
-		basis_1s_.push_back(Q,inner_dim,ident);
-		ident.clear();
-	}
-	else if (!UPH_IS_INFINITE and !U_IS_INFINITE)
+	if (!REMOVE_DOUBLE and !REMOVE_EMPTY)
 	{
 		Q = {1};
 		inner_dim = 2;
@@ -83,36 +74,54 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfac
 		basis_1s_.push_back(Q,inner_dim,ident);
 		ident.clear();
 	}
+	else if (REMOVE_DOUBLE and !REMOVE_EMPTY)
+	{
+		Q = {1};
+		inner_dim = 1;
+		ident.push_back("empty");
+		basis_1s_.push_back(Q,inner_dim,ident);
+		ident.clear();
+	}
+	else if (!REMOVE_DOUBLE and REMOVE_EMPTY)
+	{
+		Q = {1};
+		inner_dim = 1;
+		ident.push_back("double");
+		basis_1s_.push_back(Q,inner_dim,ident);
+		ident.clear();
+	}
 	
-	Q={2}; //singly occupied state
-	inner_dim = 1;
-	ident.push_back("single");
-	basis_1s_.push_back(Q,inner_dim,ident);
-	ident.clear();
+	if (!REMOVE_SINGLE)
+	{
+		Q={2}; //singly occupied state
+		inner_dim = 1;
+		ident.push_back("single");
+		basis_1s_.push_back(Q,inner_dim,ident);
+		ident.clear();
+	}
 	
 	Id_1s_ = OperatorType({1},basis_1s_,"id");
-	F_1s_ = OperatorType({1},basis_1s_,"F");
-	c_1s_ = OperatorType({2},basis_1s_,"c");
-	d_1s_ = OperatorType({1},basis_1s_,"d");
-	S_1s_ = OperatorType({3},basis_1s_,"S");
+	F_1s_  = OperatorType({1},basis_1s_,"F");
+	c_1s_  = OperatorType({2},basis_1s_,"c");
+	d_1s_  = OperatorType({1},basis_1s_,"d");
+	S_1s_  = OperatorType({3},basis_1s_,"S");
 	
-	// create operators one orbitals	
-	if (!UPH_IS_INFINITE) Id_1s_("empty", "empty") = 1.;
+	// create operators one orbitals
+	if (!REMOVE_EMPTY)  Id_1s_("empty", "empty") = 1.;
+	if (!REMOVE_DOUBLE) Id_1s_("double", "double") = 1.;
+	if (!REMOVE_SINGLE) Id_1s_("single", "single") = 1.;
 	
-	if (!U_IS_INFINITE and !UPH_IS_INFINITE) Id_1s_("double", "double") = 1.;
-	Id_1s_("single", "single") = 1.;
+	if (!REMOVE_EMPTY)  F_1s_("empty", "empty") = 1.;
+	if (!REMOVE_DOUBLE) F_1s_("double", "double") = 1.;
+	if (!REMOVE_SINGLE) F_1s_("single", "single") = -1.;
 	
-	if (!UPH_IS_INFINITE) F_1s_("empty", "empty") = 1.;
-	if (!U_IS_INFINITE and !UPH_IS_INFINITE) F_1s_("double", "double") = 1.;
-	F_1s_("single", "single") = -1.;
-	
-	if (!UPH_IS_INFINITE) c_1s_("empty", "single")  = std::sqrt(2.);
-	if (!U_IS_INFINITE and !UPH_IS_INFINITE) c_1s_("single", "double") = 1.;
+	if (!REMOVE_EMPTY and !REMOVE_SINGLE) c_1s_("empty", "single")  = std::sqrt(2.);
+	if (!REMOVE_DOUBLE and !REMOVE_SINGLE) c_1s_("single", "double") = 1.;
 	
 	cdag_1s_ = c_1s_.adjoint();
 	n_1s_ = std::sqrt(2.) * OperatorType::prod(cdag_1s_,c_1s_,{1});
-	if (!U_IS_INFINITE and !UPH_IS_INFINITE) d_1s_( "double", "double" ) = 1.;
-	S_1s_("single", "single") = std::sqrt(0.75);
+	if (!REMOVE_DOUBLE) d_1s_( "double", "double" ) = 1.;
+	if (!REMOVE_SINGLE) S_1s_("single", "single") = std::sqrt(0.75);
 	p_1s_ = -std::sqrt(0.5) * OperatorType::prod(c_1s_,c_1s_,{1}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s_ = p_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 

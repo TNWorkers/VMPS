@@ -44,6 +44,11 @@ namespace Sym{
 	{
 		static const KIND name=KIND::Z2;
 	};
+	
+	struct Momentum
+	{
+		static const KIND name=KIND::k;
+	};
 
 }//end namespace Sym
 #endif //LABEL_DUMMIES_H

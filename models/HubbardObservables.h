@@ -177,6 +177,8 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomptot (SPINOP_LABEL Sa, size_t locy=0, double factor=1., int dLphys=1) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
@@ -270,7 +272,8 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),
 		                             P.get<bool>("REMOVE_DOUBLE",l%Lcell),
 		                             P.get<bool>("REMOVE_EMPTY",l%Lcell),
-		                             P.get<bool>("REMOVE_SINGLE",l%Lcell),
+		                             P.get<bool>("REMOVE_UP",l%Lcell),
+		                             P.get<bool>("REMOVE_DN",l%Lcell),
 		                             P.get<int>("mfactor",l%Lcell));
 	}
 	
@@ -787,7 +790,7 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) co
 {
 	if constexpr (Dummy::ABELIAN)
 	{
-		auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+		auto Qtot = Symmetry::reduceSilent(F[locx1].cdag(sigma1,locy1).Q(), F[locx2].c(sigma2,locy2).Q())[0];
 		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1.*factor, PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
 	else
@@ -972,7 +975,7 @@ template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	auto Qtot = F[locx1].c(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+	auto Qtot = Symmetry::reduceSilent(F[locx1].c(sigma1,locy1).Q(), F[locx2].c(sigma2,locy2).Q())[0];
 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
@@ -981,7 +984,7 @@ template<typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	auto Qtot = F[locx1].c(sigma1,locy1).Q() + F[locx2].c(sigma2,locy2).Q();
+	auto Qtot = Symmetry::reduceSilent(F[locx1].c(sigma1,locy1).Q(), F[locx2].c(sigma2,locy2).Q())[0];
 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
@@ -990,7 +993,7 @@ template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cdagcdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].cdag(sigma2,locy2).Q();
+	auto Qtot = Symmetry::reduceSilent(F[locx1].cdag(sigma1,locy1).Q(), F[locx2].cdag(sigma2,locy2).Q())[0];
 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].cdag(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
@@ -999,7 +1002,7 @@ template<typename Dummy>
 typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 cdagcdag (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	auto Qtot = F[locx1].cdag(sigma1,locy1).Q() + F[locx2].cdag(sigma2,locy2).Q();
+	auto Qtot = Symmetry::reduceSilent(F[locx1].cdag(sigma1,locy1).Q(), F[locx2].cdag(sigma2,locy2).Q())[0];
 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].cdag(sigma2,locy2), Qtot, 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 }
 
@@ -1108,7 +1111,8 @@ Stringz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	auto Sz1 = F[locx1].Sz(locy1);
 	auto Sz2 = F[locx2].Sz(locy2);
 	
-	Mpo<Symmetry,Scalar> Mout(F.size(), Sz1.Q()+Sz2.Q(), ss.str());
+	auto Qtot = Symmetry::reduceSilent(Sz1.Q(), Sz2.Q())[0];
+	Mpo<Symmetry,Scalar> Mout(F.size(), Qtot, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	if (locx1 == locx2)
@@ -1142,7 +1146,8 @@ StringzDimer (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	auto Sz1 = F[locx1].Sz(locy1);
 	auto Sz2 = F[locx2].Sz(locy2);
 	
-	Mpo<Symmetry,Scalar> Mout(F.size(), Sz1.Q()+Sz2.Q(), ss.str());
+	auto Qtot = Symmetry::reduceSilent(Sz1.Q(), Sz2.Q())[0];
+	Mpo<Symmetry,Scalar> Mout(F.size(), Qtot, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	if (locx1 == locx2)
@@ -1379,6 +1384,25 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	return make_local(locx,locy, F[locx].Scomp(Sa,locy), factor, PROP::BOSONIC, HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(F.size());
+	vector<Scalar> factors(F.size());
+	for (int l=0; l<F.size(); ++l)
+	{
+		Ops[l] = F[l].Scomp(Sa,locy).template cast<Scalar>();
+		factors[l] = 0.;
+	}
+	for (int l=0; l<F.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, (Sa==SZ)?PROP::HERMITIAN:PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

@@ -2,6 +2,7 @@
 #define FERMIONSITE_H_
 
 #include "symmetry/U0.h"
+#include "symmetry/ZN.h"
 
 #include "sites/FermionSiteSU2xU1.h"
 #include "sites/FermionSiteU1xSU2.h"
@@ -19,7 +20,7 @@ class FermionSite
 public:
 	
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input=1);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -47,8 +48,8 @@ protected:
 	
 	int mfactor = 1;
 	
-	void fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
-	void fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE);
+	void fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN);
+	void fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN);
 	
 	typename Symmetry_::qType getQ (SPIN_INDEX sigma, int Delta) const;
 	typename Symmetry_::qType getQ (SPINOP_LABEL Sa) const;
@@ -80,20 +81,20 @@ protected:
 
 template<typename Symmetry_>
 FermionSite<Symmetry_>::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE, int mfactor_input)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input)
 :mfactor(mfactor_input)
 {
 	//create basis for one Fermionic Site
-	fill_basis(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_SINGLE);
-//	cout << "single site basis" << endl << this->basis_1s_ << endl;
+	fill_basis(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_UP, REMOVE_DN);
+	//cout << "single site basis" << endl << this->basis_1s_ << endl;
 	
-	fill_SiteOps(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_SINGLE);
-//	cout << "fill_SiteOps done!" << endl;
+	fill_SiteOps(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_UP, REMOVE_DN);
+	//cout << "fill_SiteOps done!" << endl;
 }
 
 template <typename Symmetry_>
 void FermionSite<Symmetry_>::
-fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
+fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN)
 {
 	// create operators for one site
 	Id_1s_       = OperatorType(Symmetry::qvacuum(),basis_1s_);
@@ -101,9 +102,11 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	
 	cup_1s_      = OperatorType(getQ(UP,-1),basis_1s_);
 	cdn_1s_      = OperatorType(getQ(DN,-1),basis_1s_);
+	//cout << getQ(UP,-1) << "\t" << getQ(DN,-1) << endl;
 	
 	cdagup_1s_   = OperatorType(getQ(UP,+1),basis_1s_);
 	cdagdn_1s_   = OperatorType(getQ(DN,+1),basis_1s_);
+	//cout << getQ(UP,+1) << "\t" << getQ(DN,+1) << endl;
 	
 	n_1s_        = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	nup_1s_      = OperatorType(Symmetry::qvacuum(),basis_1s_);
@@ -116,40 +119,35 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	
 	cc_1s_       = OperatorType(getQ(UPDN,-1),basis_1s_);
 	cdagcdag_1s_ = OperatorType(getQ(UPDN,+1),basis_1s_);
+	//cout << getQ(UPDN,-1) << "\t" << getQ(UPDN,+1) << endl;
 	
 	if (!REMOVE_EMPTY) Id_1s_("empty", "empty") = 1.;
 	if (!REMOVE_DOUBLE) Id_1s_("double", "double") = 1.;
-	if (!REMOVE_SINGLE)
-	{
-		Id_1s_("up","up") = 1.;
-		Id_1s_("dn","dn") = 1.;
-	}
+	if (!REMOVE_UP) Id_1s_("up","up") = 1.;
+	if (!REMOVE_DN) Id_1s_("dn","dn") = 1.;
 	
 	if (!REMOVE_EMPTY) F_1s_("empty", "empty") = 1.;
 	if (!REMOVE_DOUBLE) F_1s_("double", "double") = 1.;
-	if (!REMOVE_SINGLE)
-	{
-		F_1s_("up","up") = -1.;
-		F_1s_("dn","dn") = -1.;
-	}
+	if (!REMOVE_UP) F_1s_("up","up") = -1.;
+	if (!REMOVE_DN) F_1s_("dn","dn") = -1.;
 	
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	if (!REMOVE_EMPTY and !REMOVE_UP)
 	{
 		cup_1s_("empty","up")  = 1.;
 		cdagup_1s_("up","empty")  = 1.;
 	}
-	if (!REMOVE_DOUBLE and !REMOVE_SINGLE)
+	if (!REMOVE_EMPTY and !REMOVE_DN)
 	{
 		cup_1s_("dn","double") = 1.;
 		cdagup_1s_("double","dn") = 1.;
 	}
 	
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	if (!REMOVE_EMPTY and !REMOVE_DN)
 	{
 		cdn_1s_("empty","dn")  = 1.;
 		cdagdn_1s_("dn","empty")  = 1.;
 	}
-	if (!REMOVE_EMPTY and !REMOVE_SINGLE)
+	if (!REMOVE_DOUBLE and !REMOVE_UP)
 	{
 		cdn_1s_("up","double") = -1.;
 		cdagdn_1s_("double","up") = -1.;
@@ -158,9 +156,12 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	//nup_1s_ = cup_1s_.adjoint() * cup_1s_;
 	//ndn_1s_ = cdn_1s_.adjoint() * cdn_1s_;
 	
-	if (!REMOVE_SINGLE)
+	if (!REMOVE_UP)
 	{
 		nup_1s_("up","up") = 1.;
+	}
+	if (!REMOVE_DN)
+	{
 		ndn_1s_("dn","dn") = 1.;
 	}
 	if (!REMOVE_DOUBLE)
@@ -181,48 +182,55 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	//cc_1s_ = cdn_1s_ * cup_1s_; //The sign convention corresponds to c_DN c_UP
 	//cdagcdag_1s_ = cc_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 	
-	if (!REMOVE_SINGLE)
+	if (!REMOVE_UP and !REMOVE_DN)
 	{
 		Sz_1s_ = 0.5*(nup_1s_-ndn_1s_);
 		Sp_1s_ = cup_1s_.adjoint() * cdn_1s_;
 		Sm_1s_ = Sp_1s_.adjoint();
 	}
 	
+//	cout << "cup_1s_=" << endl << MatrixXd(cup_1s_.template plain<double>().data) << endl;
+//	cout << "cdn_1s_=" << endl << MatrixXd(cdn_1s_.template plain<double>().data) << endl;
+//	cout << "cdagup_1s_=" << endl << MatrixXd(cdagup_1s_.template plain<double>().data) << endl;
+//	cout << "cdagdn_1s_=" << endl << MatrixXd(cdagdn_1s_.template plain<double>().data) << endl;
+	
 	return;
 }
 
 template<typename Symmetry_>
 void FermionSite<Symmetry_>::
-fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
+fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN)
 {
-	bool U_IS_INFINITE = false;
-	bool UPH_IS_INFINITE = false;
-	
 	if constexpr (std::is_same<Symmetry, Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >::value) //U1xU1
 	{
-		typename Symmetry::qType Q={0,0}; //empty occupied state
-		Eigen::Index inner_dim = 1;
+		typename Symmetry::qType Q;
+		Eigen::Index inner_dim;
 		std::vector<std::string> ident;
 		
 		if (!REMOVE_EMPTY)
 		{
+			Q={0,0}; //empty state
+			inner_dim = 1;
 			ident.push_back("empty");
-			this->basis_1s_.push_back(Q,inner_dim,ident);
+			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
 		
-		if (!REMOVE_SINGLE)
+		if (!REMOVE_UP)
 		{
 			Q={+mfactor,1}; //up spin state
 			inner_dim = 1;
 			ident.push_back("up");
-			this->basis_1s_.push_back(Q,inner_dim,ident);
+			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
-			
+		}
+		
+		if (!REMOVE_DN)
+		{
 			Q={-mfactor,1}; //down spin state
 			inner_dim = 1;
 			ident.push_back("dn");
-			this->basis_1s_.push_back(Q,inner_dim,ident);
+			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
 		
@@ -231,7 +239,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			Q={0,2}; //doubly occupied state
 			inner_dim = 1;
 			ident.push_back("double");
-			this->basis_1s_.push_back(Q,inner_dim,ident);
+			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
 	}
@@ -241,16 +249,8 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 		Eigen::Index inner_dim;
 		std::vector<std::string> ident;
 		
-		if (!UPH_IS_INFINITE and U_IS_INFINITE)
-		{
-			ident.push_back("empty");
-			ident.push_back("up");
-			ident.push_back("dn");
-			inner_dim = 3;
-			basis_1s_.push_back(Q,inner_dim,ident);
-			ident.clear();
-		}
-		else if (!U_IS_INFINITE and !UPH_IS_INFINITE)
+		// all present
+		if (!REMOVE_DOUBLE and !REMOVE_EMPTY and !REMOVE_UP and !REMOVE_DN)
 		{
 			ident.push_back("empty");
 			ident.push_back("up");
@@ -260,13 +260,96 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
-		else
+		// one removed
+		else if (REMOVE_DOUBLE and !REMOVE_EMPTY and !REMOVE_UP and !REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("up");
+			ident.push_back("dn");
+			inner_dim = 3;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and REMOVE_EMPTY and !REMOVE_UP and !REMOVE_DN)
+		{
+			ident.push_back("up");
+			ident.push_back("dn");
+			ident.push_back("double");
+			inner_dim = 3;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and !REMOVE_EMPTY and REMOVE_UP and !REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("dn");
+			ident.push_back("double");
+			inner_dim = 3;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and !REMOVE_EMPTY and !REMOVE_UP and REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("up");
+			ident.push_back("double");
+			inner_dim = 3;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		// two removed
+		else if (REMOVE_DOUBLE and REMOVE_EMPTY and !REMOVE_UP and !REMOVE_DN)
 		{
 			ident.push_back("up");
 			ident.push_back("dn");
 			inner_dim = 2;
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and !REMOVE_EMPTY and REMOVE_UP and REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("double");
+			inner_dim = 2;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and REMOVE_EMPTY and !REMOVE_UP and REMOVE_DN)
+		{
+			ident.push_back("double");
+			ident.push_back("up");
+			inner_dim = 2;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_DOUBLE and REMOVE_EMPTY and REMOVE_UP and !REMOVE_DN)
+		{
+			ident.push_back("double");
+			ident.push_back("dn");
+			inner_dim = 2;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_DOUBLE and !REMOVE_EMPTY and !REMOVE_UP and REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("up");
+			inner_dim = 2;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_DOUBLE and !REMOVE_EMPTY and REMOVE_UP and !REMOVE_DN)
+		{
+			ident.push_back("empty");
+			ident.push_back("dn");
+			inner_dim = 2;
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		// three removed
+		else
+		{
+			assert(1!=1 and "Trivial basis in FermionSite!");
 		}
 	}
 	else if constexpr (std::is_same<Symmetry, Sym::U1<Sym::SpinU1> >::value) //spin U1
@@ -275,15 +358,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 		Eigen::Index inner_dim;
 		std::vector<std::string> ident;
 		
-		if (!REMOVE_EMPTY)
-		{
-			ident.push_back("empty");
-			inner_dim = 1;
-			Q = {0};
-			basis_1s_.push_back(Q,inner_dim,ident);
-			ident.clear();
-		}
-		if (!REMOVE_DOUBLE)
+		if (!REMOVE_DOUBLE and !REMOVE_EMPTY)
 		{
 			Q={0}; //doubly occupied state
 			inner_dim = 2;
@@ -292,15 +367,33 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
+		else if (!REMOVE_EMPTY and REMOVE_DOUBLE)
+		{
+			Q={0};
+			inner_dim = 1;
+			ident.push_back("empty");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_EMPTY and !REMOVE_DOUBLE)
+		{
+			Q={0};
+			inner_dim = 1;
+			ident.push_back("double");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
 		
-		if (!REMOVE_SINGLE)
+		if (!REMOVE_UP)
 		{
 			Q={+mfactor}; //up spin state
 			inner_dim = 1;
 			ident.push_back("up");
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
-			
+		}
+		if (!REMOVE_DN)
+		{
 			Q={-mfactor}; //down spin state
 			inner_dim = 1;
 			ident.push_back("dn");
@@ -310,25 +403,41 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 	}
 	else if constexpr (std::is_same<Symmetry, Sym::U1<Sym::ChargeU1> >::value) //charge U1
 	{
-		typename Symmetry::qType Q; //empty and doubly occupied state
+		typename Symmetry::qType Q;
 		Eigen::Index inner_dim;
 		std::vector<std::string> ident;
 		
 		if (!REMOVE_EMPTY)
 		{
-			Q = {0};
+			Q={0}; //empty and doubly occupied state
 			ident.push_back("empty");
 			inner_dim = 1;
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
 		
-		if (!REMOVE_SINGLE)
+		if (!REMOVE_UP and !REMOVE_DN)
 		{
 			Q={1}; //singly occupied states
 			inner_dim = 2;
 			ident.push_back("up");
 			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_UP and !REMOVE_DN)
+		{
+			Q={1};
+			inner_dim = 1;
+			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_UP and REMOVE_DN)
+		{
+			Q={1};
+			inner_dim = 1;
+			ident.push_back("up");
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
@@ -338,6 +447,64 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_SINGLE)
 			Q={2}; //doubly occupied state
 			inner_dim = 1;
 			ident.push_back("double");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+	}
+	else if constexpr (std::is_same<Symmetry, Sym::ZN<Sym::ChargeZ2,2> >::value) // charge Z2 
+	{
+		typename Symmetry::qType Q; //empty and doubly occupied state
+		Eigen::Index inner_dim;
+		std::vector<std::string> ident;
+		
+		if (!REMOVE_EMPTY and !REMOVE_DOUBLE)
+		{
+			Q={0}; //doubly occupied state
+			inner_dim = 2;
+			ident.push_back("empty");
+			ident.push_back("double");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_EMPTY and REMOVE_DOUBLE)
+		{
+			Q={0}; //doubly occupied state
+			inner_dim = 1;
+			ident.push_back("empty");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_EMPTY and !REMOVE_DOUBLE)
+		{
+			Q={0}; //doubly occupied state
+			inner_dim = 1;
+			ident.push_back("double");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		
+		if (!REMOVE_UP and !REMOVE_DN)
+		{
+			Q={1}; //doubly occupied state
+			inner_dim = 2;
+			ident.push_back("up");
+			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_UP and REMOVE_DN)
+		{
+			Q={1}; //doubly occupied state
+			inner_dim = 1;
+			ident.push_back("up");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_UP and !REMOVE_DN)
+		{
+			Q={1}; //doubly occupied state
+			inner_dim = 1;
+			ident.push_back("dn");
 			basis_1s_.push_back(Q,inner_dim,ident);
 			ident.clear();
 		}
@@ -369,13 +536,13 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) //return parity as good quantum number.
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) //return parity as good quantum number (Delta even or odd).
 		{
 			typename Symmetry::qType out;
-			if      (sigma==UP)     {out = {posmod<2>(Delta)};}
-			else if (sigma==DN)     {out = {posmod<2>(-Delta)};}
-			else if (sigma==UPDN)   {out = Symmetry::qvacuum();}
-			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+			if      (sigma==UP)     {out = {posmod<2>(abs(Delta))};} // remove one particles = odd
+			else if (sigma==DN)     {out = {posmod<2>(abs(Delta))};} // remove one particles = odd
+			else if (sigma==UPDN)   {out = Symmetry::qvacuum();} // remove two particles = even = vacuum
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();} // remove no particles = even = vacuum
 			return out;
 		}
 		else {assert(false and "Ill-defined KIND of the used Symmetry.");}
@@ -424,12 +591,12 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or 
-		              Symmetry::kind()[0] == Sym::KIND::Z2) //return particle number as good quantum number.
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or // return particle number as a good quantum number
+		              Symmetry::kind()[0] == Sym::KIND::Z2) // return particle number parity as a good quantum number
 		{
-			return Symmetry::qvacuum();
+			return Symmetry::qvacuum(); // spin flips remove no particles = even = vacuum
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) // return magnetization as a good quantum number
 		{
 			assert(Sa != SX and Sa != iSY);
 			

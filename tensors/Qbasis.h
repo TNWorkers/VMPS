@@ -229,15 +229,16 @@ template<typename Symmetry>
 void Qbasis<Symmetry>::
 push_back(const qType& q_number, const Eigen::Index& inner_dim, const std::vector<std::string>& idents)
 {
-	//search if the quantum number is already in the Qbasis.
+	// search if the quantum number is already in the Qbasis.
 	auto it = std::find_if(data_.begin(), data_.end(), [&q_number] (const tuple<qType,Eigen::Index,Basis> &entry) {return std::get<0>(entry) == q_number;});
-	if (it == data_.end()) //insert quantum number if it is not there
+	// insert quantum number if it is not there
+	if (it == data_.end()) // ATTENTION: workaround for ZN symmetries (e.g. Hubbard basis has parity 0,1,1,0 and 4 states)
 	{
 		Basis plain_basis(idents,inner_dim);
 		auto entry = std::make_tuple(q_number,curr_dim,plain_basis);
 		data_.push_back(entry);
 	}
-	else //append to quantumnumber if it is there
+	else // append to quantum number if it is there
 	{
 		std::get<2>(*it).push_back(idents);
 		for (auto loop=it++; loop==data_.end(); loop++)

@@ -195,6 +195,9 @@ int main (int argc, char* argv[])
 	
 	SaveData data;
 	
+	Eigenstate<MODEL::StateXd> g;
+	MODEL H;
+	
 	// OBC
 	if (!PBC)
 	{
@@ -241,7 +244,7 @@ int main (int argc, char* argv[])
 			}
 			paramsOBC.push_back({"Kz",Kz});
 			
-			MODEL H(L,paramsOBC);
+			H = MODEL(L,paramsOBC);
 			if (offset != 0.)
 			{
 				H.scale(1.,offset*(L-1));
@@ -338,7 +341,8 @@ int main (int argc, char* argv[])
 				double Stot_zz = avg(g.state, H.Scomptot(SZ), H.Scomptot(SZ), g.state);
 				
 				data.SdagStot = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
-				lout << termcolor::blue << "SdagStot=" << data.SdagStot << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot) << termcolor::reset << endl;
+				double Stot = -0.5+sqrt(0.25+data.SdagStot);
+				lout << termcolor::blue << "SdagStot=" << data.SdagStot << " => Stot=" << Stot << ", Stot/L=" << Stot/L << ", Stot/Smax=" << Stot/(0.5*L) << termcolor::reset << endl;
 			}
 			#endif
 			
@@ -365,10 +369,9 @@ int main (int argc, char* argv[])
 			paramsPBC.push_back({"Bz",Bz});
 			#endif
 			
-			MODEL H(L,paramsPBC);
+			H = MODEL(L,paramsPBC);
 			lout << H.info() << endl;
 			
-			Eigenstate<MODEL::StateXd> g;
 			if (LOAD!="")
 			{
 				g.state.load(LOAD,g.energy);
@@ -404,8 +407,8 @@ int main (int argc, char* argv[])
 				
 				MODEL Hf(L,paramsPBCf);
 				lout << Hf.info() << endl;
-				Eigenstate<MODEL::StateXd> gf;
 				
+				Eigenstate<MODEL::StateXd> gf;
 				MODEL::Solver DMRGf(VERB);
 				DMRGf.GlobParam = GlobParam;
 				DMRGf.userSetGlobParam();
@@ -525,7 +528,8 @@ int main (int argc, char* argv[])
 				double Stot_zz = avg(g.state, H.Scomptot(SZ), H.Scomptot(SZ), g.state);
 				
 				data.SdagStot = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
-				lout << termcolor::blue << "SdagStot=" << data.SdagStot << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot) << termcolor::reset << endl;
+				double Stot = -0.5+sqrt(0.25+data.SdagStot);
+				lout << termcolor::blue << ", SdagStot=" << data.SdagStot << " => Stot=" << Stot << ", Stot/L=" << Stot/L << ", Stot/Smax=" << Stot/(0.5*L) << termcolor::reset << endl;
 			}
 			#endif
 		}
@@ -556,9 +560,11 @@ int main (int argc, char* argv[])
 			}
 			DMRGex[i].edgeState(H, spectrum[i], Q, LANCZOS::EDGE::GROUND);
 			
+			data.E_excited(i-1) = spectrum[i].energy;
+			
 			if (CALC_VAR)
 			{
-				data.var_excited(i-1) = abs(avg(spectrum[i].state,H,g.state,2)-pow(spectrum[i].energy,2))/L;
+				data.var_excited(i-1) = abs(avg(spectrum[i].state,H,spectrum[i].state,2)-pow(spectrum[i].energy,2))/L;
 				lout << "varE=" << data.var_excited(i-1) << endl;
 			}
 			if (CALC_STOT)

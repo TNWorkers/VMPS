@@ -110,6 +110,183 @@ ArrayXXd create_1D_PBC_AB (size_t L, double lambda1A=1., double lambda1B=1., dou
 	return res;
 }
 
+void add_triangle (int i, int j, int k, ArrayXXd &target, double lambda=1.)
+{
+	assert(i<j and j<k);
+	target(i,j) = lambda;
+	target(j,k) = lambda;
+	target(i,k) = lambda;
+}
+
+ArrayXXd triangularFlake (int L, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L == 28 or L == 36)
+	{
+		add_triangle(0,1,2,res,lambda);
+		
+		add_triangle(1,3,4,res,lambda);
+		add_triangle(1,2,4,res,lambda);
+		add_triangle(2,4,5,res,lambda);
+		
+		add_triangle(3,6,7,res,lambda);
+		add_triangle(3,4,7,res,lambda);
+		add_triangle(4,7,8,res,lambda);
+		add_triangle(4,5,8,res,lambda);
+		add_triangle(5,8,9,res,lambda);
+		
+		add_triangle(6,10,11,res,lambda);
+		add_triangle(6,7,11,res,lambda);
+		add_triangle(7,11,12,res,lambda);
+		add_triangle(7,8,12,res,lambda);
+		add_triangle(8,12,13,res,lambda);
+		add_triangle(8,9,13,res,lambda);
+		add_triangle(9,13,14,res,lambda);
+		
+		add_triangle(10,15,16,res,lambda);
+		add_triangle(10,11,16,res,lambda);
+		add_triangle(11,16,17,res,lambda);
+		add_triangle(11,12,17,res,lambda);
+		add_triangle(12,17,18,res,lambda);
+		add_triangle(12,13,18,res,lambda);
+		add_triangle(13,18,19,res,lambda);
+		add_triangle(13,14,19,res,lambda);
+		add_triangle(14,19,20,res,lambda);
+		
+		add_triangle(15,21,22,res,lambda);
+		add_triangle(15,16,22,res,lambda);
+		add_triangle(16,22,23,res,lambda);
+		add_triangle(16,17,23,res,lambda);
+		add_triangle(17,23,24,res,lambda);
+		add_triangle(17,18,24,res,lambda);
+		add_triangle(18,24,25,res,lambda);
+		add_triangle(18,19,25,res,lambda);
+		add_triangle(19,25,26,res,lambda);
+		add_triangle(19,20,26,res,lambda);
+		add_triangle(20,26,27,res,lambda);
+		
+		if (L == 36)
+		{
+			add_triangle(21,28,29,res,lambda);
+			add_triangle(21,22,29,res,lambda);
+			add_triangle(22,29,30,res,lambda);
+			add_triangle(22,23,30,res,lambda);
+			add_triangle(23,30,31,res,lambda);
+			add_triangle(23,24,31,res,lambda);
+			add_triangle(24,31,32,res,lambda);
+			add_triangle(24,25,32,res,lambda);
+			add_triangle(25,32,33,res,lambda);
+			add_triangle(25,26,33,res,lambda);
+			add_triangle(26,33,34,res,lambda);
+			add_triangle(26,27,34,res,lambda);
+			add_triangle(27,34,35,res,lambda);
+		}
+	}
+	
+	res += res.transpose().eval();
+	
+	auto res_ = compress_CuthillMcKee(res,true);
+	res = res_;
+	
+	return res;
+}
+
+ArrayXXd hexagonalFlake (int L, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L == 48)
+	{
+		add_triangle(0,4,5,res,lambda);
+		add_triangle(0,1,5,res,lambda);
+		add_triangle(1,5,6,res,lambda);
+		add_triangle(1,2,6,res,lambda);
+		add_triangle(2,6,7,res,lambda);
+		add_triangle(2,3,7,res,lambda);
+		add_triangle(3,7,8,res,lambda);
+		
+		add_triangle(4,9,10,res,lambda);
+		add_triangle(4,5,10,res,lambda);
+		add_triangle(5,10,11,res,lambda);
+		add_triangle(5,6,11,res,lambda);
+		add_triangle(6,11,12,res,lambda);
+		add_triangle(6,7,12,res,lambda);
+		add_triangle(7,12,13,res,lambda);
+		add_triangle(7,8,13,res,lambda);
+		add_triangle(8,13,14,res,lambda);
+		
+		add_triangle(9,15,16,res,lambda);
+		add_triangle(9,10,16,res,lambda);
+		add_triangle(10,16,17,res,lambda);
+		add_triangle(10,11,17,res,lambda);
+		add_triangle(11,17,18,res,lambda);
+		add_triangle(11,12,18,res,lambda);
+		add_triangle(12,18,19,res,lambda);
+		add_triangle(12,13,19,res,lambda);
+		add_triangle(13,19,20,res,lambda);
+		add_triangle(13,14,20,res,lambda);
+		add_triangle(14,20,21,res,lambda);
+		
+		add_triangle(15,16,23,res,lambda);
+		add_triangle(16,17,24,res,lambda);
+		add_triangle(17,18,25,res,lambda);
+		add_triangle(18,19,26,res,lambda);
+		add_triangle(19,20,27,res,lambda);
+		add_triangle(20,21,28,res,lambda);
+		add_triangle(15,22,23,res,lambda);
+		add_triangle(16,23,24,res,lambda);
+		add_triangle(17,24,25,res,lambda);
+		add_triangle(18,25,26,res,lambda);
+		add_triangle(19,26,27,res,lambda);
+		add_triangle(20,27,28,res,lambda);
+		add_triangle(21,28,29,res,lambda);
+		
+		add_triangle(22,23,30,res,lambda);
+		add_triangle(23,24,31,res,lambda);
+		add_triangle(24,25,32,res,lambda);
+		add_triangle(25,26,33,res,lambda);
+		add_triangle(26,27,34,res,lambda);
+		add_triangle(27,28,35,res,lambda);
+		add_triangle(28,29,36,res,lambda);
+		add_triangle(23,30,31,res,lambda);
+		add_triangle(24,31,32,res,lambda);
+		add_triangle(25,32,33,res,lambda);
+		add_triangle(26,33,34,res,lambda);
+		add_triangle(27,34,35,res,lambda);
+		add_triangle(28,35,36,res,lambda);
+		
+		add_triangle(30,31,37,res,lambda);
+		add_triangle(31,32,38,res,lambda);
+		add_triangle(32,33,39,res,lambda);
+		add_triangle(33,34,40,res,lambda);
+		add_triangle(34,35,41,res,lambda);
+		add_triangle(35,36,42,res,lambda);
+		add_triangle(31,37,38,res,lambda);
+		add_triangle(32,38,39,res,lambda);
+		add_triangle(33,39,40,res,lambda);
+		add_triangle(34,40,41,res,lambda);
+		add_triangle(35,41,42,res,lambda);
+		
+		add_triangle(37,38,43,res,lambda);
+		add_triangle(38,39,44,res,lambda);
+		add_triangle(39,40,45,res,lambda);
+		add_triangle(40,41,46,res,lambda);
+		add_triangle(41,42,47,res,lambda);
+		add_triangle(38,43,44,res,lambda);
+		add_triangle(39,44,45,res,lambda);
+		add_triangle(40,45,46,res,lambda);
+		add_triangle(41,46,47,res,lambda);
+	}
+	
+	res += res.transpose().eval();
+	
+	auto res_ = compress_CuthillMcKee(res,true);
+	res = res_;
+	
+	return res;
+}
+
 ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
 	ArrayXXd res;
