@@ -34,8 +34,11 @@ template<typename S1_, typename S2_>
 class S1xS2
 {
 public:
+	
 	typedef typename S1_::Scalar_ Scalar;
-
+	typedef typename S1_::Scalar_ Scalar_;
+	// Confusing... But works! (Roman)
+	
 	typedef S1_ S1;
 	typedef S2_ S2;
 	
@@ -63,14 +66,17 @@ public:
 	typedef qarray<Nq> qType;
 	
 	inline static constexpr std::array<KIND,Nq> kind() { return thirdparty::join(S1_::kind(),S2_::kind()); }
+	inline static constexpr std::array<int,Nq> mod() { return thirdparty::join(S1_::mod(),S2_::mod()); }
 	
 	inline static constexpr qType qvacuum() { return join(S1_::qvacuum(),S2_::qvacuum()); }
-	inline static constexpr std::array<qType,S1::lowest_qs().size()*S2::lowest_qs().size()> lowest_qs()
+	
+	inline static constexpr size_t lowest_qs_size = S1_::lowest_qs_size*S2_::lowest_qs_size; // for compatibility with g++-8
+	inline static constexpr std::array<qType,lowest_qs_size> lowest_qs() // S1_::lowest_qs().size()*S2_::lowest_qs().size()
 	{
-		std::array<qType,S1::lowest_qs().size()*S2::lowest_qs().size()> out;
+		std::array<qType,lowest_qs_size> out; // S1_::lowest_qs().size()*S2_::lowest_qs().size()
 		size_t index = 0;
-		for (const auto &q1 : S1::lowest_qs())
-		for (const auto &q2 : S2::lowest_qs())
+		for (const auto &q1 : S1_::lowest_qs())
+		for (const auto &q2 : S2_::lowest_qs())
 		{
 			out[index] = join(q1,q2);
 			index++;
@@ -741,7 +747,7 @@ bool S1xS2<S1_,S2_>::
 pair ( const std::array<S1xS2<S1_,S2_>::qType,2>& qs )
 {
 	qarray2<S1_::Nq> q_frstSym;
-	qarray2<S1_::Nq> q_secdSym;
+	qarray2<S2_::Nq> q_secdSym;
 
 	for (size_t q=0; q<2; q++)
 	{

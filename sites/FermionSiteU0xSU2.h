@@ -21,7 +21,7 @@ class FermionSite<Sym::SU2<Sym::ChargeSU2> >
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1, int k_input=0);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -68,7 +68,7 @@ protected:
 };
 
 FermionSite<Sym::SU2<Sym::ChargeSU2> >::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input, int k_input)
 {
 	bool REMOVE_HOLON = (REMOVE_DOUBLE or REMOVE_EMPTY)? true:false;
 	

@@ -40,7 +40,7 @@ public:
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
 	 */
-	FermionBase (std::size_t L_input, bool REMOVE_DOUBLE=false, bool REMVOVE_EMPTY=false, bool REMOVE_UP=false, bool REMOVE_DN=false, int mfactor=1);
+	FermionBase (std::size_t L_input, bool REMOVE_DOUBLE=false, bool REMVOVE_EMPTY=false, bool REMOVE_UP=false, bool REMOVE_DN=false, int mfactor=1, int k_input=0);
 	
 	/**amount of states*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
@@ -358,8 +358,8 @@ private:
 
 template <typename Symmetry_>
 FermionBase<Symmetry_>::
-FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor)
-:FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_UP, REMOVE_DN, mfactor), N_orbitals(L_input)
+FermionBase (std::size_t L_input, bool REMOVE_DOUBLE, bool REMVOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor, int k_input)
+:FermionSite<Symmetry>(REMOVE_DOUBLE, REMVOVE_EMPTY, REMOVE_UP, REMOVE_DN, mfactor, k_input), N_orbitals(L_input)
 {
 	//create basis for zero orbitals
 	typename Symmetry::qType Q=Symmetry::qvacuum();

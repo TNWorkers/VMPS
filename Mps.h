@@ -1034,6 +1034,11 @@ calc_Qlimits()
 				{
 					for (size_t q=0; q<Nq; q++)
 					{
+						if (Symmetry::kind()[q] == Sym::KIND::k)
+						{
+							QinTop[l][q]  = Symmetry::mod()[q]-1;
+							QinBot[l][q]  = 0;
+						}
 						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
 						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
 					}
@@ -1042,6 +1047,11 @@ calc_Qlimits()
 				{
 					for (size_t q=0; q<Nq; q++)
 					{
+						if (Symmetry::kind()[q] == Sym::KIND::k)
+						{
+							QoutTop[l][q] = Symmetry::mod()[q]-1;
+							QoutBot[l][q] = 0;
+						}
 						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
 						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
 					}
@@ -1067,10 +1077,21 @@ void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t q=0; q<Nq; q++)
 	{
-		QinTop[l][q]  = std::numeric_limits<int>::max();
-		QinBot[l][q]  = std::numeric_limits<int>::min();
-		QoutTop[l][q] = std::numeric_limits<int>::max();
-		QoutBot[l][q] = std::numeric_limits<int>::min();
+		// A Z(N) quantum number can only go from 0 to N-1
+		if (Symmetry::kind()[q] == Sym::KIND::k)
+		{
+			QinTop[l][q]  = Symmetry::mod()[q]-1;
+			QinBot[l][q]  = 0;
+			QoutTop[l][q] = Symmetry::mod()[q]-1;
+			QoutBot[l][q] = 0;
+		}
+		else
+		{
+			QinTop[l][q]  = std::numeric_limits<int>::max();
+			QinBot[l][q]  = std::numeric_limits<int>::min();
+			QoutTop[l][q] = std::numeric_limits<int>::max();
+			QoutBot[l][q] = std::numeric_limits<int>::min();
+		}
 	}
 }
 
@@ -1090,6 +1111,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean, const size_t &loc) -> vector<qarray<Nq> >
 	{
 		vector<qarray<Nq> > out = qs;
+		
 		if (out.size() > Nqmax_input)
 		{
 			// sort the vector first according to the distance to mean
@@ -1099,9 +1121,20 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 				VectorXd dist_q2(Nq);
 				for (size_t q=0; q<Nq; q++)
 				{
-					double Delta = QinTop[loc][q] - QinBot[loc][q];
-					dist_q1(q) = (q1[q]-mean[q]) / Delta;
-					dist_q2(q) = (q2[q]-mean[q]) / Delta;
+					if (Symmetry::kind()[q] == Sym::KIND::k)
+					{
+						double Delta = 0.5*Symmetry::mod()[q];
+						dist_q1(q) = min( posmod(q1[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q1[q],Symmetry::mod()[q]) ) / Delta;
+						dist_q2(q) = min( posmod(q2[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q2[q],Symmetry::mod()[q]) ) / Delta;
+//						dist_q1(q) = 0.;
+//						dist_q2(q) = 0.;
+					}
+					else
+					{
+						double Delta = QinTop[loc][q] - QinBot[loc][q];
+						dist_q1(q) = (q1[q]-mean[q]) / Delta;
+						dist_q2(q) = (q2[q]-mean[q]) / Delta;
+					}
 				}
 				return (dist_q1.norm() < dist_q2.norm())? true:false;
 			});
@@ -1119,13 +1152,19 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	for (size_t l=1; l<this->N_sites; l++)
 	{
 		auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
+		
+//		for (int i=0; i<new_qs.size(); ++i)
+//		{
+//			lout << "generated q=" << new_qs[i] << endl;
+//		}
+		
 		assert(new_qs.size() > 0);
 		array<double,Nq> mean;
 		
 		for (size_t q=0; q<Nq; q++)
 		{
 			mean[q] = static_cast<double>(Qtot[q])*static_cast<double>(l)/static_cast<double>(this->N_sites);
-//			cout << "q=" << ", Qtot[q]=" << Qtot[q] << ", mean=" << mean[q] << endl;
+			//cout << "q=" << q << ", Qtot[q]=" << Qtot[q] << ", mean=" << mean[q] << endl;
 			// Cast carefully, otherwise strange implicit cast of Qtot[q] to size_t for negative numbers that makes everything crash
 		}
 		
@@ -1134,6 +1173,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		assert(candidates.size() > 0);
 		for (const auto &candidate:candidates)
 		{
+			//lout << "consider candidate: " << candidate << endl;
 			array<bool,Nq> WITHIN_RANGE;
 			for (size_t q=0; q<Nq; ++q)
 			{
@@ -1143,6 +1183,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))
 			{
 				Qin_trunc[l].push_back(candidate);
+				//lout << "push back candidate: " << candidate << endl;
 			}
 		}
 		assert(Qin_trunc[l].size() > 0);

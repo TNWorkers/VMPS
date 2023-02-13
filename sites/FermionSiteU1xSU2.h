@@ -22,7 +22,7 @@ class FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >
 	
 public:
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1., int k_input=0);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -71,7 +71,7 @@ protected:
 };
 
 FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input, int k_input)
 {
 	bool REMOVE_HOLON  = (REMOVE_DOUBLE or REMOVE_EMPTY)? true:false;
 	

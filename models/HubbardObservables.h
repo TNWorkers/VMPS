@@ -274,7 +274,8 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 		                             P.get<bool>("REMOVE_EMPTY",l%Lcell),
 		                             P.get<bool>("REMOVE_UP",l%Lcell),
 		                             P.get<bool>("REMOVE_DN",l%Lcell),
-		                             P.get<int>("mfactor",l%Lcell));
+		                             P.get<int>("mfactor",l%Lcell),
+		                             P.get<int>("k",l%Lcell));
 	}
 	
 	G.resize(L);

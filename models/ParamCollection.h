@@ -110,6 +110,61 @@ ArrayXXd create_1D_PBC_AB (size_t L, double lambda1A=1., double lambda1B=1., dou
 	return res;
 }
 
+ArrayXXd hopping_triangularYC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
+{
+	ArrayXXd res(Lx*Ly,Lx*Ly); res.setZero();
+	// vertical
+	for (int x=0; x<Lx; ++x)
+	{
+		int i0 = Ly*x;
+		for (int i=i0; i<=i0+Ly-2; ++i)
+		{
+			res(i,i+1) = lambda;
+		}
+		// y-periodic part for all x:
+		if (PBCy) res(i0,i0+Ly-1) = lambda;
+	}
+	// horizontal
+	for (int y=0; y<Ly; ++y)
+	{
+		for (int x=0; x<Lx-1; ++x)
+		{
+			int i = Ly*x+y;
+			res(i,i+Ly) = lambda;
+		}
+	}
+	// x-periodic part for all y:
+	if (PBCx)
+	{
+		for (int i=0; i<Ly; ++i)
+		{
+			res(i,Ly*Lx-Ly+i) = lambda;
+		}
+	}
+	// diagonal
+	for (int x=0; x<Lx-1; ++x)
+	{
+		for (int y=1; y<Ly; ++y)
+		{
+			int i = y+Ly*x;
+			res(i,i+Ly-1) = lambda;
+		}
+		// y-periodic part for all x:
+		if (PBCy) res(Ly*x,Ly*x+2*Ly-1) = lambda;
+	}
+	// x-periodic part for all y:
+	if (PBCx)
+	{
+		for (int i=0; i<Ly-1; ++i)
+		{
+			res(i,Ly*Lx-Ly+i+1) = lambda;
+		}
+		res(Ly-1,Ly*Lx-Ly) = lambda;
+	}
+	res += res.transpose().eval();
+	return res;
+}
+
 void add_triangle (int i, int j, int k, ArrayXXd &target, double lambda=1.)
 {
 	assert(i<j and j<k);
@@ -122,7 +177,7 @@ ArrayXXd triangularFlake (int L, double lambda=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	
-	if (L == 28 or L == 36)
+	if (L == 28 or L == 36 or L == 45 or L == 55 or L == 66)
 	{
 		add_triangle(0,1,2,res,lambda);
 		
@@ -166,7 +221,7 @@ ArrayXXd triangularFlake (int L, double lambda=1.)
 		add_triangle(19,20,26,res,lambda);
 		add_triangle(20,26,27,res,lambda);
 		
-		if (L == 36)
+		if (L >= 36)
 		{
 			add_triangle(21,28,29,res,lambda);
 			add_triangle(21,22,29,res,lambda);
@@ -181,6 +236,73 @@ ArrayXXd triangularFlake (int L, double lambda=1.)
 			add_triangle(26,33,34,res,lambda);
 			add_triangle(26,27,34,res,lambda);
 			add_triangle(27,34,35,res,lambda);
+		}
+		
+		if (L >= 45)
+		{
+			add_triangle(28,36,37,res,lambda);
+			add_triangle(29,37,38,res,lambda);
+			add_triangle(30,38,39,res,lambda);
+			add_triangle(31,39,40,res,lambda);
+			add_triangle(32,40,41,res,lambda);
+			add_triangle(33,41,42,res,lambda);
+			add_triangle(34,42,43,res,lambda);
+			add_triangle(35,43,44,res,lambda);
+			
+			add_triangle(28,29,37,res,lambda);
+			add_triangle(29,30,38,res,lambda);
+			add_triangle(30,31,39,res,lambda);
+			add_triangle(31,32,40,res,lambda);
+			add_triangle(32,33,41,res,lambda);
+			add_triangle(33,34,42,res,lambda);
+			add_triangle(34,35,43,res,lambda);
+			
+			if (L >= 55)
+			{
+				add_triangle(36,45,46,res,lambda);
+				add_triangle(37,38,47,res,lambda);
+				add_triangle(38,39,48,res,lambda);
+				add_triangle(39,40,49,res,lambda);
+				add_triangle(40,41,50,res,lambda);
+				add_triangle(41,42,51,res,lambda);
+				add_triangle(42,43,52,res,lambda);
+				add_triangle(43,44,53,res,lambda);
+				
+				add_triangle(36,45,46,res,lambda);
+				add_triangle(37,46,47,res,lambda);
+				add_triangle(28,36,37,res,lambda);
+				add_triangle(38,47,48,res,lambda);
+				add_triangle(39,48,49,res,lambda);
+				add_triangle(40,49,50,res,lambda);
+				add_triangle(41,50,51,res,lambda);
+				add_triangle(42,51,52,res,lambda);
+				add_triangle(43,52,53,res,lambda);
+				add_triangle(44,53,54,res,lambda);
+				
+				if (L >= 66)
+				{
+					add_triangle(45,46,56,res,lambda);
+					add_triangle(46,47,57,res,lambda);
+					add_triangle(47,48,58,res,lambda);
+					add_triangle(48,49,59,res,lambda);
+					add_triangle(49,50,60,res,lambda);
+					add_triangle(50,51,61,res,lambda);
+					add_triangle(51,52,62,res,lambda);
+					add_triangle(52,53,63,res,lambda);
+					add_triangle(53,54,64,res,lambda);
+					
+					add_triangle(45,55,56,res,lambda);
+					add_triangle(46,56,57,res,lambda);
+					add_triangle(47,57,58,res,lambda);
+					add_triangle(48,58,59,res,lambda);
+					add_triangle(49,59,60,res,lambda);
+					add_triangle(50,60,61,res,lambda);
+					add_triangle(51,61,62,res,lambda);
+					add_triangle(52,62,63,res,lambda);
+					add_triangle(53,63,64,res,lambda);
+					add_triangle(54,64,65,res,lambda);
+				}
+			}
 		}
 	}
 	

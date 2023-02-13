@@ -37,6 +37,7 @@ public:
 
 	static constexpr bool IS_CHARGE_SU2() { return false; }
 	static constexpr bool IS_SPIN_SU2() { return false; }
+	static constexpr bool IS_SPIN_U1() { return false; }
 	
 	static constexpr bool NO_SPIN_SYM() { return false;}
 	static constexpr bool NO_CHARGE_SYM() { return false;}
@@ -46,7 +47,13 @@ public:
 	ZN() {};
 	
 	inline static constexpr qType qvacuum() { return {0}; }
-	inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{1}}) }}; }
+	
+	inline static constexpr size_t lowest_qs_size = 2; // for compatibility with g++-8
+	inline static constexpr std::array<qType,2> lowest_qs()
+	{
+		return std::array<qType,2>{{ qarray<1>(std::array<int,1>{{1}}), 
+		                             qarray<1>(std::array<int,1>{{N-1}}) }};
+	}
 	
 	inline static std::string name()
 	{
@@ -55,8 +62,9 @@ public:
 		return ss.str();
 	}
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
+	inline static constexpr std::array<int,Nq> mod() { return {MOD_N}; }
 	
-	inline static qType flip( const qType& q ) { return {posmod<N>(-q[0])}; }
+	inline static qType flip( const qType& q ) { return {posmod<N>(N-q[0])}; }
 	inline static int degeneracy( const qType& q ) { return 1; }
 
 	inline static int spinorFactor() { return +1; }
@@ -139,6 +147,11 @@ public:
 									 const qType& q10, const qType& q11, const qType& q12);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
+	inline static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+								 const qType& q4, const qType& q5, const qType& q6);
+	inline static Scalar coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6,
+										const qType& q7, const qType& q8, const qType& q9);
 	static Scalar coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
 	///@}
@@ -169,6 +182,7 @@ reduceSilent( const qType& ql, const qType& qr )
 {
 	std::vector<qType> vout;
 	vout.push_back({posmod<N>(ql[0]+qr[0])});
+	//cout << "ql=" << ql[0] << ", qr=" << qr[0] << ", posmod=" << posmod<N>(ql[0]+qr[0]) << endl;
 	return vout;
 }
 
@@ -212,7 +226,7 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool U
 	else
 	{
 		std::vector<qType> vout;
-
+		
 		for (std::size_t q=0; q<ql.size(); q++)
 		for (std::size_t p=0; p<qr.size(); p++)
 		{
@@ -420,6 +434,25 @@ coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Kind, int N, typename Scalar>
 Scalar ZN<Kind,N,Scalar>::
+coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
 coeff_splitAA(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
@@ -462,7 +495,7 @@ bool ZN<Kind,N,Scalar>::
 triangle ( const std::array<ZN<Kind,N,Scalar>::qType,3>& qs )
 {
 	//check the triangle rule for ZN quantum numbers
-	if (posmod<N>(qs[0][0]+qs[1][0]) == qs[2][0]) {return true;}
+	if (posmod<N>(qs[0][0]+qs[1][0]) == posmod<N>(qs[2][0])) {return true;}
 	return false;
 }
 
@@ -471,7 +504,7 @@ bool ZN<Kind,N,Scalar>::
 pair ( const std::array<ZN<Kind,N,Scalar>::qType,2>& qs )
 {
 	//check if two quantum numbers fulfill the flow equations: simply qin = qout
-	if (qs[0] == qs[1]) {return true;}
+	if ( qs[0] == qs[1] ) {return true;}
 	return false;
 }
 

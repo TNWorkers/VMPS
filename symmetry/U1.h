@@ -33,7 +33,7 @@ public:
 	static constexpr bool ABELIAN = true;
 	static constexpr bool IS_TRIVIAL = false;
 	static constexpr bool IS_MODULAR = false;
-	static constexpr int MOD_N = 0;
+	static constexpr int MOD_N = 1;
 	
 	static constexpr bool IS_CHARGE_SU2() { return false; }
 	static constexpr bool IS_SPIN_SU2() { return false; }
@@ -44,15 +44,22 @@ public:
 	static constexpr bool NO_CHARGE_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::N and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}
 	
 	typedef qarray<Nq> qType;
-
+	
 	U1() {};
-
+	
 	inline static constexpr qType qvacuum() { return {0}; }
-	inline static constexpr std::array<qType,2> lowest_qs() { return std::array<qType,2> {{ qarray<1>( std::array<int,1>{{-1}}), qarray<1>(std::array<int,1>{{+1}}) }}; }
+	
+	inline static constexpr size_t lowest_qs_size = 2; // for compatibility with g++-8
+	inline static constexpr std::array<qType,2> lowest_qs()
+	{
+		return std::array<qType,2>{{ qarray<1>(std::array<int,1>{{-1}}), 
+		                             qarray<1>(std::array<int,1>{{+1}}) }};
+	}
 	
 	inline static std::string name() { return "U1"; }
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
-
+	inline static constexpr std::array<int,Nq> mod() { return {MOD_N}; }
+	
 	inline static qType flip( const qType& q ) { return {-q[0]}; }
 	inline static int degeneracy( const qType& q ) { return 1; }
 	

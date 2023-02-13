@@ -98,7 +98,7 @@ const map<string,any> HubbardSU2charge::defaults =
 	{"J",0.}, {"Jperp",0.},
 	{"Bz",0.}, {"Bx",0.},
 	{"X",0.}, {"Xrung",0.},
-	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1}, 
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",0}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 

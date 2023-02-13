@@ -240,6 +240,9 @@ push_back(const qType& q_number, const Eigen::Index& inner_dim, const std::vecto
 	}
 	else // append to quantum number if it is there
 	{
+		// I'm not sure this works...
+		// Better to give the correct ident=1,2,3... from the Site class.
+		// (Roman)
 		std::get<2>(*it).push_back(idents);
 		for (auto loop=it++; loop==data_.end(); loop++)
 		{

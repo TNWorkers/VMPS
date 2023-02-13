@@ -287,6 +287,8 @@ map<string,int> make_Lmap()
 	m["fcc92"] = 92;
 	m["fcc116"] = 116;
 	
+	m["fccPBC64"] = 64;
+	
 	return m;
 }
 
@@ -652,6 +654,15 @@ int main (int argc, char* argv[])
 	{
 		ArrayXXd hopping1 = loadMatrix(make_string("fcc",L,"_d=1.dat"));
 		ArrayXXd hopping2 = loadMatrix(make_string("fcc",L,"_d=2.dat"));
+		hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
+		auto res = compress_CuthillMcKee(hopping,true);
+		hopping = res;
+	}
+	else if (MOL.at(0) == 'f' and MOL.at(1) == 'c' and MOL.at(2) == 'c' and MOL.at(3) == 'P' and MOL.at(4) == 'B' and MOL.at(5) == 'C')
+	{
+		lout << make_string("fccPBC",L,"_d=1.dat") << endl;
+		ArrayXXd hopping1 = loadMatrix(make_string("fccPBC",L,"_d=1.dat"));
+		ArrayXXd hopping2 = loadMatrix(make_string("fccPBC",L,"_d=2.dat"));
 		hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
 		auto res = compress_CuthillMcKee(hopping,true);
 		hopping = res;

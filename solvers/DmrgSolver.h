@@ -14,6 +14,7 @@
 #include "TerminalPlot.h"
 
 #include "Mps.h"
+#include "Mpo.h"
 #include "DmrgLinearAlgebra.h" // for avg()
 #include "pivot/DmrgPivotMatrix0.h"
 
@@ -129,6 +130,13 @@ public:
 		SweepStat = SweepStat_input;
 	}
 	
+	/**Compute observable during sweeping process*/
+	void set_observable (string label, const Mpo<typename MpHamiltonian::Symmetry,typename MpHamiltonian::Scalar_> &Operator)
+	{
+		obs_labels.push_back(label);
+		observables.push_back(Operator);
+	}
+	
 private:
 	
 	size_t N_sites, N_phys;
@@ -176,6 +184,9 @@ private:
 	double gap; 
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
+	
+	vector<Mpo<typename MpHamiltonian::Symmetry,typename MpHamiltonian::Scalar_>> observables;
+	vector<string> obs_labels;
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1020,6 +1031,15 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 //			}
 //			cout << endl;
 //		}
+		
+		// check some observables
+		for (int o=0; o<observables.size(); ++o)
+		{
+			Scalar res = avg(Vout.state, observables[o], Vout.state);
+			lout << obs_labels[0] << "=" << res;
+			if (obs_labels[0] == "S(S+1)") lout << " -> Stot=" << calc_S_from_SSp1(res);
+			lout << endl;
+		}
 	}
 }
 

@@ -5,6 +5,7 @@
 #include "symmetry/ZN.h"
 
 #include "sites/FermionSiteSU2xU1.h"
+#include "sites/FermionSiteSU2xU1xZN.h"
 #include "sites/FermionSiteU1xSU2.h"
 #include "sites/FermionSiteSU2xU0.h"
 #include "sites/FermionSiteU0xSU2.h"
@@ -20,7 +21,7 @@ class FermionSite
 public:
 	
 	FermionSite() {};
-	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1);
+	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1, int k_input=0);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType F_1s() const {return F_1s_;}
@@ -47,6 +48,7 @@ public:
 protected:
 	
 	int mfactor = 1;
+	int k = 0;
 	
 	void fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN);
 	void fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN);
@@ -81,8 +83,8 @@ protected:
 
 template<typename Symmetry_>
 FermionSite<Symmetry_>::
-FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input)
-:mfactor(mfactor_input)
+FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input, int k_input)
+:mfactor(mfactor_input), k(k_input)
 {
 	//create basis for one Fermionic Site
 	fill_basis(REMOVE_DOUBLE, REMOVE_EMPTY, REMOVE_UP, REMOVE_DN);
@@ -509,6 +511,57 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_D
 			ident.clear();
 		}
 	}
+	else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+	{
+		typename Symmetry::qType Q;
+		Eigen::Index inner_dim;
+		std::vector<std::string> ident;
+		int ZN = Symmetry::mod()[1];
+		
+		if (!REMOVE_EMPTY)
+		{
+			Q={0,0};
+			inner_dim = 1;
+			ident.push_back("empty");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		
+		if (!REMOVE_UP and !REMOVE_DN)
+		{
+			Q={1,posmod(k,ZN)};
+			inner_dim = 2;
+			ident.push_back("up");
+			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (REMOVE_UP and !REMOVE_DN)
+		{
+			Q={1,posmod(k,ZN)};
+			inner_dim = 1;
+			ident.push_back("dn");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		else if (!REMOVE_UP and REMOVE_DN)
+		{
+			Q={1,posmod(k,ZN)};
+			inner_dim = 1;
+			ident.push_back("up");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+		
+		if (!REMOVE_DOUBLE)
+		{
+			Q={2,posmod(k+k,ZN)};
+			inner_dim = 1;
+			ident.push_back("double");
+			basis_1s_.push_back(Q,inner_dim,ident);
+			ident.clear();
+		}
+	}
 }
 
 template<typename Symmetry_>
@@ -555,6 +608,28 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			if      (sigma==UP)     {out = {Delta,mfactor*Delta};}
 			else if (sigma==DN)     {out = {Delta,-mfactor*Delta};}
 			else if (sigma==UPDN)   {out = {2*Delta,0};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+		{
+			int ZN = Symmetry::mod()[1];
+			// Delta=-1 annhilates momentum of k = creates ZN-k
+			// Delta=+1 creates momentum of k
+			int Deltak, Delta2k;
+			if (Delta == -1)
+			{
+				Deltak = posmod(ZN-k,ZN);
+				Delta2k = posmod(ZN-k+ZN-k,ZN);
+			}
+			else if (Delta == 1)
+			{
+				Deltak = posmod(k,ZN);
+				Delta2k = posmod(k+k,ZN);
+			}
+			
+			if      (sigma==UP)     {out = {Delta,Deltak};}
+			else if (sigma==DN)     {out = {Delta,Deltak};}
+			else if (sigma==UPDN)   {out = {2*Delta,Delta2k};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
@@ -618,6 +693,13 @@ getQ (SPINOP_LABEL Sa) const
 			if      (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {0,+2};}
 			else if (Sa==SM) {out = {0,-2};}
+		}
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+		{
+			// spinflip == no change of momentum
+			if      (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {0,0};}
+			else if (Sa==SM) {out = {0,0};}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
 		{

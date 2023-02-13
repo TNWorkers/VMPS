@@ -1,5 +1,5 @@
-#ifndef FERMIONSITESU2xU1_H_
-#define FERMIONSITESU2xU1_H_
+#ifndef FERMIONSITESU2xU1xZN_H_
+#define FERMIONSITESU2xU1xZN_H_
 
 #include "symmetry/kind_dummies.h"
 
@@ -8,16 +8,21 @@
 #include "symmetry/S1xS2.h"
 #include "symmetry/SU2.h"
 #include "symmetry/U1.h"
+#include "symmetry/ZN.h"
 
 #include "tensors/SiteOperatorQ.h"
 
+#ifndef YMOMENTUM
+#define YMOMENTUM 6
+#endif
+
 template <typename Symmetry> class FermionSite;
 
-template <>
-class FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
+template<>
+class FermionSite<Sym::S1xS2<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Sym::ZN<Sym::Momentum,YMOMENTUM>>>
 {
 	typedef double Scalar;
-	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
+	typedef Sym::S1xS2<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Sym::ZN<Sym::Momentum,YMOMENTUM>> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 	
 public:
@@ -46,6 +51,8 @@ public:
 	
 protected:
 	
+	int k = 0;
+	
 	Qbasis<Symmetry> basis_1s_;
 	
 	OperatorType Id_1s_; //identity
@@ -59,19 +66,20 @@ protected:
 	OperatorType pdag_1s_; //pairing adjoint
 };
 
-FermionSite<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+FermionSite<Sym::S1xS2<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Sym::ZN<Sym::Momentum,YMOMENTUM>>>::
 FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input, int k_input)
+:k(k_input)
 {
 	bool REMOVE_SINGLE = (REMOVE_UP or REMOVE_DN)? true:false;
 	
-	//create basis for one Fermionic Site
 	typename Symmetry::qType Q;
 	Eigen::Index inner_dim;
 	std::vector<std::string> ident;
+	int ZN = Symmetry::mod()[2];
 	
 	if (!REMOVE_EMPTY)
 	{
-		Q={1,0}; //empty state
+		Q={1,0,0}; //empty state, momentum 0
 		inner_dim = 1;
 		ident.push_back("empty");
 		basis_1s_.push_back(Q,inner_dim,ident);
@@ -80,7 +88,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	
 	if (!REMOVE_SINGLE)
 	{
-		Q={2,1}; //singly occupied state
+		Q={2,1,k}; //singly occupied state, momentum k
 		inner_dim = 1;
 		ident.push_back("single");
 		basis_1s_.push_back(Q,inner_dim,ident);
@@ -89,7 +97,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	
 	if (!REMOVE_DOUBLE)
 	{
-		Q={1,2}; //doubly occupied state
+		Q={1,2,posmod(k+k,ZN)}; //doubly occupied state, momentum 2*k mod ZN
 		inner_dim = 1;
 		ident.push_back("double");
 		basis_1s_.push_back(Q,inner_dim,ident);
@@ -98,11 +106,11 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	
 	//cout << "single site basis" << endl << this->basis_1s_ << endl;
 	
-	Id_1s_ = OperatorType({1,0},basis_1s_,"id");
-	F_1s_  = OperatorType({1,0},basis_1s_,"F");
-	c_1s_  = OperatorType({2,-1},basis_1s_,"c");
-	d_1s_  = OperatorType({1,0},basis_1s_,"d");
-	S_1s_  = OperatorType({3,0},basis_1s_,"S");
+	Id_1s_ = OperatorType({1,0,0},basis_1s_,"id");
+	F_1s_  = OperatorType({1,0,0},basis_1s_,"F");
+	c_1s_  = OperatorType({2,-1,posmod(ZN-k,ZN)},basis_1s_,"c"); // remove momentum k = create opposite momentum N-k
+	d_1s_  = OperatorType({1,0,0},basis_1s_,"d");
+	S_1s_  = OperatorType({3,0,0},basis_1s_,"S");
 	
 	// create operators one orbitals
 	if (!REMOVE_EMPTY)  Id_1s_("empty", "empty") = 1.;
@@ -117,11 +125,12 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	if (!REMOVE_DOUBLE and !REMOVE_SINGLE) c_1s_("single", "double") = 1.;
 	
 	cdag_1s_ = c_1s_.adjoint();
-	n_1s_ = std::sqrt(2.) * OperatorType::prod(cdag_1s_,c_1s_,{1,0});
+	
+	n_1s_ = std::sqrt(2.) * OperatorType::prod(cdag_1s_,c_1s_,{1,0,0});
 	if (!REMOVE_DOUBLE) d_1s_( "double", "double" ) = 1.;
 	if (!REMOVE_SINGLE) S_1s_("single", "single") = std::sqrt(0.75);
-	p_1s_ = -std::sqrt(0.5) * OperatorType::prod(c_1s_,c_1s_,{1,-2}); //The sign convention corresponds to c_DN c_UP
+	p_1s_ = -std::sqrt(0.5) * OperatorType::prod(c_1s_,c_1s_,{1,-2,posmod(ZN-k+ZN-k,ZN)}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s_ = p_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 }
 
-#endif //FERMIONSITESU2xU1_H_
+#endif //FERMIONSITESU2xU1xZN_H_

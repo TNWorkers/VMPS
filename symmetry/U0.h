@@ -50,6 +50,7 @@ namespace Sym{
 		static constexpr bool NO_CHARGE_SYM() { return true; }
 		
 		inline static constexpr std::array<KIND,Nq> kind() { return {}; }
+		inline static constexpr std::array<int,Nq> mod() { return {}; }
 
 		inline static constexpr qType qvacuum() {return {};}
 		inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<0>(std::array<int,0>{{}}) }}; }

@@ -36,7 +36,7 @@ class SU2
 {
 public:
 	typedef Scalar Scalar_;
-
+	
 	static constexpr std::size_t Nq=1;
 	
 	static constexpr bool HAS_CGC = false;
@@ -44,11 +44,11 @@ public:
 	static constexpr bool ABELIAN = false;
 	static constexpr bool IS_TRIVIAL = false;
 	static constexpr bool IS_MODULAR = false;
-	static constexpr int MOD_N = 0;
-
+	static constexpr int MOD_N = 1;
+	
 	static constexpr bool IS_CHARGE_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::T) {return true;} return false; }
 	static constexpr bool IS_SPIN_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::S) {return true;} return false; }
-
+	
 	static constexpr bool IS_SPIN_U1() { return false; }
 	
 	static constexpr bool NO_SPIN_SYM() { if (SU2<Kind,Scalar>::kind()[0] != KIND::S) {return true;} return false;}
@@ -57,11 +57,14 @@ public:
 	typedef qarray<Nq> qType;
 	
 	SU2() {};
-
+	
 	inline static std::string name() { return "SU2"; }
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
+	inline static constexpr std::array<int,Nq> mod() { return {MOD_N}; }
 	
 	inline static constexpr qType qvacuum() { return {1}; }
+	
+	inline static constexpr size_t lowest_qs_size = 1; // for compatibility with g++-8
 	inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{2}}) }}; }
 	
 	inline static qType flip( const qType& q ) { return q; }

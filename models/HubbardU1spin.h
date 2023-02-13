@@ -60,7 +60,7 @@ const std::map<string,std::any> HubbardU1spin::defaults =
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
 	{"C",0.}, {"Cperp",0.},
-	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1}, 
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",0}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -80,7 +80,7 @@ HubbardU1spin (const size_t &L, const vector<Param> &params, const BC &boundary,
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
-	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);	
+	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
 		this->set_name("Hubbard");
