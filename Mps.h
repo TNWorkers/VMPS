@@ -854,6 +854,14 @@ calc_Qlimits()
 		}
 	}
 	
+	/*for (int q=0; q<Symmetry::Nq; ++q)
+	{
+		if (Symmetry::kind()[q] == Sym::KIND::k)
+		{
+			NEED_WORKAROUND = true;
+		}
+	}*/
+	
 //	if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
 //	{
 //		NEED_WORKAROUND = true;
@@ -1034,33 +1042,33 @@ calc_Qlimits()
 				{
 					for (size_t q=0; q<Nq; q++)
 					{
+						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
+						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
 						if (Symmetry::kind()[q] == Sym::KIND::k)
 						{
 							QinTop[l][q]  = Symmetry::mod()[q]-1;
 							QinBot[l][q]  = 0;
 						}
-						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
-						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
 					}
 				}
 				if (l!=this->N_sites-1)
 				{
 					for (size_t q=0; q<Nq; q++)
 					{
+						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
+						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
 						if (Symmetry::kind()[q] == Sym::KIND::k)
 						{
 							QoutTop[l][q] = Symmetry::mod()[q]-1;
 							QoutBot[l][q] = 0;
 						}
-						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
-						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
 					}
 				}
 				
-//				cout << "l=" << l 
-//					 << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
-//					 << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
-//					 << endl;
+				/*cout << "l=" << l 
+					 << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+					 << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+					 << endl;*/
 			}
 		}
 	}
@@ -1069,6 +1077,7 @@ calc_Qlimits()
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
 {
+	lout << termcolor::blue << "Setting Qlimits to infinity!" << termcolor::reset << endl;
 	QinTop.resize(this->N_sites);
 	QinBot.resize(this->N_sites);
 	QoutTop.resize(this->N_sites);
@@ -1083,6 +1092,13 @@ void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
 			QinTop[l][q]  = Symmetry::mod()[q]-1;
 			QinBot[l][q]  = 0;
 			QoutTop[l][q] = Symmetry::mod()[q]-1;
+			QoutBot[l][q] = 0;
+		}
+		else if (Symmetry::kind()[q] == Sym::KIND::N)
+		{
+			QinTop[l][q]  = Qtot[q];
+			QinBot[l][q]  = 0;
+			QoutTop[l][q] = Qtot[q];
 			QoutBot[l][q] = 0;
 		}
 		else

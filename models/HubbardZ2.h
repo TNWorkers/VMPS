@@ -59,7 +59,7 @@ const std::map<string,std::any> HubbardZ2::defaults =
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
 	{"V",0.}, {"Vrung",0.},
-	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",0},
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 

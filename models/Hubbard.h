@@ -68,9 +68,9 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jrung",0.},
 	{"J3site",0.},
-	{"Delta",0.},
+	{"Delta",0.}, {"DeltaUP",0.}, {"DeltaDN",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_SINGLE",false}, {"mfactor",1},
+	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",0}, 
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -123,15 +123,42 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
+		std::size_t lp1 = (loc+1)%N_sites;
+		std::size_t lp2 = (loc+2)%N_sites;
+		
 		std::size_t orbitals = F[loc].orbitals();
+		std::size_t next_orbitals = F[lp1].orbitals();
+		std::size_t nextn_orbitals = F[lp2].orbitals();
 		
-		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
-		labellist[loc].push_back(Bx.label);
+		param2d DeltaUPpara = P.fill_array2d<double>("DeltaUP", "DeltaUPpara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d DeltaDNpara = P.fill_array2d<double>("DeltaDN", "DeltaDNpara", {orbitals, next_orbitals}, loc%Lcell);
 		
-		param1d Fp = P.fill_array1d<double>("Fp", "Fporb", orbitals, loc%Lcell);
-		labellist[loc].push_back(Fp.label);
+		labellist[loc].push_back(DeltaUPpara.label);
+		labellist[loc].push_back(DeltaDNpara.label);
 		
-		// Can also implement superconductivity terms c*c & cdag*cdag here
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
+		{
+			for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+			for (std::size_t beta=0; beta<next_orbitals; ++beta)
+			{
+				if (!P.HAS("DeltaUPfull"))
+				{
+					if (DeltaUPpara(alfa,beta) != 0.)
+					{
+						pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()), F[lp1].cdag(UP,beta)), +DeltaUPpara(alfa,beta)));
+						pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()), F[lp1].c(UP,beta)),    -DeltaUPpara(alfa,beta)));
+					}
+				}
+				if (!P.HAS("DeltaDNfull"))
+				{
+					if (DeltaDNpara(alfa,beta) != 0.)
+					{
+						pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()), F[lp1].c(DN,beta)),    +DeltaDNpara(alfa,beta)));
+						pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()), F[lp1].cdag(DN,beta)), -DeltaDNpara(alfa,beta)));
+					}
+				}
+			}
+		}
 		
 		// ArrayXd  U_array  = F[loc].ZeroField();
 		// ArrayXd  Uph_array  = F[loc].ZeroField();
@@ -140,6 +167,12 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		// ArrayXXd tperp_array = F[loc].ZeroHopping();
 		// ArrayXXd Vperp_array = F[loc].ZeroHopping();
 		// ArrayXXd Jperp_array = F[loc].ZeroHopping();
+		
+		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Bx.label);
+		
+		param1d Fp = P.fill_array1d<double>("Fp", "Fporb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Fp.label);
 		
 		auto H_Bx = F[loc].template coupling_Bx<double>(Bx.a);
 		auto H_Fp = F[loc].template coupling_singleFermion<double>(Fp.a);

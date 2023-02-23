@@ -1037,7 +1037,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 		{
 			Scalar res = avg(Vout.state, observables[o], Vout.state);
 			lout << obs_labels[0] << "=" << res;
-			if (obs_labels[0] == "S(S+1)") lout << " -> Stot=" << calc_S_from_SSp1(res);
+			if (obs_labels[0] == "S(S+1)") lout << " -> Stot=" << calc_S_from_SSp1(real(res));
 			lout << endl;
 		}
 	}

@@ -181,6 +181,10 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE
 		cc_1s_("empty","double") = +1.; // c_DN c_UP
 		cdagcdag_1s_("double","empty") = +1.; // c_UP† c_DN†
 	}
+	
+//	lout << "cdagcdag_1s_=" << MatrixXd(cdagcdag_1s_.template plain<double>().data)<< endl;
+//	lout << "cc_1s_=" << MatrixXd(cc_1s_.template plain<double>().data)<< endl;
+	
 	//cc_1s_ = cdn_1s_ * cup_1s_; //The sign convention corresponds to c_DN c_UP
 	//cdagcdag_1s_ = cc_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 	

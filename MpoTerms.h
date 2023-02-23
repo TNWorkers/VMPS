@@ -2854,16 +2854,21 @@ check_qPhys () const
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 scale (const Scalar factor, const Scalar offset, const std::size_t power, const double tolerance)
 {
-    std::size_t calc_to_power = (power != 0 ? power : current_power);
-    got_update();
-    if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
-    {
+	std::size_t calc_to_power = (power != 0 ? power : current_power);
+	
+	if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
+	{
+		got_update();
+	}
+	
+	if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
+	{
 //    	lout << termcolor::blue << "SCALING" << ", std::abs(factor-1.)=" << std::abs(factor-1.) << termcolor::reset << endl;
 		
 //        bool sign_factor = (factor < 0. ? true : false);
 		bool sign_factor = (std::abs(std::arg(factor)) > 0. ? true : false);
-        
-        double factor_per_site = std::pow(std::abs(factor), 1./(1.*N_sites));
+		
+		double factor_per_site = std::pow(std::abs(factor), 1./(1.*N_sites));
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
             for(const auto &[qIn, rows] : auxdim[loc])

@@ -1290,12 +1290,12 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	//auto leftTopQs = baseLeftTop.unordered_qs();
 	//auto leftBotQs = baseLeftBot.unordered_qs();
 	
-    Qbasis<Symmetry> baseRightBot, baseRightTop, baseLeftBot, baseLeftTop;
-    baseLeftBot.pullData(Wbot, 0);
-    baseRightBot.pullData(Wbot, 1);
-    baseLeftTop.pullData(Wtop, 0);
-    baseRightTop.pullData(Wtop, 1);
-    
+	Qbasis<Symmetry> baseRightBot, baseRightTop, baseLeftBot, baseLeftTop;
+	baseLeftBot.pullData(Wbot, 0);
+	baseRightBot.pullData(Wbot, 1);
+	baseLeftTop.pullData(Wtop, 0);
+	baseRightTop.pullData(Wtop, 1);
+	
 	auto TensorBaseRight = baseRightTop.combine(baseRightBot);
 	auto TensorBaseLeft = baseLeftTop.combine(baseLeftBot);
 	
@@ -1354,15 +1354,15 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								auto qleftAuxs = Symmetry::reduceSilent(qrightAux,Symmetry::flip(qOpTop[k1]));
 								for(const auto& qleftAux : qleftAuxs)
 								{
-                                    auto qWtop = Wtop[s2][s3][k1].dict.find({qleftAux,qrightAux});
-                                    if(qWtop != Wtop[s2][s3][k1].dict.end())
+									auto qWtop = Wtop[s2][s3][k1].dict.find({qleftAux,qrightAux});
+									if(qWtop != Wtop[s2][s3][k1].dict.end())
 									//if(auto it=leftTopQs.find(qleftAux) != leftTopQs.end())
 									{
 										auto qleftAuxPs = Symmetry::reduceSilent(qrightAuxP,Symmetry::flip(qOpBot[k2]));
 										for(const auto& qleftAuxP : qleftAuxPs)
 										{
-                                            auto qWbot = Wbot[s1][s2][k2].dict.find({qleftAuxP,qrightAuxP});
-                                            if(qWbot != Wbot[s1][s2][k2].dict.end())
+											auto qWbot = Wbot[s1][s2][k2].dict.find({qleftAuxP,qrightAuxP});
+											if(qWbot != Wbot[s1][s2][k2].dict.end())
 											//if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
 												factor_merge = Symmetry::coeff_MPOprod9(qleftAux,qleftAuxP,new_qmid,
@@ -1383,7 +1383,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 													
 													// size_t a1 = left1+br*Wtop[s2][s3][k1].block[qWtop->second].rows()+tr;
 													// size_t a2 = left2+bc*Wtop[s2][s3][k1].block[qWtop->second].cols()+tc;
-
+													
 													size_t a1 = left1+tr*Wbot[s1][s2][k2].block[qWbot->second].rows()+br;
 													size_t a2 = left2+tc*Wbot[s1][s2][k2].block[qWbot->second].cols()+bc;
 													

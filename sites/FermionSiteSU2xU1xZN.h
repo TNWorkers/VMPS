@@ -127,7 +127,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	cdag_1s_ = c_1s_.adjoint();
 	
 	n_1s_ = std::sqrt(2.) * OperatorType::prod(cdag_1s_,c_1s_,{1,0,0});
-	if (!REMOVE_DOUBLE) d_1s_( "double", "double" ) = 1.;
+	if (!REMOVE_DOUBLE) d_1s_("double", "double") = 1.;
 	if (!REMOVE_SINGLE) S_1s_("single", "single") = std::sqrt(0.75);
 	p_1s_ = -std::sqrt(0.5) * OperatorType::prod(c_1s_,c_1s_,{1,-2,posmod(ZN-k+ZN-k,ZN)}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s_ = p_1s_.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†

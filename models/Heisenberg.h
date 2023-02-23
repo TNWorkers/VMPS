@@ -74,7 +74,7 @@ public:
 
 const std::map<string,std::any> Heisenberg::defaults = 
 {
-	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"J",0.}, {"Jprime",0.}, {"Jrung",0.},
 	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	

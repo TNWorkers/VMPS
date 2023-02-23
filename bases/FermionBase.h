@@ -550,14 +550,14 @@ template <typename Symmetry_>
 SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Symmetry_>::
 ns (std::size_t orbital) const
 {
-	return make_operator(this->ns_1s(), orbital, PROP::NON_FERMIONIC,"ns");
+	return make_operator(this->ns_1s(), orbital, PROP::NON_FERMIONIC, "ns");
 }
 
 template <typename Symmetry_>
 SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Symmetry_>::
 nh (std::size_t orbital) const
 {
-	return make_operator(this->nh_1s(), orbital, PROP::NON_FERMIONIC,"nh");
+	return make_operator(this->nh_1s(), orbital, PROP::NON_FERMIONIC, "nh");
 }
 
 template <typename Symmetry_>
@@ -565,7 +565,7 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 d (std::size_t orbital) const
 {
-	return make_operator(this->d_1s(), orbital, PROP::NON_FERMIONIC,"d");
+	return make_operator(this->d_1s(), orbital, PROP::NON_FERMIONIC, "d");
 }
 
 template<typename Symmetry_>
@@ -757,6 +757,7 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, const Array<Scalar_,Dyn
 	for (int i=0; i<N_orbitals; ++i)
 	for (int j=0; j<N_orbitals; ++j)
 	{
+		// Attention: Should be changed to a parameter given to the function:
 		auto G1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
 		auto G2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,j)));
 		if (t(i,j) != 0.)

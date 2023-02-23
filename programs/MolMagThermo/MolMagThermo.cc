@@ -265,6 +265,7 @@ map<string,int> make_Lmap()
 	m["ATT"] = 12; // truncated tetrahedron
 	m["ACO"] = 12; // cuboctahedron
 	m["ATO"] = 24; // truncated octahedron
+	m["ATC"] = 24; // truncated cube
 	m["AID"] = 30; // icosidodecahedron
 	m["ASD"] = 60; // snub dodecahedron
 	// sodalite cages:
@@ -301,6 +302,7 @@ map<string,string> make_vertexMap()
 	m["ATO"] = "4.6^2";
 	m["AID"] = "3.5.3.5";
 	m["ASD"] = "3^4.5";
+	m["ATC"] = "3.8^2";
 	
 	return m;
 }
@@ -652,20 +654,23 @@ int main (int argc, char* argv[])
 	}
 	else if (MOL.at(0) == 'f' and MOL.at(1) == 'c' and MOL.at(2) == 'c')
 	{
-		ArrayXXd hopping1 = loadMatrix(make_string("fcc",L,"_d=1.dat"));
-		ArrayXXd hopping2 = loadMatrix(make_string("fcc",L,"_d=2.dat"));
-		hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
-		auto res = compress_CuthillMcKee(hopping,true);
-		hopping = res;
-	}
-	else if (MOL.at(0) == 'f' and MOL.at(1) == 'c' and MOL.at(2) == 'c' and MOL.at(3) == 'P' and MOL.at(4) == 'B' and MOL.at(5) == 'C')
-	{
-		lout << make_string("fccPBC",L,"_d=1.dat") << endl;
-		ArrayXXd hopping1 = loadMatrix(make_string("fccPBC",L,"_d=1.dat"));
-		ArrayXXd hopping2 = loadMatrix(make_string("fccPBC",L,"_d=2.dat"));
-		hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
-		auto res = compress_CuthillMcKee(hopping,true);
-		hopping = res;
+		if (MOL.at(3) == 'P' and MOL.at(4) == 'B' and MOL.at(5) == 'C')
+		{
+			lout << make_string("fccPBC",L,"_d=1.dat") << endl;
+			ArrayXXd hopping1 = loadMatrix(make_string("fccPBC",L,"_d=1.dat"));
+			ArrayXXd hopping2 = loadMatrix(make_string("fccPBC",L,"_d=2.dat"));
+			hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
+			auto res = compress_CuthillMcKee(hopping,true);
+			hopping = res;
+		}
+		else
+		{
+			ArrayXXd hopping1 = loadMatrix(make_string("fcc",L,"_d=1.dat"));
+			ArrayXXd hopping2 = loadMatrix(make_string("fcc",L,"_d=2.dat"));
+			hopping = J*hopping1.matrix()+Jprime*hopping2.matrix();
+			auto res = compress_CuthillMcKee(hopping,true);
+			hopping = res;
+		}
 	}
 	else
 	{

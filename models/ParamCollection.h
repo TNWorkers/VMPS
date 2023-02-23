@@ -110,7 +110,7 @@ ArrayXXd create_1D_PBC_AB (size_t L, double lambda1A=1., double lambda1B=1., dou
 	return res;
 }
 
-ArrayXXd hopping_triangularYC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
+ArrayXXd hopping_square (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
 {
 	ArrayXXd res(Lx*Ly,Lx*Ly); res.setZero();
 	// vertical
@@ -141,6 +141,14 @@ ArrayXXd hopping_triangularYC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, 
 			res(i,Ly*Lx-Ly+i) = lambda;
 		}
 	}
+	res += res.transpose().eval();
+	return res;
+}
+
+ArrayXXd hopping_triangularYC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
+{
+	ArrayXXd res = hopping_square(Lx,Ly,PBCx,PBCy,lambda);
+	res.matrix().triangularView<Eigen::Upper>().setZero();
 	// diagonal
 	for (int x=0; x<Lx-1; ++x)
 	{
@@ -753,6 +761,43 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		
 		for (int i=18; i<=22; ++i) res(i,i+1) = lambda1;
 		res(18,23) = lambda1;
+	}
+	else if (vertex_conf == "3.8^2") // truncated cube
+	{
+		int L=24;
+		res.resize(L,L); res.setZero();
+		
+		for (int i=0; i<=6; ++i) res(i,i+1) = lambda1;
+		res(0,7) = lambda1;
+		
+		res(0,8) = lambda1;
+		res(7,8) = lambda1;
+		res(1,9) = lambda1;
+		res(2,9) = lambda1;
+		res(3,10) = lambda1;
+		res(4,10) = lambda1;
+		res(5,11) = lambda1;
+		res(6,11) = lambda1;
+		
+		res(8,13) = lambda1;
+		res(9,14) = lambda1;
+		res(10,15) = lambda1;
+		res(11,12) = lambda1;
+		
+		res(12,17) = lambda1;
+		res(12,18) = lambda1;
+		res(13,19) = lambda1;
+		res(13,20) = lambda1;
+		res(14,21) = lambda1;
+		res(14,22) = lambda1;
+		res(15,16) = lambda1;
+		res(15,23) = lambda1;
+		
+		for (int i=15; i<=22; ++i) res(i,i+1) = lambda1;
+		res(15,23) = lambda1;
+		
+		res(19,20) = lambda1;
+		res(16,23) = lambda1;
 	}
 	else if (vertex_conf == "3.4.3.4") // cuboctahedron
 	{
@@ -1431,6 +1476,14 @@ ArrayXXd hopping_triangular (int L, int VARIANT=0, double lambda1=1.)
 	{
 		res(0,1) = lambda1;
 		res(1,2) = lambda1;
+		res(0,2) = lambda1;
+	}
+	else if (L==4) // two edge-shared triangles
+	{
+		res(0,1) = lambda1;
+		res(1,2) = lambda1;
+		res(2,3) = lambda1;
+		res(0,3) = lambda1;
 		res(0,2) = lambda1;
 	}
 	else if (L==5)

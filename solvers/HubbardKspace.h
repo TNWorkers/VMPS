@@ -74,11 +74,27 @@ public:
 	
 	// UU: unitary transformation of the hopping matrix
 	// U: Hubbard-U in real space
-	HubbardKspace (const Matrix<typename MODEL::Scalar_,Dynamic,Dynamic> &UU_input, double U_input)
-	:UU(UU_input), U(U_input)
+	HubbardKspace (const Matrix<typename MODEL::Scalar_,Dynamic,Dynamic> &UU_input, double U_input, vector<int> x_input={}, vector<int> y_input={})
+	:UU(UU_input), U(U_input), x(x_input), y(y_input)
 	{
 		assert(UU.rows() == UU.cols());
 		L = static_cast<size_t>(UU.rows());
+		
+		if (x.size() == 0)
+		{
+			x.resize(L);
+			y.resize(L);
+			for (int i=0; i<L; ++i)
+			{
+				x[i] = i;
+				y[i] = 0;
+			}
+			Lred = L;
+		}
+		else
+		{
+			Lred = *std::max_element(x.begin(), x.end())+1;
+		}
 		
 		dummy_params.push_back({"maxPower",1ul});
 //		typename MODEL::Scalar_ zero = 0.;
@@ -89,11 +105,28 @@ public:
 		compute_MPO();
 	};
 	
-	HubbardKspace (const Matrix<typename MODEL::Scalar_,Dynamic,Dynamic> &UU_input, double U_input, const vector<Param> &params)
-	:UU(UU_input), U(U_input), dummy_params(params)
+	HubbardKspace (const Matrix<typename MODEL::Scalar_,Dynamic,Dynamic> &UU_input, double U_input, const vector<Param> &params, vector<int> x_input={}, vector<int> y_input={})
+	:UU(UU_input), U(U_input), dummy_params(params), x(x_input), y(y_input)
 	{
 		assert(UU.rows() == UU.cols());
 		L = static_cast<size_t>(UU.rows());
+		
+		if (x.size() == 0)
+		{
+			x.resize(L);
+			y.resize(L);
+			for (int i=0; i<L; ++i)
+			{
+				x[i] = i;
+				y[i] = 0;
+			}
+			Lred = L;
+		}
+		else
+		{
+			Lred = *std::max_element(x.begin(), x.end())+1;
+			lout << "Lred=" << Lred << endl;
+		}
 		
 		Umap.clear();
 		compute_raw();
@@ -121,15 +154,21 @@ public:
 	MODEL sum_3site() const;
 	MODEL sum_4site() const;
 	Mpo<typename MODEL::Symmetry,typename MODEL::Scalar_> sum_all_mpo() const;
+	Mpo<typename MODEL::Symmetry,typename MODEL::Scalar_> sum_2site_mpo() const;
 	
 private:
 	
 	vector<Param> dummy_params;
 	
 	size_t L;
+	size_t Lred;
 	Matrix<typename MODEL::Scalar_,Dynamic,Dynamic> UU;
 	double U;
 	map<tuple<int,int,int,int>,typename MODEL::Scalar_> Umap;
+	
+	// If sites are blocked up, translate into x & y
+	vector<int> x;
+	vector<int> y;
 	
 	KspaceRawTerms<typename MODEL::Scalar_> Raw;
 	KspaceMpoTerms<MODEL> Terms;
@@ -406,7 +445,7 @@ template<typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(),void>::type HubbardKspace<MODEL>::
 compute_MPO()
 {
-	MODEL Hdummy(L,dummy_params,BC::OPEN,DMRG::VERBOSITY::SILENT);
+	MODEL Hdummy(Lred,dummy_params,BC::OPEN,DMRG::VERBOSITY::SILENT);
 	//cout << Hdummy.info() << endl;
 	
 	int s; // s controls how many terms are summed into bigger MPOs; default is: no additional summation
@@ -426,11 +465,14 @@ compute_MPO()
 		int j = get<1>(Raw.spin_exchange[t]);
 		double lambda = real(get<2>(Raw.spin_exchange[t]));
 		
-		auto SdagS = Hdummy.SdagS(i,j); SdagS.scale(-2.*lambda);
-		Terms.Hmpo_spin_exchange[s] = sum(Terms.Hmpo_spin_exchange[s],SdagS);
-		cout << "spin exchange: " << i << ", " << j << ", lambda=" << lambda << endl;
+		cout << "spin exchange: " << i << ", " << j << ", λ=" << lambda << endl;
 		
-		auto nn = Hdummy.nn(i,j); nn.scale(0.5*lambda);
+		//auto SdagS = Hdummy.SdagS(i,j); SdagS.scale(-2.*lambda);
+		auto SdagS = Hdummy.SdagS(x[i],x[j],y[i],y[j]); SdagS.scale(-2.*lambda);
+		Terms.Hmpo_spin_exchange[s] = sum(Terms.Hmpo_spin_exchange[s],SdagS);
+		
+		//auto nn = Hdummy.nn(i,j); nn.scale(0.5*lambda);
+		auto nn = Hdummy.nn(x[i],x[j],y[i],y[j]); nn.scale(0.5*lambda);
 		Terms.Hmpo_spin_exchange[s] = sum(Terms.Hmpo_spin_exchange[s],nn);
 		Hterms.H2_spin_exchange[s] = MODEL(Terms.Hmpo_spin_exchange[s],dummy_params);
 		s = (s+1)%Terms.Hmpo_spin_exchange.size();
@@ -443,10 +485,12 @@ compute_MPO()
 		int j = get<1>(Raw.corr_hopping[t]);
 		typename MODEL::Scalar_ lambda = get<2>(Raw.corr_hopping[t]);
 		
-		auto T1 = Hdummy.cdagn_c(i,j); T1.scale(lambda);
-		auto T2 = Hdummy.cdag_nc(j,i); T2.scale(conjIfcomplex(lambda));
+		//auto T1 = Hdummy.cdagn_c(i,j); T1.scale(lambda);
+		//auto T2 = Hdummy.cdag_nc(j,i); T2.scale(conjIfcomplex(lambda));
+		auto T1 = Hdummy.cdagn_c(x[i],x[j],y[i],y[j]); T1.scale(lambda);
+		auto T2 = Hdummy.cdag_nc(x[j],x[i],y[j],y[i]); T2.scale(conjIfcomplex(lambda));
 		auto Term = sum(T1,T2);
-		//Term.scale(lambda);
+		//cout << "corr_hopping: " << i << ", " << j << ", lambda=" << lambda << endl;
 		Terms.Hmpo_corr_hopping[s] = sum(Terms.Hmpo_corr_hopping[s],Term);
 		Hterms.H2_corr_hopping[s] = MODEL(Terms.Hmpo_corr_hopping[s],dummy_params);
 		s = (s+1)%Terms.Hmpo_corr_hopping.size();
@@ -459,10 +503,17 @@ compute_MPO()
 		int j = get<1>(Raw.pair_hopping[t]);
 		typename MODEL::Scalar_ lambda = get<2>(Raw.pair_hopping[t]);
 		
-		auto T1 = prod(Hdummy.cdagcdag(i),Hdummy.cc(j)); T1.scale(lambda);
-		auto T2 = prod(Hdummy.cdagcdag(j),Hdummy.cc(i)); T2.scale(conjIfcomplex(lambda));
-		cout << "pair hopping: cdagcdag_" << i << ", cc_" << j << ", lambda=" << lambda << endl;
+		cout << "pair hopping: " << i << ", " << j << ", λ=" << lambda << ", Q=" 
+		     << Hdummy.cdagcdag(x[i],y[i]).Qtarget() << ", " 
+		     << Hdummy.cc(x[j],y[j]).Qtarget()
+		     << endl;
+		
+		//auto T1 = prod(Hdummy.cdagcdag(i),Hdummy.cc(j)); T1.scale(lambda);
+		//auto T2 = prod(Hdummy.cdagcdag(j),Hdummy.cc(i)); T2.scale(conjIfcomplex(lambda));
+		auto T1 = prod(Hdummy.cdagcdag(x[i],y[i]),Hdummy.cc(x[j],y[j])); T1.scale(lambda);
+		auto T2 = prod(Hdummy.cdagcdag(x[j],y[j]),Hdummy.cc(x[i],y[i])); T2.scale(conjIfcomplex(lambda));
 		auto Term = sum(T1,T2);
+		
 		Terms.Hmpo_pair_hopping[s] = sum(Terms.Hmpo_pair_hopping[s],Term);
 		Hterms.H2_pair_hopping[s] = MODEL(Terms.Hmpo_pair_hopping[s],dummy_params);
 		s = (s+1)%Terms.Hmpo_pair_hopping.size();
@@ -484,10 +535,11 @@ compute_MPO()
 		int k = get<2>(Raw.corr_hopping3[t]);
 		typename MODEL::Scalar_ lambda = get<3>(Raw.corr_hopping3[t]);
 		
-		auto T1 = prod(Hdummy.n(i), Hdummy.cdagc(j,k)); T1.scale(0.5*lambda);
-		auto T2 = prod(Hdummy.cdagc(k,j), Hdummy.n(i)); T2.scale(0.5*conjIfcomplex(lambda));
+		//auto T1 = prod(Hdummy.n(i), Hdummy.cdagc(j,k)); T1.scale(0.5*lambda);
+		//auto T2 = prod(Hdummy.cdagc(k,j), Hdummy.n(i)); T2.scale(0.5*conjIfcomplex(lambda));
+		auto T1 = prod(Hdummy.n(x[i],y[i]), Hdummy.cdagc(x[j],x[k],y[j],y[k])); T1.scale(0.5*lambda);
+		auto T2 = prod(Hdummy.cdagc(x[k],x[j],y[k],y[j]), Hdummy.n(x[i],y[i])); T2.scale(0.5*conjIfcomplex(lambda));
 		auto Term = sum(T1,T2);
-		//Term.scale(0.5*lambda);
 		Terms.Hmpo_corr_hopping3[s] = sum(Terms.Hmpo_corr_hopping3[s],Term);
 		Hterms.H3_corr_hopping3[s] = MODEL(Terms.Hmpo_corr_hopping3[s],dummy_params);
 		s = (s+1)%Terms.Hmpo_corr_hopping3.size();
@@ -502,17 +554,18 @@ compute_MPO()
 		typename MODEL::Scalar_ lambda = get<3>(Raw.nonlocal_spin[t]);
 		{
 			double factor = sqrt(2)*sqrt(3)*sqrt(3);
-			auto T1 = prod(Hdummy.S(i,0,factor), Hdummy.cdagc3(j,k)); T1.scale(lambda);
-			auto T2 = prod(Hdummy.cdagc3(k,j), Hdummy.Sdag(i,0,factor)); T2.scale(conjIfcomplex(lambda));
+			//auto T1 = prod(Hdummy.S(i,0,factor), Hdummy.cdagc3(j,k)); T1.scale(lambda);
+			//auto T2 = prod(Hdummy.cdagc3(k,j), Hdummy.Sdag(i,0,factor)); T2.scale(conjIfcomplex(lambda));
+			auto T1 = prod(Hdummy.S(x[i],y[i],factor), Hdummy.cdagc3(x[j],x[k],y[j],y[k])); T1.scale(lambda);
+			auto T2 = prod(Hdummy.cdagc3(x[k],x[j],y[k],y[j]), Hdummy.Sdag(x[i],y[i],factor)); T2.scale(conjIfcomplex(lambda));
 			auto Term = sum(T1,T2);
-			//Term.scale(lambda);
 			Terms.Hmpo_nonlocal_spin[s] = sum(Terms.Hmpo_nonlocal_spin[s],Term);
 			Hterms.H3_nonlocal_spin[s] = MODEL(Terms.Hmpo_nonlocal_spin[s],dummy_params);
 		}
 		// This is compensated by the 0.5 factor in corr_hopping3:
 		/*{
-			auto T1 = prod(Hdummy.n(i), Hdummy.cdagc(j,k));
-			auto T2 = prod(Hdummy.cdagc(k,j), Hdummy.n(i));
+			auto T1 = prod(Hdummy.n(x[i],y[i]), Hdummy.cdagc(x[j],x[k],y[j],y[k]));
+			auto T2 = prod(Hdummy.cdagc(x[k],x[j],y[k],y[j]), Hdummy.n(x[i],y[i]));
 			auto Term = sum(T1,T2);
 			Term.scale(-0.5*lambda);
 			Terms.Hmpo_nonlocal_spin[s] = sum(Terms.Hmpo_nonlocal_spin[s],Term);
@@ -528,11 +581,16 @@ compute_MPO()
 		int k = get<2>(Raw.doublon_decay[t]);
 		typename MODEL::Scalar_ lambda = get<3>(Raw.doublon_decay[t]);
 		
-		auto T1 = prod(Hdummy.cdagcdag(i), Hdummy.cc1(j,k)); T1.scale(lambda);
-		auto T2 = prod(Hdummy.cdagcdag1(j,k), Hdummy.cc(i)); T2.scale(conjIfcomplex(lambda));
-		cout << "doublon decay: cdagcdag_" << i << ", c_" << j << ", c_" << k << ", lambda=" << lambda << endl;
+		cout << "doublon decay: cdagcdag_" << i << ", cc1_" << j << "_" << k << ", λ=" << lambda << ", Q=" 
+		     << Hdummy.cdagcdag(x[i],y[i]).Qtarget() << ", " 
+		     << Hdummy.cc1(x[j],x[k],y[j],y[k]).Qtarget()
+		     << endl;
+		
+		//auto T1 = prod(Hdummy.cdagcdag(i), Hdummy.cc1(j,k)); T1.scale(lambda);
+		//auto T2 = prod(Hdummy.cdagcdag1(j,k), Hdummy.cc(i)); T2.scale(conjIfcomplex(lambda));
+		auto T1 = prod(Hdummy.cdagcdag(x[i],y[i]), Hdummy.cc1(x[j],x[k],y[j],y[k])); T1.scale(lambda);
+		auto T2 = prod(Hdummy.cdagcdag1(x[j],x[k],y[j],y[k]), Hdummy.cc(x[i],y[i])); T2.scale(conjIfcomplex(lambda));
 		auto Term = diff(T2,T1);
-		//Term.scale(lambda);
 		Terms.Hmpo_doublon_decay[s] = sum(Terms.Hmpo_doublon_decay[s],Term);
 		Hterms.H3_doublon_decay[s] = MODEL(Terms.Hmpo_doublon_decay[s],dummy_params);
 		s = (s+1)%Terms.Hmpo_doublon_decay.size();
@@ -551,9 +609,17 @@ compute_MPO()
 		int l = get<3>(Raw.foursite[t]);
 		typename MODEL::Scalar_ lambda = get<4>(Raw.foursite[t]);
 		
-		auto T1 = prod(Hdummy.cdagcdag1(i,j), Hdummy.cc1(k,l)); T1.scale(-lambda);
-		auto T2 = prod(Hdummy.cdagcdag1(l,k), Hdummy.cc1(j,i)); T2.scale(-conjIfcomplex(lambda));
-		cout << "foursite: cdag_" << i << ", cdag_" << j << ", c_" << k << ", c_" << l << ", lambda=" << lambda << endl;
+		cout << "foursite: " << i << ", " << j << ", " << k << ", " << l << ", λ=" << lambda << ", Q=" 
+		     << Hdummy.cdagcdag1(x[i],x[j],y[i],y[j]).Qtarget() << ", " 
+		     << Hdummy.cc1(x[k],x[l],y[k],y[l]).Qtarget() << ", " 
+		     << Hdummy.cdagcdag1(x[l],x[k],y[l],y[k]).Qtarget() << ", " 
+		     << Hdummy.cc1(x[j],x[i],y[j],y[i]).Qtarget() 
+		     << endl;
+		
+		//auto T1 = prod(Hdummy.cdagcdag1(i,j), Hdummy.cc1(k,l)); T1.scale(-lambda);
+		//auto T2 = prod(Hdummy.cdagcdag1(l,k), Hdummy.cc1(j,i)); T2.scale(-conjIfcomplex(lambda));
+		auto T1 = prod(Hdummy.cdagcdag1(x[i],x[j],y[i],y[j]), Hdummy.cc1(x[k],x[l],y[k],y[l])); T1.scale(-lambda);
+		auto T2 = prod(Hdummy.cdagcdag1(x[l],x[k],y[l],y[k]), Hdummy.cc1(x[j],x[i],y[j],y[i])); T2.scale(-conjIfcomplex(lambda));
 		auto Term = sum(T1,T2);
 		//Term.scale(-lambda);
 		Terms.Hmpo_foursite[s] = sum(Terms.Hmpo_foursite[s],Term);
@@ -845,7 +911,7 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),void>::type HubbardKspace<MODEL>::
 compute_MPO()
 {
-	MODEL Hdummy(L,dummy_params,BC::OPEN,DMRG::VERBOSITY::SILENT);
+	MODEL Hdummy(Lred,dummy_params,BC::OPEN,DMRG::VERBOSITY::SILENT);
 	
 	/////////// 2-SITE ///////////
 	for (int t=0; t<Raw.spin_exchange.size(); ++t)
@@ -1174,6 +1240,20 @@ sum_all_mpo() const
 	for (int s=0; s<Terms.Hmpo_doublon_decay.size(); ++s) res = sum(res,Terms.Hmpo_doublon_decay[s]);
 	
 	for (int s=0; s<Terms.Hmpo_foursite.size(); ++s) res = sum(res,Terms.Hmpo_foursite[s]);
+	
+	return res;
+}
+
+template<typename MODEL>
+Mpo<typename MODEL::Symmetry,typename MODEL::Scalar_> HubbardKspace<MODEL>::
+sum_2site_mpo() const
+{
+	auto res = Terms.Hmpo_spin_exchange[0];
+	
+	for (int s=1; s<Terms.Hmpo_spin_exchange.size(); ++s) res = sum(res,Terms.Hmpo_spin_exchange[s]);
+	for (int s=0; s<Terms.Hmpo_density_density.size(); ++s) res = sum(res,Terms.Hmpo_density_density[s]);
+	for (int s=0; s<Terms.Hmpo_pair_hopping.size(); ++s) res = sum(res,Terms.Hmpo_pair_hopping[s]);
+	for (int s=0; s<Terms.Hmpo_corr_hopping.size(); ++s) res = sum(res,Terms.Hmpo_corr_hopping[s]);
 	
 	return res;
 }

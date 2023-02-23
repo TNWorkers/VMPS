@@ -75,9 +75,9 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cdagcdag (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
-	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, SPIN_INDEX sigma3, SPIN_INDEX sigma4, typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cdagcdagcc (size_t locx1, size_t locx2, size_t locx3, size_t locx4, 
-	                                                                                size_t locy1=0, size_t locy2=0, size_t locy3=0, size_t locy4=0) const;
+//	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, SPIN_INDEX sigma3, SPIN_INDEX sigma4, typename Dummy = Symmetry>
+//	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cdagcdagcc (size_t locx1, size_t locx2, size_t locx3, size_t locx4, 
+//	                                                                                size_t locy1=0, size_t locy2=0, size_t locy3=0, size_t locy4=0) const;
 	
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::ABELIAN,Mpo<Symmetry,Scalar> >::type cc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -368,15 +368,34 @@ make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 		}
 		else if (locx1<locx2)
 		{
+			vector<SiteOperator<Symmetry,Scalar> > Signs;
+			for (size_t l=locx1+1; l<locx2; ++l)
+			{
+				Signs.push_back(F[l].sign().template plain<double>().template cast<Scalar>());
+			}
+			
+//			Mout.setLocal({locx1, locx2}, {(factor * (Op1 * F[locx1].sign())).template plain<double>().template cast<Scalar>(), 
+//			                               Op2.template plain<double>().template cast<Scalar>()}, 
+//			                               F[0].sign().template plain<double>().template cast<Scalar>());
 			Mout.setLocal({locx1, locx2}, {(factor * (Op1 * F[locx1].sign())).template plain<double>().template cast<Scalar>(), 
 			                               Op2.template plain<double>().template cast<Scalar>()}, 
-			                               F[0].sign().template plain<double>().template cast<Scalar>());
+			                               Signs);
 		}
 		else if (locx1>locx2)
 		{
+			vector<SiteOperator<Symmetry,Scalar> > Signs;
+			for (size_t l=locx2+1; l<locx1; ++l)
+			{
+				Signs.push_back(F[l].sign().template plain<double>().template cast<Scalar>());
+			}
+			
+//			Mout.setLocal({locx2, locx1}, {(factor * (Op2 * F[locx2].sign())).template plain<double>().template cast<Scalar>(), 
+//			                               -Symmetry::spinorFactor() * Op1.template plain<double>().template cast<Scalar>()}, 
+//			                               F[0].sign().template plain<double>().template cast<Scalar>());
+			
 			Mout.setLocal({locx2, locx1}, {(factor * (Op2 * F[locx2].sign())).template plain<double>().template cast<Scalar>(), 
 			                               -Symmetry::spinorFactor() * Op1.template plain<double>().template cast<Scalar>()}, 
-			                               F[0].sign().template plain<double>().template cast<Scalar>());
+			                               Signs);
 		}
 	}
 	else
@@ -1357,14 +1376,14 @@ template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
 nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr (locx1, locx2, locy1, locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	return make_corr (locx1, locx2, locy1, locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2), Symmetry::qvacuum(), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> HubbardObservables<Symmetry,Scalar>::
 nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr (locx1, locx2, locy1, locy2, F[locx1].n(locy1), F[locx2].n(locy2), Symmetry::qvacuum(), 1., PROP::NON_FERMIONIC, PROP::HERMITIAN);
+	return make_corr (locx1, locx2, locy1, locy2, F[locx1].n(locy1), F[locx2].n(locy2), Symmetry::qvacuum(), 1., PROP::BOSONIC, PROP::HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>

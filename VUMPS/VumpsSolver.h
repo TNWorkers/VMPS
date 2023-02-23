@@ -1145,7 +1145,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "performing expansion with " << expand_option << endl;
+			lout << termcolor::bold << "performing expansion with " << expand_option << termcolor::reset << endl;
 		}
 		expand_basis2(deltaM, H, Vout, expand_option);
 		t_exp = ExpansionTimer.time();

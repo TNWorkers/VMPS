@@ -59,6 +59,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	size_t Ncells = 1; 
 	auto Obs = O;
 	
@@ -74,30 +75,44 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		Obs.transform_base(Vket.Qtarget(),false);
 	}
 	
-	auto Vbra_copy = Vbra;
-	auto Vket_copy = Vket;
-	
 	if (Obs.length() != Vket.length() and Vket.Qtarget() != Symmetry::qvacuum())
 	{
+		auto Vbra_copy = Vbra;
+		auto Vket_copy = Vket;
+		
 		Vbra_copy.adjustQN(Ncells);
 		Vket_copy.adjustQN(Ncells);
-	}
-	
-	B.setIdentity(Obs.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.inBasis(0));
-	for (size_t l=0; l<Obs.length(); ++l)
-	{
-		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B,
-				   Vbra_copy.A_at(g,l%Vket.length()), Obs.W_at(l),
-				   Vket_copy.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
 		
-		B.clear();
-		B = Bnext;
-		Bnext.clear();
+		B.setIdentity(Obs.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.inBasis(0));
+		for (size_t l=0; l<Obs.length(); ++l)
+		{
+			GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
+			contract_L(B,
+					   Vbra_copy.A_at(g,l%Vket.length()), Obs.W_at(l),
+					   Vket_copy.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+			
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
+		IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
 	}
-	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
-	IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
+	else // do not copy, optimize for memory
+	{
+		B.setIdentity(Obs.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket.inBasis(0));
+		for (size_t l=0; l<Obs.length(); ++l)
+		{
+			GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
+			contract_L(B,
+					   Vbra.A_at(g,l%Vket.length()), Obs.W_at(l),
+					   Vket.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+			
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
+		IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
+	}
 	
 	return contract_LR(B,IdR);
 }
@@ -149,6 +164,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdL;
 	size_t Ncells = 1; 
 	auto Obs1 = O1;
 	auto Obs2 = O2;
@@ -167,41 +183,46 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		Obs2.transform_base(Vket.Qtarget(),false);
 	}
 	
-	auto Vbra_copy = Vbra;
-	auto Vket_copy = Vket;
-	
 	if (Obs1.length() != Vket.length() and Vket.Qtarget() != Symmetry::qvacuum())
 	{
+		auto Vbra_copy = Vbra;
+		auto Vket_copy = Vket;
+		
 		Vbra_copy.adjustQN(Ncells);
 		Vket_copy.adjustQN(Ncells);
+		
+		B.setIdentity(Obs1.outBasis(Obs1.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs1.length()-1)%Vket.length()));
+		for (size_t l=O1.length()-1; l!=-1; --l)
+		{
+			GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
+			
+			contract_R(B,
+				       Vbra_copy.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket_copy.A_at(g,l%Vket.length()), 
+				       Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l), 
+				       Bnext);
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
+		IdL.setIdentity(Obs1.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.inBasis(0));
 	}
-	
-	B.setIdentity(Obs1.outBasis(Obs1.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs1.length()-1)%Vket.length()));
-	
-	for (size_t l=O1.length()-1; l!=-1; --l)
+	else // do not copy, optimize for memory
 	{
-//		GAUGE::OPTION g = (l==O1.length()-1)? GAUGE::C : GAUGE::L;
-		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		
-		contract_R(B,
-		           Vbra_copy.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket_copy.A_at(g,l%Vket.length()), 
-		           Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l), 
-		           Bnext);
-		
-		B.clear();
-		B = Bnext;
-		Bnext.clear();
-//		cout << "l=" << l << ", B.dim=" << B.dim << endl;
-//		if (l==O1.length()-1)
-//		{
-//			cout << B.print() << endl;
-//		}
+		B.setIdentity(Obs1.outBasis(Obs1.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket.outBasis((Obs1.length()-1)%Vket.length()));
+		for (size_t l=O1.length()-1; l!=-1; --l)
+		{
+			GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
+			
+			contract_R(B,
+				       Vbra.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket.A_at(g,l%Vket.length()), 
+				       Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l), 
+				       Bnext);
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
+		IdL.setIdentity(Obs1.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket.inBasis(0));
 	}
-	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdL;
-	IdL.setIdentity(Obs1.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.inBasis(0));
-	
-//	cout << "res=" << contract_LR(IdL,B) << ", B.dim=" << B.dim << endl;
 	
 	return contract_LR(IdL,B);
 }
