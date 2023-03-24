@@ -39,16 +39,19 @@ public:
 	
 	PeierlsHubbardSU2xU1xZN() : Mpo(){};
 	
-	PeierlsHubbardSU2xU1xZN(Mpo<Symmetry,complex<double>> &Mpo_input, const vector<Param> &params)
+	PeierlsHubbardSU2xU1xZN(Mpo<Symmetry,complex<double>> &Mpo_input, const vector<Param> &params, const BC &BC_input=BC::OPEN)
 	:Mpo<Symmetry,complex<double>>(Mpo_input),
 	 HubbardObservables(this->N_sites,params,PeierlsHubbardSU2xU1xZN::defaults),
 	 ParamReturner(PeierlsHubbardSU2xU1xZN::sweep_defaults)
 	{
+		this->boundary_condition = BC_input;
 		ParamHandler P(params,PeierlsHubbardSU2xU1xZN::defaults);
 		size_t Lcell = P.size();
 		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
 		this->precalc_TwoSiteData();
+		this->HERMITIAN = true;
+		this->HAMILTONIAN = true;
 	};
 	
 	PeierlsHubbardSU2xU1xZN (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
@@ -73,7 +76,7 @@ const map<string,any> PeierlsHubbardSU2xU1xZN::defaults =
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
 	{"REMOVE_DOUBLE",false} ,{"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",0},
-	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",1ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const map<string,any> PeierlsHubbardSU2xU1xZN::sweep_defaults = 

@@ -93,7 +93,8 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
                            qarray<Symmetry::Nq> Qtot_input, size_t Minit, size_t Mincr=100, size_t Mlimit=10000, double tol=1e-4,
-                           size_t max_halfsweeps=100, size_t min_halfsweeps=1, std::size_t savePeriod = 0, std::string saveName="backup", bool MEASURE_DISTANCE=true, const MpOperator * HdagH = NULL
+                           size_t max_halfsweeps=100, size_t min_halfsweeps=1, std::size_t savePeriod = 0, 
+                           std::string saveName="backup", bool MEASURE_DISTANCE=true, const MpOperator * HdagH = NULL
                            );
 	
 	/**
@@ -981,7 +982,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	else
 	{
-		Vout = Mps<Symmetry,Scalar>(H, Mcutoff, Qtot_input, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
+		Vout = Mps<Symmetry,Scalar>(H, Mcutoff, Qtot_input, max(static_cast<int>(Vin.calc_Nqmax()), DMRG::CONTROL::DEFAULT::Qinit));
 	}
 	
 	// prepare edges of LW & RW
@@ -1114,8 +1115,8 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		if (MEASURE_DISTANCE)
 		{
-	//		cout << "avgHsqVin=" << avgHsqVin << endl;
-	//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+			cout << "avgHsqVin=" << avgHsqVin << endl;
+			cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 			sqdist = abs(avgHsqVin - Vout.squaredNorm());
 			assert(!std::isnan(sqdist));
 		}

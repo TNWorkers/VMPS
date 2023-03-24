@@ -10,7 +10,7 @@ namespace Sym
 	// Crazy that this enum needs to be here, because it is also in DmrgTypedefs.h. But without this, it doesn't compile...
 	#ifndef KIND_ENUM
 	#define KIND_ENUM
-	enum KIND {S,Salt,T,N,M,Nup,Ndn,Z2};
+	enum KIND {S,Salt,T,N,M,Nup,Ndn,Nparity,K};
 	#endif
 	
 	/**
@@ -33,7 +33,7 @@ namespace Sym
 			{
 				ss << print_frac_nice(boost::rational<int>(qnum[q],2));
 			}
-			else if (Symmetry::kind()[q] == KIND::Z2)
+			else if (Symmetry::kind()[q] == KIND::Nparity)
 			{
 				string parity = (posmod<2>(qnum[q])==0)? "evn":"odd";
 				ss << parity;

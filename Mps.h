@@ -78,7 +78,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Nqmax_input : maximal initial number of symmetry blocks per site in the Mps
 	 */
-	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_input);
+	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, int Nqmax_input);
 	
 	/** 
 	 * Construct by explicitly providing the A-matrices. Basically only for testing purposes.
@@ -148,7 +148,15 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Nqmax_input : maximum initial number of symmetry blocks in the Mps per site
 	 */
-	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input=500);
+	
+	/**
+	 * Resizes with all possible blocks.
+	 * \param L_input : chain length
+	 * \param qloc_input : local basis
+	 * \param Qtot_input : target quantum number
+	 */
+	void outerResizeAll (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. 
@@ -157,7 +165,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Nqmax_input : maximum initial number of symmetry blocks in the Mps per site
 	 */
-	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
+	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Nqmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
@@ -733,7 +741,7 @@ Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_in
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Mps<Symmetry,Scalar>::
-Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_input)
+Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, int Nqmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >()
 {
 	set_open_bc();
@@ -744,7 +752,8 @@ Mps (const Hamiltonian &H, size_t Mmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 	update_inbase();
 	update_outbase();
 	
-	innerResize(Mmax);
+	if (max(Mmax,calc_Nqmax()) > Mmax) lout << "DmrgSolver: Adjusting Minit to match Qinit: " << Mmax << "→" << calc_Nqmax() << endl;
+	innerResize(max(Mmax,calc_Nqmax()));
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
@@ -773,7 +782,7 @@ Mps (size_t L_input, const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dy
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
-outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input)
+outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Nqmax_input)
 {
 	set_open_bc();
 	N_phys = H.volume();
@@ -856,7 +865,7 @@ calc_Qlimits()
 	
 	/*for (int q=0; q<Symmetry::Nq; ++q)
 	{
-		if (Symmetry::kind()[q] == Sym::KIND::k)
+		if (Symmetry::kind()[q] == Sym::KIND::K)
 		{
 			NEED_WORKAROUND = true;
 		}
@@ -1044,7 +1053,7 @@ calc_Qlimits()
 					{
 						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
 						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
-						if (Symmetry::kind()[q] == Sym::KIND::k)
+						if (Symmetry::kind()[q] == Sym::KIND::K)
 						{
 							QinTop[l][q]  = Symmetry::mod()[q]-1;
 							QinBot[l][q]  = 0;
@@ -1057,7 +1066,7 @@ calc_Qlimits()
 					{
 						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
 						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
-						if (Symmetry::kind()[q] == Sym::KIND::k)
+						if (Symmetry::kind()[q] == Sym::KIND::K)
 						{
 							QoutTop[l][q] = Symmetry::mod()[q]-1;
 							QoutBot[l][q] = 0;
@@ -1087,7 +1096,7 @@ void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
 	for (size_t q=0; q<Nq; q++)
 	{
 		// A Z(N) quantum number can only go from 0 to N-1
-		if (Symmetry::kind()[q] == Sym::KIND::k)
+		if (Symmetry::kind()[q] == Sym::KIND::K)
 		{
 			QinTop[l][q]  = Symmetry::mod()[q]-1;
 			QinBot[l][q]  = 0;
@@ -1113,7 +1122,146 @@ void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input)
+outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
+{
+	if (Nqmax_input == -1)
+	{
+		outerResizeAll(L_input,qloc_input,Qtot_input);
+	}
+	else
+	{
+		this->N_sites = L_input;
+		qloc = qloc_input;
+		Qtot = Qtot_input;
+		Qmulti = vector<qarray<Nq> >(1,Qtot);
+		this->pivot = -1;
+	
+		calc_Qlimits();
+	
+		// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
+		auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean, const size_t &loc) -> vector<qarray<Nq> >
+		{
+			vector<qarray<Nq> > out = qs;
+		
+			if (out.size() > Nqmax_input)
+			{
+				// sort the vector first according to the distance to mean
+				sort(out.begin(),out.end(),[mean,loc,this] (qarray<Nq> q1, qarray<Nq> q2)
+				{
+					VectorXd dist_q1(Nq);
+					VectorXd dist_q2(Nq);
+					for (size_t q=0; q<Nq; q++)
+					{
+						if (Symmetry::kind()[q] == Sym::KIND::K)
+						{
+							double Delta = 0.5*Symmetry::mod()[q];
+							dist_q1(q) = min( posmod(q1[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q1[q],Symmetry::mod()[q]) ) / Delta;
+							dist_q2(q) = min( posmod(q2[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q2[q],Symmetry::mod()[q]) ) / Delta;
+	//						dist_q1(q) = 0.;
+	//						dist_q2(q) = 0.;
+						}
+						else
+						{
+							double Delta = QinTop[loc][q] - QinBot[loc][q];
+							dist_q1(q) = (q1[q]-mean[q]) / Delta;
+							dist_q2(q) = (q2[q]-mean[q]) / Delta;
+						}
+					}
+					return (dist_q1.norm() < dist_q2.norm())? true:false;
+				});
+			
+				out.erase(out.begin()+Nqmax_input, out.end());
+			}
+			return out;
+		};
+	
+		// Qin_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
+		vector<vector<qarray<Nq> > > Qin_trunc(this->N_sites+1);
+	
+		// fill Qin_trunc
+		Qin_trunc[0].push_back(Symmetry::qvacuum());
+		for (size_t l=1; l<this->N_sites; l++)
+		{
+			auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
+		
+	//		for (int i=0; i<new_qs.size(); ++i)
+	//		{
+	//			lout << "generated q=" << new_qs[i] << endl;
+	//		}
+		
+			assert(new_qs.size() > 0);
+			array<double,Nq> mean;
+		
+			for (size_t q=0; q<Nq; q++)
+			{
+				mean[q] = static_cast<double>(Qtot[q])*static_cast<double>(l)/static_cast<double>(this->N_sites);
+				//cout << "q=" << q << ", Qtot[q]=" << Qtot[q] << ", mean=" << mean[q] << endl;
+				// Cast carefully, otherwise strange implicit cast of Qtot[q] to size_t for negative numbers that makes everything crash
+			}
+		
+			// check if within ranges (QinBot,QinTop) for all q:
+			auto candidates = take_first_elems(new_qs,mean,l);
+			assert(candidates.size() > 0);
+			for (const auto &candidate:candidates)
+			{
+				//lout << "consider candidate: " << candidate << endl;
+				array<bool,Nq> WITHIN_RANGE;
+				for (size_t q=0; q<Nq; ++q)
+				{
+					//cout << "l=" << l << ", q=" << q << ", QinTop[l][q]=" << QinTop[l][q] << ", QinBot[l][q]=" << QinBot[l][q] << ", candidate[q]=" << candidate[q] << endl;
+					WITHIN_RANGE[q] = (candidate[q] <= QinTop[l][q] and candidate[q] >= QinBot[l][q]);
+				}
+				if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))
+				{
+					Qin_trunc[l].push_back(candidate);
+					//lout << "push back candidate: " << candidate << endl;
+				}
+			}
+			assert(Qin_trunc[l].size() > 0);
+		}
+		Qin_trunc[this->N_sites].push_back(Qtot);
+	
+		if constexpr (Nq == 0)
+		{
+			outerResizeNoSymm();
+		}
+		else
+		{
+			resize_arrays();
+		
+			for (size_t l=0; l<this->N_sites; ++l)
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				for (size_t q=0; q<Qin_trunc[l].size(); ++q)
+				{
+					qarray<Nq> qin = Qin_trunc[l][q];
+					auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
+					for (const auto &qout:qouts)
+					{
+						auto it = find(Qin_trunc[l+1].begin(), Qin_trunc[l+1].end(), qout);
+						if (it != Qin_trunc[l+1].end())
+						{
+							std::array<qType,2> qinout = {qin,qout};
+							if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
+							{
+								A[l][s].in.push_back(qin);
+								A[l][s].out.push_back(qout);
+								A[l][s].dict.insert({qinout,A[l][s].size()});
+								A[l][s].plusplus();
+							}
+						}
+					}
+				}
+			
+				A[l][s].block.resize(A[l][s].size());
+			}
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+outerResizeAll (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
 {
 	this->N_sites = L_input;
 	qloc = qloc_input;
@@ -1123,88 +1271,52 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	
 	calc_Qlimits();
 	
-	// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
-	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean, const size_t &loc) -> vector<qarray<Nq> >
-	{
-		vector<qarray<Nq> > out = qs;
-		
-		if (out.size() > Nqmax_input)
-		{
-			// sort the vector first according to the distance to mean
-			sort(out.begin(),out.end(),[mean,loc,this] (qarray<Nq> q1, qarray<Nq> q2)
-			{
-				VectorXd dist_q1(Nq);
-				VectorXd dist_q2(Nq);
-				for (size_t q=0; q<Nq; q++)
-				{
-					if (Symmetry::kind()[q] == Sym::KIND::k)
-					{
-						double Delta = 0.5*Symmetry::mod()[q];
-						dist_q1(q) = min( posmod(q1[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q1[q],Symmetry::mod()[q]) ) / Delta;
-						dist_q2(q) = min( posmod(q2[q]-Qtot[q],Symmetry::mod()[q]), posmod(Qtot[q]-q2[q],Symmetry::mod()[q]) ) / Delta;
-//						dist_q1(q) = 0.;
-//						dist_q2(q) = 0.;
-					}
-					else
-					{
-						double Delta = QinTop[loc][q] - QinBot[loc][q];
-						dist_q1(q) = (q1[q]-mean[q]) / Delta;
-						dist_q2(q) = (q2[q]-mean[q]) / Delta;
-					}
-				}
-				return (dist_q1.norm() < dist_q2.norm())? true:false;
-			});
-			
-			out.erase(out.begin()+Nqmax_input, out.end());
-		}
-		return out;
-	};
+	vector<vector<qarray<Nq> > > Qin(this->N_sites+1);
+	Qin[0].push_back(Symmetry::qvacuum());
 	
-	// Qin_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
-	vector<vector<qarray<Nq> > > Qin_trunc(this->N_sites+1);
-	
-	// fill Qin_trunc
-	Qin_trunc[0].push_back(Symmetry::qvacuum());
 	for (size_t l=1; l<this->N_sites; l++)
 	{
-		auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
-		
-//		for (int i=0; i<new_qs.size(); ++i)
-//		{
-//			lout << "generated q=" << new_qs[i] << endl;
-//		}
-		
-		assert(new_qs.size() > 0);
-		array<double,Nq> mean;
-		
-		for (size_t q=0; q<Nq; q++)
-		{
-			mean[q] = static_cast<double>(Qtot[q])*static_cast<double>(l)/static_cast<double>(this->N_sites);
-			//cout << "q=" << q << ", Qtot[q]=" << Qtot[q] << ", mean=" << mean[q] << endl;
-			// Cast carefully, otherwise strange implicit cast of Qtot[q] to size_t for negative numbers that makes everything crash
-		}
-		
-		// check if within ranges (QinBot,QinTop) for all q:
-		auto candidates = take_first_elems(new_qs,mean,l);
+		auto candidates = Symmetry::reduceSilent(Qin[l-1], qloc[l-1], true);
 		assert(candidates.size() > 0);
+		
 		for (const auto &candidate:candidates)
 		{
-			//lout << "consider candidate: " << candidate << endl;
 			array<bool,Nq> WITHIN_RANGE;
 			for (size_t q=0; q<Nq; ++q)
 			{
-				//cout << "l=" << l << ", q=" << q << ", QinTop[l][q]=" << QinTop[l][q] << ", QinBot[l][q]=" << QinBot[l][q] << ", candidate[q]=" << candidate[q] << endl;
 				WITHIN_RANGE[q] = (candidate[q] <= QinTop[l][q] and candidate[q] >= QinBot[l][q]);
 			}
 			if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))
 			{
-				Qin_trunc[l].push_back(candidate);
-				//lout << "push back candidate: " << candidate << endl;
+				Qin[l].push_back(candidate);
 			}
 		}
-		assert(Qin_trunc[l].size() > 0);
 	}
-	Qin_trunc[this->N_sites].push_back(Qtot);
+	Qin[this->N_sites].push_back(Qtot);
+	
+	vector<vector<qarray<Nq> > > Qin_(this->N_sites+1);
+	Qin_[0].push_back(Symmetry::qvacuum());
+	Qin_[this->N_sites].push_back(Qtot);
+	
+	for (size_t l=this->N_sites-1; l>=1; l--)
+	{
+		set<qarray<Nq> > invalids;
+		
+		for (size_t q=0; q<Qin[l].size(); ++q)
+		{
+			// Check if Qin[l]+qloc[l] == Qin[l+1] is fulfilled, otherwise Qin[l] is invalid
+			auto qouts = Symmetry::reduceSilent(qloc[l],Qin[l][q]);
+			for (const auto &qout:qouts)
+			{
+				if (find(Qin[l+1].begin(), Qin[l+1].end(), qout) != Qin[l+1].end())
+				{
+					Qin_[l].push_back(Qin[l][q]);
+				}
+			}
+		}
+	}
+	
+	Qin = Qin_;
 	
 	if constexpr (Nq == 0)
 	{
@@ -1217,14 +1329,14 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			for (size_t q=0; q<Qin_trunc[l].size(); ++q)
+			for (size_t q=0; q<Qin[l].size(); ++q)
 			{
-				qarray<Nq> qin = Qin_trunc[l][q];
+				qarray<Nq> qin = Qin[l][q];
 				auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
 				for (const auto &qout:qouts)
 				{
-					auto it = find(Qin_trunc[l+1].begin(), Qin_trunc[l+1].end(), qout);
-					if (it != Qin_trunc[l+1].end())
+					auto it = find(Qin[l+1].begin(), Qin[l+1].end(), qout);
+					if (it != Qin[l+1].end())
 					{
 						std::array<qType,2> qinout = {qin,qout};
 						if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
@@ -1909,9 +2021,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	Blocker<Symmetry,Scalar> Jim(A[loc],qloc[loc],inbase[loc],outbase[loc]);
 	auto Aclump = Jim.Aclump(DMRG::DIRECTION::RIGHT);
 	
-	bool RETURN_SPEC=false;
-	if (loc != 0)
-		RETURN_SPEC = true;
+	bool RETURN_SPEC = false;
+	if (loc != 0) RETURN_SPEC = true;
+	
 	double entropy;
 	map<qarray<Nq>,ArrayXd> SVspec_;
 	Biped<Symmetry,MatrixType> left,right;

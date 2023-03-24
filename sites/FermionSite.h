@@ -515,7 +515,7 @@ fill_basis (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_D
 			ident.clear();
 		}
 	}
-	else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+	else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::K)
 	{
 		typename Symmetry::qType Q;
 		Eigen::Index inner_dim;
@@ -593,7 +593,7 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) //return parity as good quantum number (Delta even or odd).
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nparity) //return parity as good quantum number (Delta even or odd).
 		{
 			typename Symmetry::qType out;
 			if      (sigma==UP)     {out = {posmod<2>(abs(Delta))};} // remove one particles = odd
@@ -614,7 +614,7 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==UPDN)   {out = {2*Delta,0};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::K)
 		{
 			int ZN = Symmetry::mod()[1];
 			// Delta=-1 annhilates momentum of k = creates ZN-k
@@ -670,12 +670,12 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or // return particle number as a good quantum number
-		              Symmetry::kind()[0] == Sym::KIND::Z2) // return particle number parity as a good quantum number
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or // particle number
+		              Symmetry::kind()[0] == Sym::KIND::Nparity) // particle number parity
 		{
 			return Symmetry::qvacuum(); // spin flips remove no particles = even = vacuum
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) // return magnetization as a good quantum number
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) // magnetization
 		{
 			assert(Sa != SX and Sa != iSY);
 			
@@ -698,7 +698,7 @@ getQ (SPINOP_LABEL Sa) const
 			else if (Sa==SP) {out = {0,+2};}
 			else if (Sa==SM) {out = {0,-2};}
 		}
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::k)
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::K)
 		{
 			// spinflip == no change of momentum
 			if      (Sa==SZ) {out = {0,0};}

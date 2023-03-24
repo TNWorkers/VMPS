@@ -107,21 +107,21 @@ std::ostream& operator<< (std::ostream& s, MODEL_FAMILY mf)
 #ifndef KIND_ENUM
 #define KIND_ENUM
 namespace Sym{
-	enum KIND {S,Salt,T,N,M,Nup,Ndn,Z2,k};
+	enum KIND {S,Salt,T,N,M,Nup,Ndn,Nparity,K};
 }
 #endif
 
 std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 {
-	if      (l==Sym::KIND::S)   {s << "S";}
-	if      (l==Sym::KIND::Salt){s << "Salt";}
-	else if (l==Sym::KIND::T)   {s << "T";}
-	else if (l==Sym::KIND::N)   {s << "N";}
-	else if (l==Sym::KIND::M)   {s << "M";}
-	else if (l==Sym::KIND::Nup) {s << "N↑";}
-	else if (l==Sym::KIND::Ndn) {s << "N↓";}
-	else if (l==Sym::KIND::Z2)  {s << "P";}
-	else if (l==Sym::KIND::k)  {s << "k";}
+	if      (l==Sym::KIND::S)       {s << "S";}
+	if      (l==Sym::KIND::Salt)    {s << "Salt";}
+	else if (l==Sym::KIND::T)       {s << "T";}
+	else if (l==Sym::KIND::N)       {s << "N";}
+	else if (l==Sym::KIND::M)       {s << "M";}
+	else if (l==Sym::KIND::Nup)     {s << "N↑";}
+	else if (l==Sym::KIND::Ndn)     {s << "N↓";}
+	else if (l==Sym::KIND::Nparity) {s << "P";}
+	else if (l==Sym::KIND::K)       {s << "K";}
 	return s;
 }
 
@@ -320,12 +320,14 @@ struct DMRG
 			constexpr static double tol_state = 1e-5;
 			constexpr static size_t Minit = 1;
 			constexpr static size_t Mlimit = 1000;
-			constexpr static size_t Qinit = 1;
+			constexpr static int Qinit = 1; // Qinit=-1 resizes with all possible blocks
 			constexpr static size_t savePeriod = 0;
 			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = false;
 			constexpr static DMRG::DIRECTION::OPTION INITDIR = DMRG::DIRECTION::RIGHT;
+			constexpr static double falphamin = 0.1;
+			constexpr static double falphamax = 2.;
 			
 			#ifndef DMRG_CONTROL_DEFAULT_MIN_NSV
 			#define DMRG_CONTROL_DEFAULT_MIN_NSV 0
@@ -340,7 +342,7 @@ struct DMRG
 			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
 			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
-			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
+			static int    max_Nrich                  (size_t i) {return -1;} // -1 = use all
 			static void   doSomething                (size_t i) {return;}
 			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
 			
@@ -365,6 +367,8 @@ struct DMRG
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
 			DMRG::DIRECTION::OPTION INITDIR = CONTROL::DEFAULT::INITDIR;
+			double falphamin                = CONTROL::DEFAULT::falphamin;
+			double falphamax                = CONTROL::DEFAULT::falphamax;
 		};
 		
 		struct DYN

@@ -423,7 +423,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagRlp1 = (F[lp1].ns(beta) * F[lp1].cdag(beta));
 					
 					//hopping
-					cout << "loc=" << loc << ", alfa=" << alfa << ", beta=" << beta << ", tpara=" << tpara(alfa,beta) << endl;
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, c_tight), -std::sqrt(2.)*tpara(alfa,beta)));
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, cdag_tight), -std::sqrt(2.)*tpara(alfa,beta)));
 					

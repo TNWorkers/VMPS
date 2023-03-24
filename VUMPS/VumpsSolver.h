@@ -1371,7 +1371,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	    N_iterations_without_expansion > GlobParam.max_iter_without_expansion
 	   )
 	{
-		//make sure to perform at least one measurement before expanding the basis
+		// make sure to perform at least one measurement before expanding the basis
 		FORCE_DO_SOMETHING = true;
 		lout << termcolor::bold << "Performing a measurement for N_iterations=" << N_iterations << termcolor::reset << endl;
 		DynParam.doSomething(N_iterations);
@@ -1398,7 +1398,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "performing expansion with " << expand_option << endl;
+			lout << termcolor::bold << "performing expansion with " << expand_option << termcolor::reset << endl;
 		}
 		expand_basis2(deltaM, H, Vout, expand_option);
 		t_exp = ExpansionTimer.time();
@@ -1407,7 +1407,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	
 	// See Algorithm 3
 	for (size_t l=0; l<N_sites; ++l)
-	{		
+	{
 		build_cellEnv(H,Vout);
 		
 		precalc_blockStructure (HeffA[l].Terms[0].L, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].W, Vout.state.A[GAUGE::C][l], HeffA[l].Terms[0].R, 
@@ -2118,16 +2118,16 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Umps<Symmetry,Scalar> &Psi, V
 	precalc_blockStructure (HeffA[loc].Terms[0].L, A2C.data, HeffA[loc].Terms[0].W, HeffA[(loc+1)%N_sites].Terms[0].W, A2C.data, HeffA[(loc+1)%N_sites].Terms[0].R, 
 	                        H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
 	                        H2.qlhs, H2.qrhs, H2.factor_cgcs);
-
+	
 	HxV(H2,A2C);
-
-    // split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
+	
+	// split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
 	// 		  Psi.Qtop(loc), Psi.Qbot(loc),
 	// 		  Psi.eps_svd,Psi.min_Nsv,Psi.max_Nsv);
 	Qbasis<Symmetry> qloc_l, qloc_r;
 	qloc_l.pullData(H.locBasis(loc)); 	qloc_r.pullData(H.locBasis((loc+1)%N_sites));
 	auto combined_basis = qloc_l.combine(qloc_r);
-
+	
 	split_AA2(DMRG::DIRECTION::RIGHT, combined_basis, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
 			  Psi.Qtop(loc), Psi.Qbot(loc),
 			  0.,Psi.min_Nsv,std::numeric_limits<size_t>::max());

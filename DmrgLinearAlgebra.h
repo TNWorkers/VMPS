@@ -477,13 +477,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  * \param VERBOSE : print info if \p true
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100)
+void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+          bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100)
 {
 	Stopwatch<> Chronos;
 	
 	if (Vin.calc_Mmax() <= 4)
 	{
-		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1);
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1, DMRG::BROOM::QR);
 	}
 	else
 	{
@@ -491,6 +492,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
 		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps);
+		//Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Mmax(), Mincr, Mlimit, tol_compr, max_halfsweeps, 1, 0, "backup", false);
 	}
 	
 ////double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
@@ -568,7 +570,8 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
+void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+          bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
 {
 	Stopwatch<> Chronos;
 	
@@ -699,7 +702,8 @@ void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag,
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
-                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1)
+                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1,
+                DMRG::BROOM::OPTION BROOMOPTION=DMRG::BROOM::QR)
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
@@ -765,7 +769,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		if (Vtmp.calc_Mmax() == 0)
 		{
 			lout << termcolor::red << "Warning: OxV compression failed, returning exact result!" << termcolor::reset << endl;
-			Vout.sweep(0,DMRG::BROOM::QR);
+			Vout.sweep(0,BROOMOPTION);
 		}
 		else
 		{
@@ -788,7 +792,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 //		cout << Vout.info() << endl;
 //		cout << "dot=" << dot(Vout,Vout) << endl;
-		Vout.sweep(0,DMRG::BROOM::QR);
+		Vout.sweep(0,BROOMOPTION);
 		
 		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
 		{
@@ -831,10 +835,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE,
-                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1)
+                int max_halfsweeps = 200, int min_halfsweeps = 1, int Minit=-1,
+                DMRG::BROOM::OPTION BROOMOPTION=DMRG::BROOM::QR)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps,Minit);
+	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY,max_halfsweeps,min_halfsweeps,Minit,BROOMOPTION);
 	Vinout = Vtmp;
 }
 

@@ -143,7 +143,7 @@ private:
 	size_t Dmax, Mmax, Nqmax;
 	double totalTruncWeight;
 	size_t Mmax_old;
-	double err_eigval, err_state;
+	double err_eigval, err_state, err_eigval_prev;
 	
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
@@ -311,7 +311,7 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 		Vout.state = Mps<Symmetry,Scalar>(H[0], GlobParam.Minit, Qtot_input, GlobParam.Qinit);
 //		Vout.state.graph("init");
 		// reset stuff after constructor:
-		Vout.state.max_Nsv = GlobParam.Minit;
+		Vout.state.max_Nsv = max(GlobParam.Minit, Vout.state.calc_Nqmax());
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.Boundaries = Boundaries_tmp;
@@ -705,12 +705,23 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 		
 		switch (DynParam.iteration(SweepStat.N_halfsweeps))
 		{
-		case DMRG::ITERATION::ZERO_SITE:
-			iteration_zero(H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
-		case DMRG::ITERATION::ONE_SITE:
-			iteration_one (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
-		case DMRG::ITERATION::TWO_SITE:
-			iteration_two (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+			case DMRG::ITERATION::ZERO_SITE:
+				iteration_zero(H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+			
+			case DMRG::ITERATION::ONE_SITE:
+				iteration_one (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+			
+			case DMRG::ITERATION::TWO_SITE:
+				//if (err_eigval < GlobParam.tol_eigval and 
+				//    err_eigval_prev < GlobParam.tol_eigval and
+				//    Vout.state.calc_Mmax() == GlobParam.Mlimit)
+				//{
+				//	iteration_one (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+				//}
+				//else
+				//{
+					iteration_two (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+				//}
 		}
 		++SweepStat.N_sweepsteps;
 	}
@@ -718,6 +729,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	
 	// calculate state error
 	stringstream errorCalcInfo;
+	err_eigval_prev = err_eigval;
 	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
 	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
 	{
@@ -1649,7 +1661,9 @@ adapt_alpha_rsvd (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar
 		else if (r < 0.05)    {f = 1.2-r;}
 		else if (r > 0.3)     {f = 1./(r+0.75);}
 	}
-	f = max(0.1,min(2.,f)); // limit between [0.1,2]
+	//f = max(0.1,min(2.,f)); // limit between [0.1,2]
+	//f = max(0.99,min(1.01,f));
+	f = max(GlobParam.falphamin,min(GlobParam.falphamax,f));
 	Vout.state.alpha_rsvd *= f;
 	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
 	// double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 

@@ -69,7 +69,7 @@ int main (int argc, char* argv[])
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
-	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
+	double Ef = args.get<double>("Ef",-0.5*U); // onsite-Energie fuer f
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
 	bool CALC_TRIPLET_GAP = args.get<bool>("CALC_TRIPLET_GAP",false);
 	
@@ -89,10 +89,10 @@ int main (int argc, char* argv[])
 	GlobSweepParams.Minit = args.get<size_t>("Minit",1ul);
 	GlobSweepParams.Mlimit = args.get<size_t>("Mlimit",500ul);
 	GlobSweepParams.Qinit = args.get<size_t>("Qinit",1ul);
-	GlobSweepParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
-	GlobSweepParams.tol_var = args.get<double>("tol_var",1e-5);
-	GlobSweepParams.tol_state = args.get<double>("tol_state",1e-4);
-	GlobSweepParams.max_iter_without_expansion = 30ul;
+	GlobSweepParams.tol_eigval = args.get<double>("tol_eigval",1e-12);
+	GlobSweepParams.tol_var = args.get<double>("tol_var",1e-8);
+	GlobSweepParams.tol_state = args.get<double>("tol_state",1e-6);
+	GlobSweepParams.max_iter_without_expansion = args.get<size_t>("max_iter_without_expansion",20ul);
 	GlobSweepParams.CALC_S_ON_EXIT = false;
 	
 	// Gemeinsame Parameter bei unendlichen und offenen Randbedingungen
@@ -296,6 +296,8 @@ int main (int argc, char* argv[])
 		VectorXd nn_ff(50); nn_ff.setZero();
 		VectorXd nn_cf(50); nn_cf.setZero();
 		VectorXd nn_fc(50); nn_fc.setZero();
+		VectorXd SdagSc(100); SdagSc.setZero();
+		VectorXd SdagSf(100); SdagSf.setZero();
 		
 		double SdagS_loc = isReal(avg(g.state, H.SdagS(0,1), g.state));
 		double nn_loc = isReal(avg(g.state, H.nn(0,1), g.state));
@@ -310,14 +312,27 @@ int main (int argc, char* argv[])
 			MODEL Haux(Laux, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
 			Haux.transform_base(Q,false); // PRINT=false
 			
-			SdagS_cc(l/2) = isReal(avg(g.state, Haux.SdagS(0,l+2), g.state));
-			SdagS_ff(l/2) = isReal(avg(g.state, Haux.SdagS(1,l+3), g.state));
-			SdagS_cf(l/2) = isReal(avg(g.state, Haux.SdagS(0,l+3), g.state));
-			SdagS_fc(l/2) = isReal(avg(g.state, Haux.SdagS(1,l+2), g.state));
-			nn_cc(l/2) = isReal(avg(g.state, Haux.nn(0,l+2), g.state));
-			nn_ff(l/2) = isReal(avg(g.state, Haux.nn(1,l+3), g.state));
-			nn_cf(l/2) = isReal(avg(g.state, Haux.nn(0,l+3), g.state));
-			nn_fc(l/2) = isReal(avg(g.state, Haux.nn(1,l+2), g.state));
+			SdagS_cc(l/2) = isReal(avg(g.state, Haux.SdagS(0,l), g.state));
+			SdagS_ff(l/2) = isReal(avg(g.state, Haux.SdagS(1,l+1), g.state));
+			SdagS_cf(l/2) = isReal(avg(g.state, Haux.SdagS(0,l+1), g.state));
+			SdagS_fc(l/2) = isReal(avg(g.state, Haux.SdagS(1,l), g.state));
+			
+			nn_cc(l/2) = isReal(avg(g.state, Haux.nn(0,l), g.state));
+			nn_ff(l/2) = isReal(avg(g.state, Haux.nn(1,l+1), g.state));
+			nn_cf(l/2) = isReal(avg(g.state, Haux.nn(0,l+1), g.state));
+			nn_fc(l/2) = isReal(avg(g.state, Haux.nn(1,l), g.state));
+		}
+		
+		#pragma omp parallel for
+		for (int l=0; l<100; l+=1)
+		{
+			int Laux=0;
+			while (Laux<l+3) Laux += L;
+			MODEL Haux(Laux, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+			Haux.transform_base(Q,false); // PRINT=false
+			
+			SdagSc(l) = isReal(avg(g.state, Haux.SdagS(0,l), g.state));
+			SdagSf(l) = isReal(avg(g.state, Haux.SdagS(1,l+1), g.state));
 		}
 		
 		lout << "first 10 non-local spin-spin correlations:" << endl;
@@ -331,6 +346,9 @@ int main (int argc, char* argv[])
 		target.save_vector(SdagS_cf,"SdagScf");
 		target.save_vector(SdagS_fc,"SdagSfc");
 		
+		target.save_vector(SdagSf,"SdagSf");
+		target.save_vector(SdagSc,"SdagSc");
+		
 		target.save_vector(nn_cc,"nn_cc");
 		target.save_vector(nn_ff,"nn_ff");
 		target.save_vector(nn_cf,"nn_cf");
@@ -338,6 +356,9 @@ int main (int argc, char* argv[])
 		
 		target.save_scalar(SdagS_loc,"SdagS_loc");
 		target.save_scalar(nn_loc,"nn_loc");
+		
+		target.save_scalar(g.state.calc_Mmax(),"Mmax");
+		target.save_scalar(g.state.calc_fullMmax(),"fullMmax");
 		
 		target.close();
 	}

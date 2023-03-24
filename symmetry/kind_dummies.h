@@ -42,12 +42,12 @@ namespace Sym{
 	
 	struct ChargeZ2
 	{
-		static const KIND name=KIND::Z2;
+		static const KIND name=KIND::Nparity;
 	};
 	
 	struct Momentum
 	{
-		static const KIND name=KIND::k;
+		static const KIND name=KIND::K;
 	};
 
 }//end namespace Sym

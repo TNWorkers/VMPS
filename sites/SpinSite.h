@@ -254,12 +254,12 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr (Symmetry::NO_SPIN_SYM()) {return Symmetry::qvacuum();}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or 
-		              Symmetry::kind()[0] == Sym::KIND::Z2) //return particle number as good quantum number.
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or // particle number
+		              Symmetry::kind()[0] == Sym::KIND::Nparity) // particle number parity
 		{
 			return Symmetry::qvacuum();
 		}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) // magnetization
 		{
 			assert(Sa != SX and Sa != iSY);
 			

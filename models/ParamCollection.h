@@ -869,6 +869,83 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 	return res;
 }
 
+ArrayXXd hopping_fullerene_C40Td (int VARIANT=0, double lambda1=1., double lambda2=1.)
+{
+	int L = 40;
+	ArrayXXd res(L,L); res.setZero();
+	
+	res( 0 , 2 ) = lambda1;
+	res( 0 , 26 ) = lambda1;
+	res( 0 , 1 ) = lambda1;
+	res( 1 , 9 ) = lambda1;
+	res( 1 , 28 ) = lambda1;
+	res( 2 , 3 ) = lambda1;
+	res( 2 , 5 ) = lambda1;
+	res( 3 , 4 ) = lambda1;
+	res( 3 , 15 ) = lambda1;
+	res( 4 , 7 ) = lambda1;
+	res( 4 , 16 ) = lambda1;
+	res( 5 , 6 ) = lambda1;
+	res( 5 , 9 ) = lambda1;
+	res( 6 , 7 ) = lambda1;
+	res( 6 , 10 ) = lambda1;
+	res( 7 , 18 ) = lambda1;
+	res( 8 , 9 ) = lambda1;
+	res( 8 , 12 ) = lambda1;
+	res( 8 , 11 ) = lambda1;
+	res( 10 , 11 ) = lambda1;
+	res( 10 , 37 ) = lambda1;
+	res( 11 , 38 ) = lambda1;
+	res( 12 , 39 ) = lambda1;
+	res( 12 , 29 ) = lambda1;
+	res( 13 , 15 ) = lambda1;
+	res( 13 , 19 ) = lambda1;
+	res( 13 , 14 ) = lambda1;
+	res( 14 , 16 ) = lambda1;
+	res( 14 , 23 ) = lambda1;
+	res( 15 , 26 ) = lambda1;
+	res( 16 , 17 ) = lambda1;
+	res( 17 , 18 ) = lambda1;
+	res( 17 , 21 ) = lambda1;
+	res( 18 , 37 ) = lambda1;
+	res( 19 , 20 ) = lambda1;
+	res( 19 , 24 ) = lambda1;
+	res( 20 , 23 ) = lambda1;
+	res( 20 , 31 ) = lambda1;
+	res( 21 , 22 ) = lambda1;
+	res( 21 , 35 ) = lambda1;
+	res( 22 , 23 ) = lambda1;
+	res( 22 , 32 ) = lambda1;
+	res( 24 , 25 ) = lambda1;
+	res( 24 , 27 ) = lambda1;
+	res( 25 , 26 ) = lambda1;
+	res( 25 , 28 ) = lambda1;
+	res( 27 , 30 ) = lambda1;
+	res( 27 , 31 ) = lambda1;
+	res( 28 , 29 ) = lambda1;
+	res( 29 , 30 ) = lambda1;
+	res( 30 , 34 ) = lambda1;
+	res( 31 , 32 ) = lambda1;
+	res( 32 , 33 ) = lambda1;
+	res( 33 , 34 ) = lambda1;
+	res( 33 , 36 ) = lambda1;
+	res( 34 , 39 ) = lambda1;
+	res( 35 , 37 ) = lambda1;
+	res( 35 , 36 ) = lambda1;
+	res( 36 , 38 ) = lambda1;
+	res( 38 , 39 ) = lambda1;
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	
+	return res;
+}
+
 // reference: PRB 93, 165406 (2016), Appendix C
 ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double lambda2=1.)
 {
@@ -1162,7 +1239,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=35; i<=38; ++i) res(i,i+1) = lambda1;
 		res(35,39) = lambda1;
 	}
-	else if (L==36) // symmetry D_6h
+	else if (L==36) // symmetry D_6h // https://nanotube.msu.edu/fullerene/fullerene.php?C=36
 	{
 		for (int i=0; i<=4; ++i) res(i,i+1) = lambda1;
 		res(0,5) = lambda1;
@@ -1197,7 +1274,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		for (int i=30; i<=34; ++i) res(i,i+1) = lambda1;
 		res(30,35) = lambda1;
 	}
-	else if (L==30)
+	else if (L==30) // symmetry D5h // https://nanotube.msu.edu/fullerene/fullerene.php?C=30
 	{
 		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
 		res(0,4) = lambda1;
@@ -1228,6 +1305,51 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 		
 		for (int i=25; i<=28; ++i) res(i,i+1) = lambda1;
 		res(25,29) = lambda1;
+	}
+	else if (L==28) // symmetry Td // https://nanotube.msu.edu/fullerene/fullerene.php?C=28
+	{
+		res( 0 , 4 ) = lambda1;
+		res( 0 , 20 ) = lambda1;
+		res( 0 , 3 ) = lambda1;
+		res( 1 , 19 ) = lambda1;
+		res( 1 , 17 ) = lambda1;
+		res( 1 , 2 ) = lambda1;
+		res( 2 , 7 ) = lambda1;
+		res( 2 , 3 ) = lambda1;
+		res( 3 , 5 ) = lambda1;
+		res( 4 , 8 ) = lambda1;
+		res( 4 , 6 ) = lambda1;
+		res( 5 , 23 ) = lambda1;
+		res( 5 , 6 ) = lambda1;
+		res( 6 , 14 ) = lambda1;
+		res( 7 , 23 ) = lambda1;
+		res( 7 , 27 ) = lambda1;
+		res( 8 , 11 ) = lambda1;
+		res( 8 , 9 ) = lambda1;
+		res( 9 , 20 ) = lambda1;
+		res( 9 , 10 ) = lambda1;
+		res( 10 , 16 ) = lambda1;
+		res( 10 , 13 ) = lambda1;
+		res( 11 , 14 ) = lambda1;
+		res( 11 , 12 ) = lambda1;
+		res( 12 , 22 ) = lambda1;
+		res( 12 , 13 ) = lambda1;
+		res( 13 , 18 ) = lambda1;
+		res( 14 , 25 ) = lambda1;
+		res( 15 , 18 ) = lambda1;
+		res( 15 , 16 ) = lambda1;
+		res( 15 , 17 ) = lambda1;
+		res( 16 , 19 ) = lambda1;
+		res( 17 , 27 ) = lambda1;
+		res( 18 , 21 ) = lambda1;
+		res( 19 , 20 ) = lambda1;
+		res( 21 , 22 ) = lambda1;
+		res( 21 , 26 ) = lambda1;
+		res( 22 , 25 ) = lambda1;
+		res( 23 , 24 ) = lambda1;
+		res( 24 , 25 ) = lambda1;
+		res( 24 , 26 ) = lambda1;
+		res( 26 , 27 ) = lambda1;
 	}
 	else if (L==26)
 	{
@@ -1813,7 +1935,7 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 	return res;
 }
 
-ArrayXXd hopping_square (int L, int VARIANT=0, double lambda=1.)
+ArrayXXd hopping_square_plaquette (int L, int VARIANT=0, double lambda=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	

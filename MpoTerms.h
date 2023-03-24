@@ -4519,8 +4519,8 @@ save (std::string filename)
                             ss << "loc=" << loc <<",m=" << m << ",n=" << n << ",t=" << t << ",k'=" << qAux_in_pos << ",k=" << qAux_out_pos;
                             if constexpr(std::is_same<Scalar,std::complex<double>>::value)
                             {
-                                target.save_matrix(bip.block[entry].real(),ss.str()+",Re","W"+powerstring);
-                                target.save_matrix(bip.block[entry].imag(),ss.str()+",Im","W"+powerstring);
+                                target.save_matrix(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>(bip.block[entry].real()), ss.str()+",Re", "W"+powerstring);
+                                target.save_matrix(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>(bip.block[entry].imag()), ss.str()+",Im", "W"+powerstring);
                             }
                             else
                             {
@@ -4560,7 +4560,8 @@ load (std::string filename)
     int stat;
     source.load_scalar(stat,"status");
     status = static_cast<MPO_STATUS::OPTION>(stat);
-    source.load_char("Label",label);
+    //source.load_char("Label",label); // old HDF5Interface
+    source.load_char(label,"Label");
     
     status = MPO_STATUS::FINALIZED;
     

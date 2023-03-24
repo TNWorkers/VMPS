@@ -258,8 +258,11 @@ map<string,int> make_Lmap()
 	m["C20"] = 20; // =dodecahedron P20
 	m["C24"] = 24;
 	m["C26"] = 26;
+	m["C28"] = 28;
 	m["C30"] = 30;
+	m["C36"] = 36;
 	m["C40"] = 40;
+	m["C40T"] = 40;
 	m["C60"] = 60;
 	// Archimedean solids:
 	m["ATT"] = 12; // truncated tetrahedron
@@ -625,7 +628,14 @@ int main (int argc, char* argv[])
 	}
 	else if (MOL.at(0)=='C')
 	{
-		hopping = J*hopping_fullerene(L,VARIANT);
+		if (MOL == "C40T")
+		{
+			hopping = hopping_fullerene_C40Td(VARIANT);
+		}
+		else
+		{
+			hopping = J*hopping_fullerene(L,VARIANT);
+		}
 	}
 	else if (MOL.at(0)=='T')
 	{
@@ -633,7 +643,7 @@ int main (int argc, char* argv[])
 	}
 	else if (MOL.at(0)=='S' and MOL.at(1)=='Q' and MOL.at(2)=='R')
 	{
-		hopping = J*hopping_square(L,VARIANT);
+		hopping = J*hopping_square_plaquette(L,VARIANT);
 	}
 	else if (MOL == "Mn32")
 	{
