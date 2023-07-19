@@ -53,7 +53,7 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(), Mpo<Symmetry,Scalar> >::type SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,1.);}
 	template<typename Dummy = Symmetry>
-	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type QdagQ (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	template<typename Dummy = Symmetry>
@@ -90,11 +90,13 @@ public:
 	// Mpo<Symmetry,Scalar> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,fac);};
 	// vector<Mpo<Symmetry,Scalar> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	// ///@}
-
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type S_ky    (vector<complex<double> > phases) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type Sa_ky  (SPINOP_LABEL Sa, vector<complex<double> > phases) const;
 	
 	///@{
 	template<typename Dummy = Symmetry>
@@ -148,9 +150,7 @@ protected:
 	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
 	                          double factor, bool HERMITIAN,
 	                          STRING STR=NOSTRING) const;
-
-	Mpo<Symmetry,complex<double> >
-	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
+	Mpo<Symmetry,complex<double> > make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
 	vector<SpinBase<Symmetry> > B;
 };
@@ -485,11 +485,11 @@ Sdagtot (size_t locy, double factor, int dLphys) const
 template<typename Symmetry, typename Scalar>
 template<typename Dummy>
 typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar>, vector<Mpo<Symmetry,Scalar> > >::type HeisenbergObservables<Symmetry,Scalar>::
-SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	if constexpr (Symmetry::IS_SPIN_SU2())
 	{
-		return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
+		return make_corr(locx1, locx2, locy1, locy2, B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum(), factor*sqrt(3.), PROP::HERMITIAN);
 	}
 	else
 	{

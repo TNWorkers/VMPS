@@ -97,7 +97,7 @@ public:
 const std::map<string,std::any> HeisenbergSU2::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jprimeprime",0.}, {"Jrung",1.},
-	{"R",0.},
+	{"R",0.}, {"Offset",0.},
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -213,7 +213,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		labellist[loc].push_back(Jperp.label);
 		
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a));
+		param1d Offset = P.fill_array1d<double>("Offset", "Offsetorb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Offset.label);
+		
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a,Offset.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)

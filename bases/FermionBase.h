@@ -650,7 +650,7 @@ typename std::enable_if<Dummy::NO_SPIN_SYM(), SiteOperatorQ<Symmetry_,Eigen::Mat
 iSy (std::size_t orbital) const
 {
 	OperatorType out = 0.5 * (Sp(orbital) - Sm(orbital));
-	out.label() = "Sy";
+	out.label() = "iSy";
 	return out;
 }
 

@@ -1698,7 +1698,13 @@ save (string filename, string info, double energy)
 {
 	assert(Boundaries.IS_TRIVIAL());
 	
-	filename+=".h5";
+	std::string append_str = ".h5";
+	size_t pos = filename.rfind(append_str);
+	if (pos == std::string::npos || pos != filename.size() - append_str.size())
+	{
+		filename += append_str;
+	}
+	
 	HDF5Interface target(filename, WRITE);
 	target.create_group("mps");
 	target.create_group("qloc");
@@ -1793,7 +1799,12 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 load (string filename, double &energy)
 {
-	filename+=".h5";
+	std::string append_str = ".h5";
+	size_t pos = filename.rfind(append_str);
+	if (pos == std::string::npos || pos != filename.size() - append_str.size())
+	{
+		filename += append_str;
+	}
 	HDF5Interface source(filename, READ);
 	
 	string eps_svdLabel = "eps_svd";

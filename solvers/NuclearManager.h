@@ -331,7 +331,7 @@ public:
 		labels.resize(Nlev);
 		for (int i=0; i<Nlev; ++i)
 		{
-			source.load_char(make_string("lev",i).c_str(), labels[i]);
+			source.load_char(labels[i], make_string("lev",i));
 		}
 		levelstring = str(labels);
 		

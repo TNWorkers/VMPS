@@ -145,6 +145,532 @@ ArrayXXd hopping_square (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double
 	return res;
 }
 
+// split into batches of Ly for A, and Ly/2 for B (depleted sites)
+void split_kagomeYC_AB (int Lx, int Ly, std::vector<std::vector<int>> &A, std::vector<std::vector<int>> &B)
+{
+	int Nevn = Lx/2;
+	int Nodd = Lx/2;
+	int L = Ly*Nevn+Ly/2*Nodd;
+	
+	vector<int> input(L);
+	for (int j=0; j<L; ++j) input[j] = j;
+	
+	int i = 0;
+	
+	while (i+Ly <= L)
+	{
+		std::vector<int> batchA;
+		std::vector<int> batchB;
+		
+		for (int j=0; j<Ly; j++)
+		{
+			batchA.push_back(input[i+j]);
+		}
+		
+		A.push_back(batchA);
+		i += Ly;
+		
+		if (i + Ly/2 <= L)
+		{
+			for (int j=0; j<Ly/2; j++)
+			{
+				batchB.push_back(input[i+j]);
+			}
+			B.push_back(batchB);
+			i += Ly/2;
+		}
+	}
+}
+
+// split into batches of Ly/2 for A (depleted sites), and Ly for B
+void split_kagomeYC_BAB (int Lx, int Ly, std::vector<std::vector<int>> &A, std::vector<std::vector<int>> &B)
+{
+	int Nevn = Lx/2+1;
+	int Nodd = Lx/2;
+	int L = Ly/2*Nevn+Ly*Nodd;
+	
+	std::vector<int> input(L);
+	for (int j=0; j<L; ++j) input[j] = j;
+	
+	int i = 0;
+	
+	while (i + Ly/2 <= L)
+	{
+		std::vector<int> batchA;
+		
+		for (int j=0; j<Ly/2; j++)
+		{
+			batchA.push_back(input[i+j]);
+		}
+		
+		A.push_back(batchA);
+		i += Ly/2;
+		
+		if (i + Ly <= L)
+		{
+			std::vector<int> batchB;
+			
+			for (int j=0; j<Ly; j++)
+			{
+				batchB.push_back(input[i+j]);
+			}
+			
+			B.push_back(batchB);
+			i += Ly;
+		}
+	}
+}
+
+int find_x_kagomeYC (int index, int L, const std::vector<std::vector<int>> &A, const std::vector<std::vector<int>> &B)
+{
+	//int Nevn = Lx/2;
+	//int Nodd = Lx/2;
+	//int L = Ly*Nevn+Ly/2*Nodd;
+	
+	MatrixXi res(L,3);
+	
+	bool EVN = false;
+	bool ODD = false;
+	int i0 = -1;
+	
+	for (int i=0; i<A.size(); ++i)
+	{
+		auto it = find(A[i].begin(), A[i].end(), index);
+		if (it != A[i].end())
+		{
+			EVN = true;
+			i0 = i;
+			break;
+		}
+	}
+	
+	if (!EVN)
+	{
+		for (int i=0; i<B.size(); ++i)
+		{
+			auto it = find(B[i].begin(), B[i].end(), index);
+			if (it != B[i].end())
+			{
+				ODD = true;
+				i0 = i;
+				break;
+			}
+		}
+	}
+	
+	assert(EVN or ODD);
+	
+	return (EVN)? 2*i0 : 2*i0+1;
+}
+
+ArrayXXd hopping_kagomeYC_AB (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
+{
+	assert(PBCx==false and PBCy==true);
+	
+	int Nevn = Lx/2;
+	int Nodd = Lx/2;
+	int L = Ly*Nevn+Ly/2*Nodd;
+	
+	ArrayXXd res(L,L); res.setZero();
+	
+	vector<vector<int>> i_evn;
+	vector<vector<int>> i_odd;
+	
+	split_kagomeYC_BAB(Lx, Ly, i_evn, i_odd);
+	
+//	lout << "EVN:" << endl;
+//	
+//	for (int i=0; i<i_evn.size(); ++i)
+//	{
+//		for (int j=0; j<i_evn[i].size(); ++j)
+//		{
+//			lout << i_evn[i][j] << endl;
+//		}
+//		lout << "----" << endl;
+//	}
+//	
+//	lout << "ODD:" << endl;
+//	
+//	for (int i=0; i<i_odd.size(); ++i)
+//	{
+//		for (int j=0; j<i_odd[i].size(); ++j)
+//		{
+//			lout << i_odd[i][j] << endl;
+//		}
+//		lout << "----" << endl;
+//	}
+	
+	// vertical
+	for (int x=0; x<i_evn.size(); ++x)
+	for (int i=0; i<i_evn[x].size(); ++i)
+	{
+		int k = i_evn[x][i];
+		int l = i_evn[x][(i+1)%Ly];
+		//lout << "vertical evn bond: " << k << ", " << l << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// horizontal, even x
+	for (int x=0; x<i_evn.size(); ++x)
+	for (int i=1; i<i_evn[x].size(); i+=2)
+	{
+		int k = i_evn[x][i];
+		int l = i_odd[x][(i-1)/2];
+		//lout << "horizontal evn bond: " << k << ", " << l << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// horizontal, odd x
+	for (int x=0; x<i_odd.size()-1; ++x)
+	for (int i=0; i<i_odd[x].size(); i+=1)
+	{
+		int k = i_odd[x][i];
+		int l = i_evn[x+1][2*i+1];
+		//lout << "horizontal odd bond: " << k << ", " << l << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// diagonal, even x
+	for (int x=0; x<i_evn.size(); ++x)
+	for (int i=0; i<i_evn[x].size(); i+=2)
+	{
+		int k = i_evn[x][i];
+		int l = i_odd[x][i/2];
+		//lout << "diagonal evn bond: " << k << ", " << l << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// diagonal, odd x
+	for (int x=0; x<i_odd.size()-1; ++x)
+	for (int i=0; i<i_odd[x].size(); ++i)
+	{
+		int k = i_odd[x][i];
+		int l = i_evn[x+1][(2*i+2)%Ly];
+		//lout << "diagonal odd bond: " << k << ", " << l << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	res += res.transpose().eval();
+	
+	//lout << res << endl;
+	
+	return res;
+}
+
+ArrayXXd hopping_kagomeYC_BAB (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1., bool VERBOSE=false)
+{
+	assert(PBCx==false and PBCy==true);
+	
+	int Nevn = Lx/2+1;
+	int Nodd = Lx/2;
+	int L = Ly/2*Nevn+Ly*Nodd;
+	
+	ArrayXXd res(L,L); res.setZero();
+	
+	vector<vector<int>> i_evn;
+	vector<vector<int>> i_odd;
+	
+	split_kagomeYC_BAB(Lx, Ly, i_evn, i_odd);
+	
+	if (VERBOSE)
+	{
+		lout << "EVN:" << endl;
+		for (int i=0; i<i_evn.size(); ++i)
+		{
+			for (int j=0; j<i_evn[i].size(); ++j)
+			{
+				lout << i_evn[i][j] << endl;
+			}
+			lout << "----" << endl;
+		}
+		
+		lout << "ODD:" << endl;
+		for (int i=0; i<i_odd.size(); ++i)
+		{
+			for (int j=0; j<i_odd[i].size(); ++j)
+			{
+				lout << i_odd[i][j] << endl;
+			}
+			lout << "----" << endl;
+		}
+	}
+	
+	// vertical, odd x
+	for (int x=0; x<i_odd.size(); ++x)
+	for (int i=0; i<i_odd[x].size(); ++i)
+	{
+		int k = i_odd[x][i];
+		int l = i_odd[x][(i+1)%Ly];
+		if (VERBOSE) lout << "vertical odd bond: " << min(k,l) << ", " << max(k,l) << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// horizontal, evn x
+	for (int x=0; x<i_evn.size()-1; ++x)
+	for (int i=0; i<i_evn[x].size(); i+=1)
+	{
+		int k = i_evn[x][i];
+		int l = i_odd[x][2*i+1];
+		if (VERBOSE) lout << "horizontal evn bond: " << min(k,l) << ", " << max(k,l) << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// horizontal, odd x
+	for (int x=0; x<i_odd.size(); ++x)
+	for (int i=1; i<i_odd[x].size(); i+=2)
+	{
+		int k = i_odd[x][i];
+		int l = i_evn[x+1][(i-1)/2];
+		if (VERBOSE) lout << "horizontal odd bond: " << min(k,l) << ", " << max(k,l) << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// diagonal, evn x
+	for (int x=0; x<i_evn.size()-1; ++x)
+	for (int i=0; i<i_evn[x].size(); ++i)
+	{
+		int k = i_evn[x][i];
+		int l = i_odd[x][(2*i+2)%Ly];
+		if (VERBOSE) lout << "diagonal evn bond: " << min(k,l) << ", " << max(k,l) << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	// diagonal, odd x
+	for (int x=0; x<i_odd.size(); ++x)
+	for (int i=0; i<i_odd[x].size(); i+=2)
+	{
+		int k = i_odd[x][i];
+		int l = i_evn[x+1][i/2];
+		if (VERBOSE) lout << "diagonal odd bond: " << min(k,l) << ", " << max(k,l) << endl;
+		res(min(k,l),max(k,l)) = lambda;
+	}
+	
+	res += res.transpose().eval();
+	
+	//lout << res << endl;
+	
+	return res;
+}
+
+void split_kagomeXC (int Lx, int Ly, std::vector<std::vector<int>> &A, std::vector<std::vector<int>> &B, std::vector<std::vector<int>> &C, std::vector<std::vector<int>> &D)
+{
+	int N = Ly/4;
+	int L = N*Lx + N*(Lx/2+1) + N*Lx + N*Lx/2;
+	
+	std::vector<int> input(L);
+	for (int j=0; j<L; ++j) input[j] = j;
+	
+	int currentIndex = 0;
+    while(currentIndex < L)
+    {
+        // Batch of Lx into A
+        vector<int> subA;
+        for(int i=currentIndex; i<currentIndex+Lx && i<L; i++) {
+            subA.push_back(input[i]);
+        }
+        A.push_back(subA);
+        currentIndex += Lx;
+        if(currentIndex >= L) break;
+
+        // Batch of Lx/2+1 into B
+        vector<int> subB;
+        for(int i=currentIndex; i<currentIndex+Lx/2+1 && i<L; i++) {
+            subB.push_back(input[i]);
+        }
+        B.push_back(subB);
+        currentIndex += Lx/2+1;
+        if(currentIndex >= L) break;
+
+        // Another batch of Lx into C
+        vector<int> subC;
+        for(int i=currentIndex; i<currentIndex+Lx && i<L; i++) {
+            subC.push_back(input[i]);
+        }
+        C.push_back(subC);
+        currentIndex += Lx;
+        if(currentIndex >= L) break;
+
+        // Batch of Lx/2 into D
+        vector<int> subD;
+        for(int i=currentIndex; i<currentIndex+Lx/2 && i<L; i++) {
+            subD.push_back(input[i]);
+        }
+        D.push_back(subD);
+        currentIndex += Lx/2;
+    }
+    
+//    for (int i=0; i<Ly/4; ++i)
+//	{
+//		lout << "A:" << endl;
+//		for (int j=0; j<iA[i].size(); ++j)
+//		{
+//			lout << iA[i][j] << ", ";
+//		}
+//		lout << endl;
+//		lout << "B:" << endl;
+//		for (int j=0; j<iB[i].size(); ++j)
+//		{
+//			lout << iB[i][j] << ", ";
+//		}
+//		lout << endl;
+//		lout << "C:" << endl;
+//		for (int j=0; j<iC[i].size(); ++j)
+//		{
+//			lout << iC[i][j] << ", ";
+//		}
+//		lout << endl;
+//		lout << "D:" << endl;
+//		for (int j=0; j<iD[i].size(); ++j)
+//		{
+//			lout << iD[i][j] << ", ";
+//		}
+//		lout << endl;
+//	}
+}
+
+ArrayXXd hopping_kagomeXC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1., bool VERBOSE=false)
+{
+	int N = Ly/4;
+	int L = N*Lx + N*(Lx/2+1) + N*Lx + N*Lx/2;
+	
+	ArrayXXd res(L,L); res.setZero();
+	
+	vector<vector<int>> iA, iB, iC, iD;
+	split_kagomeXC(Lx, Ly, iA, iB, iC, iD);
+	
+	for (int y=0; y<N; ++y)
+	{
+		if (VERBOSE) lout << "y=" << y << endl;
+		
+		// horizontal bonds
+		for (int i=0; i<iA[y].size()-1; ++i)
+		{
+			int k = iA[y][i];
+			int l = iA[y][i+1];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "A-A: " << min(k,l) << ", " << max(k,l) << endl;
+		}
+		for (int i=0; i<iC[y].size()-1; ++i)
+		{
+			int k = iC[y][i];
+			int l = iC[y][i+1];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "C-C: " << min(k,l) << ", " << max(k,l) << endl;
+		}
+		
+		// vertical bonds
+		for (int i=0; i<iA[y].size(); ++i)
+		{
+			if (i==0)
+			{
+				int k = iA[y][0];
+				int l = iB[y][0];
+				res(min(k,l),max(k,l)) = lambda;
+				if (VERBOSE) lout << "A-B first: " << min(k,l) << ", " << max(k,l) << endl;
+			}
+			else if (i==Lx-1)
+			{
+				int k = iA[y][Lx-1];
+				int l = iB[y][Lx/2];
+				res(min(k,l),max(k,l)) = lambda;
+				if (VERBOSE) lout << "A-B last: " << min(k,l) << ", " << max(k,l) << endl;
+			}
+			else
+			{
+				if (i%2==0)
+				{
+					int k = iA[y][i];
+					int l = iB[y][i/2];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "A-B: " << min(k,l) << ", " << max(k,l) << endl;
+				}
+				else
+				{
+					int k = iA[y][i];
+					int l = iB[y][(i+1)/2];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "A-B: " << min(k,l) << ", " << max(k,l) << endl;
+				}
+			}
+		}
+		
+		for (int i=0; i<iB[y].size(); ++i)
+		{
+			if (i==0)
+			{
+				int k = iB[y][0];
+				int l = iC[y][0];
+				res(min(k,l),max(k,l)) = lambda;
+				if (VERBOSE) lout << "B-C first: " << min(k,l) << ", " << max(k,l) << endl;
+			}
+			else if (i==Lx/2)
+			{
+				int k = iB[y][Lx/2];
+				int l = iC[y][Lx-1];
+				res(min(k,l),max(k,l)) = lambda;
+				if (VERBOSE) lout << "B-C last: " << min(k,l) << ", " << max(k,l) << endl;
+			}
+			else
+			{
+				if (i%2==1)
+				{
+					int k = iB[y][i];
+					int l = iC[y][2*i];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "B-C: " << min(k,l) << ", " << max(k,l) << endl;
+					
+					k = iB[y][i];
+					l = iC[y][2*i-1];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "B-C: " << min(k,l) << ", " << max(k,l) << endl;
+				}
+				else
+				{
+					int k = iB[y][i];
+					int l = iC[y][2*i];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "B-C: " << min(k,l) << ", " << max(k,l) << endl;
+					
+					k = iB[y][i];
+					l = iC[y][2*i-1];
+					res(min(k,l),max(k,l)) = lambda;
+					if (VERBOSE) lout << "B-C: " << min(k,l) << ", " << max(k,l) << endl;
+				}
+			}
+		}
+		
+		for (int i=0; i<iD[y].size(); ++i)
+		{
+			int k = iC[y][2*i];
+			int l = iD[y][i];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "C-D: " << min(k,l) << ", " << max(k,l) << endl;
+			
+			k = iC[y][2*i+1];
+			l = iD[y][i];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "C-D: " << min(k,l) << ", " << max(k,l) << endl;
+		}
+		
+		// includes periodic y-bonds
+		for (int i=0; i<iD[y].size(); ++i)
+		{
+			int k = iA[(y+1)%iA.size()][2*i];
+			int l = iD[y][i];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "D-A: " << min(k,l) << ", " << max(k,l) << endl;
+			
+			k = iA[(y+1)%iA.size()][2*i+1];
+			l = iD[y][i];
+			res(min(k,l),max(k,l)) = lambda;
+			if (VERBOSE) lout << "D-A: " << min(k,l) << ", " << max(k,l) << endl;
+		}
+	}
+	
+	res += res.transpose().eval();
+	return res;
+}
+
 ArrayXXd hopping_triangularYC (int Lx, int Ly, bool PBCx=false, bool PBCy=true, double lambda=1.)
 {
 	ArrayXXd res = hopping_square(Lx,Ly,PBCx,PBCy,lambda);
@@ -179,6 +705,45 @@ void add_triangle (int i, int j, int k, ArrayXXd &target, double lambda=1.)
 	target(i,j) = lambda;
 	target(j,k) = lambda;
 	target(i,k) = lambda;
+}
+
+// Leung, Elser PRB 47, 9 (1992)
+ArrayXXd hopping_kagome36d (double lambda=1.)
+{
+	ArrayXXd res(36,36);
+	res.setZero();
+	
+	add_triangle(0,3,4,res,lambda);
+	add_triangle(1,5,6,res,lambda);
+	add_triangle(2,3,7,res,lambda);
+	add_triangle(4,5,8,res,lambda);
+	add_triangle(6,9,21,res,lambda);
+	add_triangle(7,11,12,res,lambda);
+	add_triangle(8,13,14,res,lambda);
+	add_triangle(9,15,16,res,lambda);
+	add_triangle(10,11,17,res,lambda);
+	add_triangle(12,13,18,res,lambda);
+	add_triangle(14,15,19,res,lambda);
+	add_triangle(16,20,31,res,lambda);
+	add_triangle(17,21,22,res,lambda);
+	add_triangle(18,23,24,res,lambda);
+	add_triangle(19,25,26,res,lambda);
+	add_triangle(2,20,27,res,lambda);
+	add_triangle(22,23,28,res,lambda);
+	add_triangle(24,25,29,res,lambda);
+	add_triangle(26,27,30,res,lambda);
+	add_triangle(28,31,32,res,lambda);
+	add_triangle(29,33,35,res,lambda);
+	add_triangle(10,30,35,res,lambda);
+	add_triangle(0,32,33,res,lambda);
+	add_triangle(1,34,35,res,lambda);
+	
+	res += res.transpose().eval();
+	
+	auto res_ = compress_CuthillMcKee(res,true);
+	res = res_;
+	
+	return res;
 }
 
 ArrayXXd triangularFlake (int L, double lambda=1.)
@@ -1935,6 +2500,48 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 	return res;
 }
 
+ArrayXXd hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	assert(L==13 or L==22); // 33, 46, 61
+	// (6+)7+9+11+13
+	
+	if (L==13)
+	{
+		for (int i=0; i<=10; ++i) res(i,i+1) = lambda;
+		res(0,11) = lambda;
+		
+		res(6,12) = lambda;
+		res(2,12) = lambda;
+		res(10,12) = lambda;
+	}
+	else if (L==22)
+	{
+		for (int i=0; i<=16; ++i) res(i,i+1) = lambda;
+		res(0,17) = lambda;
+		
+		res(2,18) = lambda;
+		res(16,18) = lambda;
+		res(4,19) = lambda;
+		res(8,19) = lambda;
+		res(10,20) = lambda;
+		res(14,20) = lambda;
+		res(18,21) = lambda;
+		res(19,21) = lambda;
+		res(20,21) = lambda;
+	}
+	
+	res += res.transpose().eval();
+	
+	cout << "VARIANT=" << VARIANT << endl;
+	if (VARIANT==0)
+	{
+		auto res_ = compress_CuthillMcKee(res,true);
+		res = res_;
+	}
+	return res;
+}
+
 ArrayXXd hopping_square_plaquette (int L, int VARIANT=0, double lambda=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
@@ -2396,7 +3003,7 @@ ArrayXXd hopping_spinChain_T (int L, double JA, double JB, double JpA, double Jp
 	return res;
 }
 
-ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=0., bool PBC=false, bool BABA=false)
+ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=0., double tPPrime=0., bool PBC=false, bool BABA=false)
 {
 	ArrayXXd res(L,L);
 	res.setZero();
@@ -2411,6 +3018,8 @@ ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=
 				
 				if (l%2==0 and l+3<L) res(l,l+3) = tPrime;
 				if (l%2==1 and l+1<L) res(l,l+1) = tPrime;
+				
+				if (l+4<L) res(l,l+4) = tPPrime;
 			}
 		}
 		else
@@ -2440,6 +3049,8 @@ ArrayXXd hopping_ladder (int L, double tPara=1., double tPerp=1., double tPrime=
 			
 			if (l%2==0) res(l,(l+3)%L) = tPrime;
 			if (l%2==1) res(l,(l+1)%L) = tPrime;
+			
+			res(l,(l+4)%L) = tPPrime;
 		}
 	}
 	res += res.transpose().eval();

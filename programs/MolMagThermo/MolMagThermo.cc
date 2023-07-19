@@ -293,6 +293,8 @@ map<string,int> make_Lmap()
 	
 	m["fccPBC64"] = 64;
 	
+	m["kagome36d"] = 36;
+	
 	return m;
 }
 
@@ -630,7 +632,7 @@ int main (int argc, char* argv[])
 	{
 		if (MOL == "C40T")
 		{
-			hopping = hopping_fullerene_C40Td(VARIANT);
+			hopping = J*hopping_fullerene_C40Td(VARIANT);
 		}
 		else
 		{
@@ -681,6 +683,10 @@ int main (int argc, char* argv[])
 			auto res = compress_CuthillMcKee(hopping,true);
 			hopping = res;
 		}
+	}
+	else if (MOL == "kagome36d")
+	{
+		hopping = J*hopping_kagome36d();
 	}
 	else
 	{

@@ -185,7 +185,7 @@ public:
 	 * \param J : \f$J\f$
 	 */
 	template<typename Scalar_>
-	SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const;
+	SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J, const ArrayXd &Offset) const;
 	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), OperatorType>::type HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
@@ -504,7 +504,7 @@ Zero (std::size_t orbital) const
 template<typename Symmetry_, size_t order>
 template<typename Scalar_>
 SiteOperatorQ<Symmetry_, Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Symmetry_,order>::
-HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const
+HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J, const ArrayXd &Offset) const
 {
 	SiteOperatorQ<Symmetry_, Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > Oout(Symmetry::qvacuum(),TensorBasis);
 	
@@ -523,6 +523,11 @@ HeisenbergHamiltonian (const Array<Scalar_,Dynamic,Dynamic> &J) const
 				Oout += 0.5*J(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
 			}
 		}
+	}
+	
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (Offset(i) != 0.) {Oout += Offset(i) * Id(i);}
 	}
 	
 	Oout.label() = "Hloc";

@@ -62,7 +62,9 @@ struct VUMPS
 			constexpr static size_t truncatePeriod             = std::numeric_limits<size_t>::max();
 			constexpr static bool   INIT_TO_HALF_INTEGER_QN    = false;
 			constexpr static char   saveName[]                 = "UmpsBackup";
+			constexpr static bool FULLMMAX_FILENAME            = true;
 			constexpr static bool CALC_S_ON_EXIT               = true;
+			constexpr static bool Niter_before_save            = 100;
 			
 			//DYN DEFAULTS
 			static size_t max_deltaM          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
@@ -94,7 +96,9 @@ struct VUMPS
 			size_t truncatePeriod             = CONTROL::DEFAULT::truncatePeriod;
 			bool   INIT_TO_HALF_INTEGER_QN    = CONTROL::DEFAULT::INIT_TO_HALF_INTEGER_QN;
 			std::string saveName              = std::string(CONTROL::DEFAULT::saveName);
+			bool FULLMMAX_FILENAME            = CONTROL::DEFAULT::FULLMMAX_FILENAME;
 			bool CALC_S_ON_EXIT               = CONTROL::DEFAULT::CALC_S_ON_EXIT;
+			int Niter_before_save             = CONTROL::DEFAULT::Niter_before_save;
 		};
 		
 		struct DYN

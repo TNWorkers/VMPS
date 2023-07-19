@@ -272,6 +272,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		labellist[loc].push_back(Uph.label);
 		labellist[loc].push_back(t0.label);
 		labellist[loc].push_back(mu.label);
+		labellist[loc].push_back(Bz.label);
 		labellist[loc].push_back(tperp.label);
 		labellist[loc].push_back(Vperp.label);
 		labellist[loc].push_back(Vzperp.label);

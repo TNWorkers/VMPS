@@ -49,6 +49,11 @@ public:
 	
 	PeierlsHubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
+	template<typename Symmetry_>
+	static void add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
+	                           PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>> &pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
+	
 	static qarray<1> singlet (int N=0) {return qarray<1>{N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	static constexpr int spinfac = 2;
@@ -66,7 +71,7 @@ const map<string,any> PeierlsHubbardU1::defaults =
 	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"Vxy",0.}, {"Vz",0.},
-	{"Bz",0.}, {"Bx",0.}, 
+	{"Bz",0.}, {"Bx",0.}, {"By",0.},
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
 	{"REMOVE_DOUBLE",false}, {"REMOVE_EMPTY",false}, {"REMOVE_UP",false}, {"REMOVE_DN",false}, {"mfactor",1}, {"k",1},
@@ -104,11 +109,41 @@ PeierlsHubbardU1 (const size_t &L, const vector<Param> &params, const BC &bounda
 	PushType<SiteOperator<Symmetry,complex<double>>,complex<double>> pushlist;
 	std::vector<std::vector<std::string>> labellist;
 	PeierlsHubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
+	add_operators(F, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
 	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 	
 	this->precalc_TwoSiteData();
+}
+
+template<typename Symmetry_>
+void PeierlsHubbardU1::
+add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>> &pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+{
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = F.size();
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		std::size_t lp1 = (loc+1)%N_sites;
+		std::size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals = F[loc].orbitals();
+		std::size_t next_orbitals = F[lp1].orbitals();
+		std::size_t nextn_orbitals = F[lp2].orbitals();
+		
+		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Bx.label);
+		auto H_Bx = F[loc].template coupling_Bx<complex<double>,Symmetry>(Bx.a);
+		
+		param1d By = P.fill_array1d<double>("By", "Byorb", orbitals, loc%Lcell);
+		labellist[loc].push_back(By.label);
+		auto H_By = F[loc].coupling_By(By.a); // already complex
+		
+		auto Hloc = Mpo<Symmetry_,complex<double>>::get_N_site_interaction(H_Bx+H_By);
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.+0.i));
+	}
 }
 
 } // end namespace VMPS::models

@@ -2954,7 +2954,7 @@ scale (const Scalar factor, const Scalar offset, const std::size_t power, const 
             }
         }
     }
-    if(std::abs(offset) > tolerance)
+    if (std::abs(offset) > tolerance)
     {
         //bool sign_offset = (offset < 0. ? true : false);
         //cout << boolalpha << "sign_offset=" << sign_offset << endl;
@@ -3039,7 +3039,7 @@ scale (const Scalar factor, const Scalar offset, const std::size_t power, const 
             }
         }
     }
-		
+	
 	if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
 	{
 		std::stringstream new_name;

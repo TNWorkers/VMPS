@@ -63,6 +63,9 @@ public:
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
 	
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
+	
 //	template<typename Dummy = Symmetry>
 //	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
@@ -822,6 +825,25 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) co
 	}
 }
 
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
+cdagc (SPIN_INDEX sigma1, SPIN_INDEX sigma2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
+{
+	if constexpr (Dummy::ABELIAN)
+	{
+		auto Qtot = Symmetry::reduceSilent(F[locx1].cdag(sigma1,locy1).Q(), F[locx2].c(sigma2,locy2).Q())[0];
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,locy1), F[locx2].c(sigma2,locy2), Qtot, 1.*factor, PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+	else
+	{
+		assert(locy1==0 and locy2==0);
+		SUB_LATTICE Gx1y1 = G[locx1]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx1+locy1)));
+		SUB_LATTICE Gx2y2 = G[locx2]; //static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,locx2+locy2)));
+		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma1,Gx1y1,locy1), F[locx2].c(sigma2,Gx2y2,locy2), Symmetry::qvacuum(), std::sqrt(2.)*factor, PROP::FERMIONIC, PROP::NON_HERMITIAN);
+	}
+}
+
 //template<typename Symmetry, typename Scalar>
 //template<typename Dummy>
 //typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type HubbardObservables<Symmetry,Scalar>::
@@ -1415,7 +1437,7 @@ Scomptot (SPINOP_LABEL Sa, size_t locy, double factor, int dLphys) const
 	vector<Scalar> factors(F.size());
 	for (int l=0; l<F.size(); ++l)
 	{
-		Ops[l] = F[l].Scomp(Sa,locy).template cast<Scalar>();
+		Ops[l] = F[l].Scomp(Sa,locy);
 		factors[l] = 0.;
 	}
 	for (int l=0; l<F.size(); l+=dLphys)

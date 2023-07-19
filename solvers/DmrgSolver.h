@@ -1088,7 +1088,7 @@ iteration_zero (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> 
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
-		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+		lout << Vout.state.test_ortho() << ", E=" << g.energy << endl;
 	}
 	
 	Vout.energy = g.energy;
@@ -1206,7 +1206,8 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
-		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+		lout << Vout.state.test_ortho() << ", E=" << g.energy << endl;
+		lout << "DmrgSolver.mem=" << round(memory(GB),3) << "GB" << ", Vout.mem=" << round(Vout.state.memory(GB),3) << "GB" << endl;
 	}
 	
 	Vout.energy = g.energy;
@@ -1339,7 +1340,8 @@ iteration_two (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
-		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+		lout << Vout.state.test_ortho() << ", E=" << g.energy << endl;
+		lout << "DmrgSolver.mem=" << round(memory(GB),3) << "GB" << ", Vout.mem=" << round(Vout.state.memory(GB),3) << "GB" << endl;
 	}
 	
 	Vout.energy = g.energy;

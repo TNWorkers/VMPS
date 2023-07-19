@@ -1126,12 +1126,13 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		                    DynParam.max_deltaM(N_iterations));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 		{
-			cout << "Nsv=" << current_M 
+			lout << termcolor::blue
+			     << "Nsv=" << current_M 
 			     << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) 
 			     << ", abs=" << DynParam.Mincr_abs(N_iterations) 
 			     << ", lim=" << DynParam.max_deltaM(N_iterations) 
 			     << ", deltaM=" << deltaM 
-			     << endl;
+			     << termcolor::reset << endl;
 		}
 		
 		//make sure to perform at least one measurement before expanding the basis
@@ -1145,7 +1146,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << termcolor::bold << "performing expansion with " << expand_option << termcolor::reset << endl;
+			lout << termcolor::blue << "performing expansion with " << expand_option << termcolor::reset << endl;
 		}
 		expand_basis2(deltaM, H, Vout, expand_option);
 		t_exp = ExpansionTimer.time();
@@ -1166,7 +1167,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	Stopwatch<> OptimizationTimer;
 	// See Algorithm 4
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
-	#pragma omp parallel for
+	#pragma omp parallel for schedule(dynamic)
 	#endif
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -1175,7 +1176,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 			
 		Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
 		Eigenstate<PivotVector<Symmetry,Scalar> > gC;
-			
+		
 		// Solve for AC
 		gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
 		
@@ -1201,14 +1202,14 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 				lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
 			}
 		}
-			
+		
 		// Solve for C
 		gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
-			
+		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lucy(LanczosParam.REORTHO);
 		Lucy.set_dimK(min(LanczosParam.dimK, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-			
+		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
 			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
@@ -1227,7 +1228,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 				lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << gC.energy/Vout.energy << endl;
 			}
 		}
-			
+		
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
 		Vout.state.C[l] = gC.state.data[0];
 	}
@@ -1373,7 +1374,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	{
 		// make sure to perform at least one measurement before expanding the basis
 		FORCE_DO_SOMETHING = true;
-		lout << termcolor::bold << "Performing a measurement for N_iterations=" << N_iterations << termcolor::reset << endl;
+		lout << termcolor::blue << "Performing a measurement for N_iterations=" << N_iterations << termcolor::reset << endl;
 		DynParam.doSomething(N_iterations);
 		FORCE_DO_SOMETHING = false;
 		
@@ -1383,12 +1384,13 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		                    DynParam.max_deltaM(N_iterations));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 		{
-			lout << "Nsv=" << current_M 
+			lout << termcolor::blue
+			     << "Nsv=" << current_M 
 			     << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) 
 			     << ", abs=" << DynParam.Mincr_abs(N_iterations) 
 			     << ", lim=" << DynParam.max_deltaM(N_iterations) 
 			     << ", deltaM=" << deltaM 
-			     << endl;
+			     << termcolor::reset << endl;
 		}
 		
 		if (Vout.state.calc_Mmax()+deltaM >= GlobParam.Mlimit) {deltaM = GlobParam.Mlimit-Vout.state.calc_Mmax();}
@@ -1398,7 +1400,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		VUMPS::TWOSITE_A::OPTION expand_option = VUMPS::TWOSITE_A::ALxCxAR; //static_cast<VUMPS::TWOSITE_A::OPTION>(threadSafeRandUniform<int,int>(0,2));
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << termcolor::bold << "performing expansion with " << expand_option << termcolor::reset << endl;
+			lout << termcolor::blue << "performing expansion with " << expand_option << termcolor::reset << endl;
 		}
 		expand_basis2(deltaM, H, Vout, expand_option);
 		t_exp = ExpansionTimer.time();
@@ -1848,9 +1850,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		
 		write_log();
 		#ifdef USE_HDF5_STORAGE
-		if (GlobParam.savePeriod != 0 and N_iterations%GlobParam.savePeriod == 0)
+		if (GlobParam.savePeriod != 0 and N_iterations%GlobParam.savePeriod == 0 and N_iterations>GlobParam.Niter_before_save)
 		{
-			string filename = make_string(GlobParam.saveName,"_fullMmax=",Vout.state.calc_fullMmax());
+			string filename = GlobParam.saveName;
+			if (GlobParam.FULLMMAX_FILENAME) filename += make_string("_fullMmax=",Vout.state.calc_fullMmax());
 			lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
 			Vout.state.save(filename,H.info());
 		}
@@ -1922,8 +1925,12 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
 	GMResSolver<MpoTransferMatrix<Symmetry,Scalar>,MpoTransferVector<Symmetry,Scalar> > Gimli;
 	
 	Gimli.set_dimK(min(static_cast<size_t>(LINEARSOLVER_DIMK),dim(bvec)));
+	if (dim(bvec) == 1)
+	{
+		lout << termcolor::yellow << "dim(bvec)=" << dim(bvec) << termcolor::reset << endl;
+	}
 	MpoTransferVector<Symmetry,Scalar> LRres_tmp;
-	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-11, true);
+	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-10, true);
 	LRres = LRres_tmp.data;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1956,6 +1963,10 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
 	Gimli.set_dimK(min(static_cast<size_t>(LINEARSOLVER_DIMK),dim(bvec)));
+	if (dim(bvec) == 1)
+	{
+		lout << termcolor::yellow << "dim(bvec)=" << dim(bvec) << termcolor::reset << endl;
+	}
 	TransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data;

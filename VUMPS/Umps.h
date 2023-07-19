@@ -158,14 +158,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename, string info="none", double energy=std::nan("1"));
+	void save (string filename, string info="none", double energy=std::nan("1"), double err_var=std::nan("1"), double err_state=std::nan("1"));
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename, double &energy=dump_Mps);
+	void load (string filename, double &energy=dump_Mps, double &err_var=dump_Mps, double &err_state=dump_Mps);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -2046,7 +2046,7 @@ adjustQN (const size_t number_cells)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-save (string filename, string info, double energy)
+save (string filename, string info, double energy, double err_var, double err_state)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
@@ -2061,6 +2061,14 @@ save (string filename, string info, double energy)
 	if (!isnan(energy))
 	{
 		target.save_scalar(energy,"energy");
+	}
+	if (!isnan(err_var))
+	{
+		target.save_scalar(err_var,"err_var");
+	}
+	if (!isnan(err_state))
+	{
+		target.save_scalar(err_state,"err_state");
 	}
 	target.save_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
@@ -2156,7 +2164,7 @@ save (string filename, string info, double energy)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-load (string filename, double &energy)
+load (string filename, double &energy, double &err_var, double &err_state)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
@@ -2165,6 +2173,14 @@ load (string filename, double &energy)
 	if (source.CHECK("energy"))
 	{
 		source.load_scalar(energy,"energy");
+	}
+	if (source.CHECK("err_var"))
+	{
+		source.load_scalar(energy,"err_var");
+	}
+	if (source.CHECK("err_state"))
+	{
+		source.load_scalar(energy,"err_state");
 	}
 	source.load_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
