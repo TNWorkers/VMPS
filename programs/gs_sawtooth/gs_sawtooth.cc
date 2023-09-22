@@ -135,7 +135,6 @@ int main (int argc, char* argv[])
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
-	omp_set_nested(1);
 	lout << "threads=" << omp_get_max_threads() << endl;
 	#else
 	lout << "not parallelized" << endl;

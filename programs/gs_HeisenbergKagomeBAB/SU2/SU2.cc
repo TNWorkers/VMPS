@@ -13,6 +13,8 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+#include <filesystem>
+#include <boost/asio/ip/host_name.hpp>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -48,5 +50,6 @@ typedef Mpo<MODEL::Symmetry,MODEL::Scalar_> OPERATOR;
 
 #include "DmrgLinearAlgebra.h"
 #include "SaveData.h"
+#include "EigenFiles.h"
 
 #include "../gs_HeisenbergKagomeBAB.cc"

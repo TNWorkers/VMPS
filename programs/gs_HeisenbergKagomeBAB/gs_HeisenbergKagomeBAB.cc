@@ -29,14 +29,41 @@ OPERATOR Projector (int i, int j)
 	return Mout;
 }
 
+int Lx, Ly;
+
+void save_bonds (const vector<std::pair<int,int>> &bonds0, const vector<std::pair<int,int>> &bondsp, const vector<std::pair<int,int>> &bondsm, string label)
+{
+	MatrixXi M(bonds0.size()+bondsp.size()+bondsm.size(),3);
+	for (int b=0; b<bonds0.size(); ++b)
+	{
+		M(b,0) = bonds0[b].first;
+		M(b,1) = bonds0[b].second;
+		M(b,2) = 0;
+	}
+	for (int b=0; b<bondsp.size(); ++b)
+	{
+		M(bonds0.size()+b,0) = bondsp[b].first;
+		M(bonds0.size()+b,1) = bondsp[b].second;
+		M(bonds0.size()+b,2) = 1;
+	}
+	for (int b=0; b<bondsm.size(); ++b)
+	{
+		M(bonds0.size()+bondsp.size()+b,0) = bondsm[b].first;
+		M(bonds0.size()+bondsp.size()+b,1) = bondsm[b].second;
+		M(bonds0.size()+bondsp.size()+b,2) = -1;
+	}
+	saveMatrix(M,make_string("C_Lx=",Lx,"_Ly=",Ly,"_label=",label,".dat"));
+}
+
 ////////////////////////////////
 int main (int argc, char* argv[])
 {
+	lout << boost::asio::ip::host_name() << endl;
 	ArgParser args(argc,argv);
 	
-	int Lx = args.get<int>("Lx",11);
+	Lx = args.get<int>("Lx",11);
 	assert(Lx%2==1);
-	int Ly = args.get<int>("Ly",4);
+	Ly = args.get<int>("Ly",4);
 	int S = args.get<int>("S",0);
 	int M = args.get<int>("M",0);
 	double F = args.get<double>("F",0.);
@@ -50,12 +77,13 @@ int main (int argc, char* argv[])
 	lout << "Q=" << Q << endl;
 	
 	double J = args.get<double>("J",1.);
-	double Jprime = args.get<double>("Jprime",Jprime);
+	double Jprime = args.get<double>("Jprime",0.);
 	D = args.get<size_t>("D",2ul);
 	
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	bool CALC_VAR = args.get<bool>("CALC_VAR",true);
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
+	bool CALC_CTOT = args.get<bool>("CALC_CTOT",true);
 	bool CALC_GS = args.get<bool>("CALC_GS",true);
 	
 	size_t Mlimit = args.get<size_t>("Mlimit",1000ul);
@@ -81,12 +109,13 @@ int main (int argc, char* argv[])
 			boost::split(parsed_vals, parsed_params[i], [](char c){return c == '=';});
 			for (int j=0; j<parsed_vals.size(); ++j)
 			{
-				if (parsed_vals[j] == "Mlimit")
-				{
-					Mlimit = boost::lexical_cast<int>(parsed_vals[j+1]);
-					lout << "extracted: Mlimit=" << Mlimit << endl;
-				}
-				else if (parsed_vals[j] == "Lx")
+				//if (parsed_vals[j] == "Mlimit")
+				//{
+				//	Mlimit = boost::lexical_cast<int>(parsed_vals[j+1]);
+				//	lout << "extracted: Mlimit=" << Mlimit << endl;
+				//}
+				// else if
+				if (parsed_vals[j] == "Lx")
 				{
 					Lx = boost::lexical_cast<int>(parsed_vals[j+1]);
 					lout << "extracted: Lx=" << Lx << endl;
@@ -147,6 +176,7 @@ int main (int argc, char* argv[])
 	GlobParam.CALC_S_ON_EXIT = false;
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",2ul);
 	GlobParam.saveName = args.get<string>("saveName",statefile);
+	GlobParam.INITDIR = static_cast<DMRG::DIRECTION::OPTION>(args.get<int>("INITDIR",1)); // 1=left->right, 0=right->left
 	//GlobParam.FULLMMAX_FILENAME = FULLMMAX_FILENAME;
 	
 	DMRG::CONTROL::DYN  DynParam;
@@ -161,7 +191,7 @@ int main (int argc, char* argv[])
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
 	size_t end_2site = args.get<size_t>("end_2site",4ul);
-	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
@@ -206,120 +236,384 @@ int main (int argc, char* argv[])
 //	}
 	
 	SaveData obs;
-	obs.add_scalars({"E", "e", "var", "em", "Mlimit", "fullMmax"});
+	obs.add_scalars({"E", "e", "var", "em", "Mlimit", "fullMmax", "Ctot"});
 	obs.add_matrices(L, L, {"SdagS"});
 	obs.add_strings({"history"});
 	
 	H = MODEL(L,params);
 	lout << H.info() << endl;
 	
+	OPERATOR Field;
+	
 	///////////////////////////////////////////
 	/////////// chiral correlations ///////////
-	vector<std::pair<int,int>> bond1_diag, bond1_vert, bond1_horiz;
 	
-	// diagonal, evn x
-	for (int x=0; x<i_evn.size()-1; ++x)
-	for (int i=0; i<i_evn[x].size(); ++i)
+	if (CALC_CTOT or abs(F)!=0.)
 	{
-		int k = i_evn[x][i];
-		int l = i_odd[x][(2*i+2)%Ly];
-		if (VERBOSE) lout << "diagonal1 evn bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond1_diag.push_back(b);
-	}
-	
-	// vertical, odd x
-	for (int x=0; x<i_odd.size(); ++x)
-	for (int i=0; i<i_odd[x].size(); i+=2)
-	{
-		int k = i_odd[x][i];
-		int l = i_odd[x][(i+1)%Ly];
-		if (VERBOSE) lout << "vertical1 odd bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond1_vert.push_back(b);
-	}
-	
-	// horizontal, odd x
-	for (int x=0; x<i_odd.size(); ++x)
-	for (int i=1; i<i_odd[x].size(); i+=2)
-	{
-		int k = i_odd[x][i];
-		int l = i_evn[x+1][(i-1)/2];
-		if (VERBOSE) lout << "horizontal1 odd bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond1_horiz.push_back(b);
-	}
-	lout << endl;
-	
-	obs.add_vectors(bond1_horiz.size(), {"C"});
-	
-	vector<std::pair<int,int>> bond2_horiz, bond2_diag, bond2_vert;
-	
-	// diagonal, odd x
-	for (int x=0; x<i_odd.size(); ++x)
-	for (int i=0; i<i_odd[x].size(); i+=2)
-	{
-		int k = i_odd[x][i];
-		int l = i_evn[x+1][i/2];
-		if (VERBOSE) lout << "diagonal2 odd bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond2_diag.push_back(b);
-	}
-	
-	// horizontal, evn x
-	for (int x=0; x<i_evn.size()-1; ++x)
-	for (int i=0; i<i_evn[x].size(); i+=1)
-	{
-		int k = i_evn[x][i];
-		int l = i_odd[x][2*i+1];
-		if (VERBOSE) lout << "horizontal2 evn bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond2_horiz.push_back(b);
-	}
-	
-	// vertical, odd x
-	for (int x=0; x<i_odd.size(); ++x)
-	for (int i=1; i<i_odd[x].size(); i+=2)
-	{
-		int k = i_odd[x][i];
-		int l = i_odd[x][(i+1)%Ly];
-		if (VERBOSE) lout << "vertical2 odd bond: " << min(k,l) << ", " << max(k,l) << endl;
-		pair<int,int> b(min(k,l),max(k,l));
-		bond2_vert.push_back(b);
-	}
-	
-	////
-	
-	OPERATOR Field;
-	for (int b=0; b<Ly/2; ++b)
-	{
-		lout << "b=" << b << endl;
-		int inew, jnew;
+		//======== Odd y on odd x ========
+		if (VERBOSE) lout << endl << "======== Odd y on odd x ========" << endl;
 		
-		inew = CMK.get_transform()[bond1_diag[b].first];
-		jnew = CMK.get_transform()[bond1_diag[b].second];
-		OPERATOR Pdiag = Projector(inew,jnew);
+		vector<std::pair<int,int>> bondOddOdd1_opp, bondOddOdd1_p, bondOddOdd1_m;
 		
-		inew = CMK.get_transform()[bond1_vert[b].first];
-		jnew = CMK.get_transform()[bond1_vert[b].second];
-		OPERATOR Pvert = Projector(inew,jnew);
-		
-		inew = CMK.get_transform()[bond1_horiz[b].first];
-		jnew = CMK.get_transform()[bond1_horiz[b].second];
-		OPERATOR Phoriz = Projector(inew,jnew);
-		
-		OPERATOR Term = diff(prod(Pdiag,Pvert),prod(Pdiag,Phoriz));
-		
-		if (b==0)
+		// diagonal, evn x
+		for (int x=0; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); ++i)
 		{
-			Field = Term;
+			int k = i_evn[x][i];
+			int l = i_odd[x][(2*i+2)%Ly];
+			if (VERBOSE) lout << "diagonal1 evn bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd1_opp.push_back(b);
 		}
-		else
+		
+		// vertical, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=0; i<i_odd[x].size(); i+=2)
 		{
+			int k = i_odd[x][i];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical1 odd bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd1_p.push_back(b);
+		}
+		
+		// horizontal, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=1; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_evn[x+1][(i-1)/2];
+			if (VERBOSE) lout << "horizontal1 odd bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd1_m.push_back(b);
+		}
+		if (VERBOSE) lout << endl;
+		
+		vector<std::pair<int,int>> bondOddOdd2_opp, bondOddOdd2_p, bondOddOdd2_m;
+		
+		// diagonal, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=0; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_evn[x+1][i/2];
+			if (VERBOSE) lout << "diagonal2 odd bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd2_opp.push_back(b);
+		}
+		
+		// vertical, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=1; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical2 odd bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd2_p.push_back(b);
+		}
+		
+		// horizontal, evn x
+		for (int x=0; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); i+=1)
+		{
+			int k = i_evn[x][i];
+			int l = i_odd[x][2*i+1];
+			if (VERBOSE) lout << "horizontal2 evn bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddOdd2_m.push_back(b);
+		}
+		
+		//======== Evn y on odd x ========
+		if (VERBOSE) lout << endl << "======== Evn y on odd x ========" << endl;
+		
+		vector<std::pair<int,int>> bondOddEvn1_opp, bondOddEvn1_p, bondOddEvn1_m;
+		
+		// horizontal, evn x
+		for (int x=0; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); i+=1)
+		{
+			int k = i_evn[x][i];
+			int l = i_odd[x][2*i+1];
+			if (VERBOSE) lout << "horizontal1 evn bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn1_opp.push_back(b);
+		}
+		
+		// diagonal, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=2; i<i_odd[x].size()+2; i+=2)
+		{
+			int k = i_odd[x][i%Ly];
+			int l = i_evn[x+1][(i/2)%(Ly/2)];
+			if (VERBOSE) lout << "diagonal1 odd bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn1_p.push_back(b);
+		}
+		
+		// vertical, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=2; i<i_odd[x].size()+2; i+=2)
+		{
+			int k = i_odd[x][i%Ly];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical1 odd bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn1_m.push_back(b);
+		}
+		if (VERBOSE) lout << endl;
+		
+		vector<std::pair<int,int>> bondOddEvn2_opp, bondOddEvn2_p, bondOddEvn2_m;
+		
+		// horizontal, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=3; i<i_odd[x].size()+3; i+=2)
+		{
+			int k = i_odd[x][i%Ly];
+			int l = i_evn[x+1][((i-1)/2)%(Ly/2)];
+			if (VERBOSE) lout << "horizontal2 odd bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn2_opp.push_back(b);
+		}
+		
+		// diagonal, evn x
+		for (int x=0; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); ++i)
+		{
+			int k = i_evn[x][i];
+			int l = i_odd[x][(2*i+2)%Ly];
+			if (VERBOSE) lout << "diagonal2 evn bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn2_p.push_back(b);
+		}
+		
+		// vertical, odd x
+		for (int x=0; x<i_odd.size(); ++x)
+		for (int i=1; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical2 odd bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondOddEvn2_m.push_back(b);
+		}
+		
+		//======== Evn x ========
+		if (VERBOSE) lout << endl << "======== Evn x ========" << endl;
+		
+		vector<std::pair<int,int>> bondEvn1_opp, bondEvn1_p, bondEvn1_m;
+		
+		// vertical, odd x
+		for (int x=0; x<i_odd.size()-1; ++x)
+		for (int i=0; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical1 odd bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn1_opp.push_back(b);
+		}
+		
+		// horizontal, evn x
+		for (int x=1; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); i+=1)
+		{
+			int k = i_evn[x][i];
+			int l = i_odd[x][2*i+1];
+			if (VERBOSE) lout << "horizontal1 evn bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn1_p.push_back(b);
+		}
+		
+		// diagonal, evn x
+		for (int x=1; x<i_evn.size()-1; ++x)
+		for (int i=0; i<i_evn[x].size(); ++i)
+		{
+			int k = i_evn[x][i];
+			int l = i_odd[x][(2*i+2)%Ly];
+			if (VERBOSE) lout << "diagonal1 evn bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn1_m.push_back(b);
+		}
+		lout << endl;
+		
+		vector<std::pair<int,int>> bondEvn2_opp, bondEvn2_p, bondEvn2_m;
+		
+		// vertical, odd x
+		for (int x=1; x<i_odd.size(); ++x)
+		for (int i=1; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_odd[x][(i+1)%Ly];
+			if (VERBOSE) lout << "vertical2 odd bond (opp): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn2_opp.push_back(b);
+		}
+		
+		// horizontal, odd x
+		for (int x=0; x<i_odd.size()-1; ++x)
+		for (int i=1; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_evn[x+1][(i-1)/2];
+			if (VERBOSE) lout << "horizontal2 odd bond (+): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn2_p.push_back(b);
+		}
+		
+		// diagonal, odd x
+		for (int x=0; x<i_odd.size()-1; ++x)
+		for (int i=0; i<i_odd[x].size(); i+=2)
+		{
+			int k = i_odd[x][i];
+			int l = i_evn[x+1][i/2];
+			if (VERBOSE) lout << "diagonal2 odd bond (-): " << min(k,l) << ", " << max(k,l) << endl;
+			pair<int,int> b(min(k,l),max(k,l));
+			bondEvn2_m.push_back(b);
+		}
+		
+		bool SAVE_BONDS = args.get<bool>("SAVE_BONDS",false);
+		if (SAVE_BONDS)
+		{
+			save_bonds(bondOddOdd1_opp, bondOddOdd1_p, bondOddOdd1_m,"bondOddOdd1");
+			save_bonds(bondOddOdd2_opp, bondOddOdd2_p, bondOddOdd2_m,"bondOddOdd2");
+			save_bonds(bondOddEvn1_opp, bondOddEvn1_p, bondOddEvn1_m,"bondOddEvn1");
+			save_bonds(bondOddEvn2_opp, bondOddEvn2_p, bondOddEvn2_m,"bondOddEvn2");
+			save_bonds(bondEvn1_opp, bondEvn1_p, bondEvn1_m,"bondEvn1");
+			save_bonds(bondEvn2_opp, bondEvn2_p, bondEvn2_m,"bondEvn2");
+		}
+		
+		////
+		
+		for (int b=0; b<bondOddOdd1_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondOddOdd1_opp[b].first];
+			jnew = CMK.get_transform()[bondOddOdd1_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddOdd1_p[b].first];
+			jnew = CMK.get_transform()[bondOddOdd1_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddOdd1_m[b].first];
+			jnew = CMK.get_transform()[bondOddOdd1_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
+			if (b==0)
+			{
+				Field = Term;
+			}
+			else
+			{
+				Field = sum(Field,Term);
+			}
+		}
+		for (int b=0; b<bondOddOdd2_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondOddOdd2_opp[b].first];
+			jnew = CMK.get_transform()[bondOddOdd2_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddOdd2_p[b].first];
+			jnew = CMK.get_transform()[bondOddOdd2_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddOdd2_m[b].first];
+			jnew = CMK.get_transform()[bondOddOdd2_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
 			Field = sum(Field,Term);
 		}
+		for (int b=0; b<bondOddEvn1_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondOddEvn1_opp[b].first];
+			jnew = CMK.get_transform()[bondOddEvn1_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddEvn1_p[b].first];
+			jnew = CMK.get_transform()[bondOddEvn1_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddEvn1_m[b].first];
+			jnew = CMK.get_transform()[bondOddEvn1_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
+			Field = sum(Field,Term);
+		}
+		for (int b=0; b<bondOddEvn2_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondOddEvn2_opp[b].first];
+			jnew = CMK.get_transform()[bondOddEvn2_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddEvn2_p[b].first];
+			jnew = CMK.get_transform()[bondOddEvn2_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondOddEvn2_m[b].first];
+			jnew = CMK.get_transform()[bondOddEvn2_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
+			Field = sum(Field,Term);
+		}
+		for (int b=0; b<bondEvn1_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondEvn1_opp[b].first];
+			jnew = CMK.get_transform()[bondEvn1_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondEvn1_p[b].first];
+			jnew = CMK.get_transform()[bondEvn1_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondEvn1_m[b].first];
+			jnew = CMK.get_transform()[bondEvn1_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
+			Field = sum(Field,Term);
+		}
+		for (int b=0; b<bondEvn2_opp.size(); ++b)
+		{
+			int inew, jnew;
+			
+			inew = CMK.get_transform()[bondEvn2_opp[b].first];
+			jnew = CMK.get_transform()[bondEvn2_opp[b].second];
+			OPERATOR Popp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondEvn2_p[b].first];
+			jnew = CMK.get_transform()[bondEvn2_p[b].second];
+			OPERATOR Pp = Projector(inew,jnew);
+			
+			inew = CMK.get_transform()[bondEvn2_m[b].first];
+			jnew = CMK.get_transform()[bondEvn2_m[b].second];
+			OPERATOR Pm = Projector(inew,jnew);
+			
+			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
+			
+			Field = sum(Field,Term);
+		}
+		lout << "Field=" << endl << Field.info() << endl;
 	}
-	lout << "Field=" << endl << Field.info() << endl;
 	/////////// chiral correlations ///////////
 	///////////////////////////////////////////
 	
@@ -346,7 +640,7 @@ int main (int argc, char* argv[])
 		{
 			OPERATOR Hmpo = H;
 			Field.scale(F);
-			Hmpo = sum(Hmpo,Field);
+			Hmpo = diff(Hmpo,Field);
 			
 			vector<Param> dummy;
 			dummy.push_back({"D",D});
@@ -412,7 +706,7 @@ int main (int argc, char* argv[])
 	{
 		Stopwatch<> Timer;
 		
-		double SdagSm = 0.;
+		//double SdagSm = 0.;
 		int Nmbonds = 0; // number of bonds in the middle (x>Lx/4 and x<3*Lx/4)
 		obs.mat["SdagS"].setZero();
 		
@@ -429,67 +723,71 @@ int main (int argc, char* argv[])
 					obs.mat["SdagS"](i,j) = avg(g.state, H.SdagS(inew,jnew), g.state);
 					//obs.mat["SdagS"](j,i) = obs.mat["SdagS"](i,j);
 					
-					int xi = find_x_kagomeYC(i,L,i_evn,i_odd);
-					int xj = find_x_kagomeYC(j,L,i_evn,i_odd);
-					if (xi>Lx/4 and xi<3*Lx/4)
-					{
-						SdagSm += obs.mat["SdagS"](i,j);
-						Nmbonds += 1;
-					}
-					
-					lout << i << "(x=" << xi << ")" << "\t" << j << "(x=" << xj << ")" << "\tSdagS=" << obs.mat["SdagS"](i,j) << endl;
+//					int xi = find_x_kagomeYC(i,L,i_evn,i_odd);
+//					int xj = find_x_kagomeYC(j,L,i_evn,i_odd);
+//					if (xi>Lx/4 and xi<3*Lx/4)
+//					{
+//						SdagSm += obs.mat["SdagS"](i,j);
+//						Nmbonds += 1;
+//					}
+					//lout << i << "(x=" << xi << ")" << "\t" << j << "(x=" << xj << ")" << "\tSdagS=" << obs.mat["SdagS"](i,j) << endl;
+					lout << i << "\t" << j << "\tSdagS=" << obs.mat["SdagS"](i,j) << endl;
 				}
 			}
 			lout << Timer.info(make_string("SdagS j=",j)) << endl;
 		}
-		SdagSm = SdagSm/Nmbonds * 2.; // Nbonds/L -> 2
-		lout << "SdagS(middle)=" << setprecision(16) << SdagSm << ", Nmbonds=" << Nmbonds << ", Nbonds=" << Nbonds << ", Nbonds/L=" << Nbonds/double(L) << endl;
+		//SdagSm = SdagSm/Nmbonds * 2.; // Nbonds/L -> 2
+		//lout << "SdagS(middle)=" << setprecision(16) << SdagSm << ", Nmbonds=" << Nmbonds << ", Nbonds=" << Nbonds << ", Nbonds/L=" << Nbonds/double(L) << endl;
+		//obs.scal["em"] = SdagSm;
 		lout << "test: E=sum(SdagS)/L=" << obs.mat["SdagS"].sum()/L << endl;
 		
-		obs.scal["em"] = SdagSm;
-		
-		for (int b=0; b<bond1_horiz.size(); ++b)
-		{
-			int inew, jnew;
-			OPERATOR Pdiag, Phoriz, Pvert;
-			
-			inew = CMK.get_transform()[bond1_diag[b].first];
-			jnew = CMK.get_transform()[bond1_diag[b].second];
-			Pdiag = Projector(inew,jnew);
-			if (VERBOSE) lout << "Pdiag1: " << bond1_diag[b].first << ", " << bond1_diag[b].second << endl;
-			
-			inew = CMK.get_transform()[bond1_horiz[b].first];
-			jnew = CMK.get_transform()[bond1_horiz[b].second];
-			Phoriz = Projector(inew,jnew);
-			if (VERBOSE) lout << "Phoriz1: " << bond1_horiz[b].first << ", " << bond1_horiz[b].second << endl;
-			
-			inew = CMK.get_transform()[bond1_vert[b].first];
-			jnew = CMK.get_transform()[bond1_vert[b].second];
-			Pvert = Projector(inew,jnew);
-			if (VERBOSE) lout << "Pvert1: " << bond1_vert[b].first << ", " << bond1_vert[b].second << endl;
-			
-			obs.vec["C"](b) = avg(g.state, Pdiag, Pvert, g.state)-avg(g.state, Pdiag, Phoriz, g.state);
-			
-			inew = CMK.get_transform()[bond2_diag[b].first];
-			jnew = CMK.get_transform()[bond2_diag[b].second];
-			Pdiag = Projector(inew,jnew);
-			if (VERBOSE) lout << "Pdiag2: " << bond2_diag[b].first << ", " << bond2_diag[b].second << endl;
-			
-			inew = CMK.get_transform()[bond2_horiz[b].first];
-			jnew = CMK.get_transform()[bond2_horiz[b].second];
-			Phoriz = Projector(inew,jnew);
-			if (VERBOSE) lout << "Phoriz2: " << bond2_horiz[b].first << ", " << bond2_horiz[b].second << endl;
-			
-			inew = CMK.get_transform()[bond2_vert[b].first];
-			jnew = CMK.get_transform()[bond2_vert[b].second];
-			Pvert = Projector(inew,jnew);
-			if (VERBOSE) lout << "Pvert2: " << bond2_vert[b].first << ", " << bond2_vert[b].second << endl;
-			
-			obs.vec["C"](b) += avg(g.state, Pdiag, Pvert, g.state)-avg(g.state, Pdiag, Phoriz, g.state);
-			
-			lout << "b=" << b << "\t<C>=" << obs.vec["C"](b) << endl;
-		}
-		lout << Timer.info("corr") << endl;
+//		for (int b=0; b<bond1_horiz.size(); ++b)
+//		{
+//			int inew, jnew;
+//			OPERATOR Pdiag, Phoriz, Pvert;
+//			
+//			inew = CMK.get_transform()[bond1_diag[b].first];
+//			jnew = CMK.get_transform()[bond1_diag[b].second];
+//			Pdiag = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Pdiag1: " << bond1_diag[b].first << ", " << bond1_diag[b].second << endl;
+//			
+//			inew = CMK.get_transform()[bond1_horiz[b].first];
+//			jnew = CMK.get_transform()[bond1_horiz[b].second];
+//			Phoriz = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Phoriz1: " << bond1_horiz[b].first << ", " << bond1_horiz[b].second << endl;
+//			
+//			inew = CMK.get_transform()[bond1_vert[b].first];
+//			jnew = CMK.get_transform()[bond1_vert[b].second];
+//			Pvert = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Pvert1: " << bond1_vert[b].first << ", " << bond1_vert[b].second << endl;
+//			
+//			obs.vec["C"](b) = avg(g.state, Pdiag, Pvert, g.state)-avg(g.state, Pdiag, Phoriz, g.state);
+//			
+//			inew = CMK.get_transform()[bond2_diag[b].first];
+//			jnew = CMK.get_transform()[bond2_diag[b].second];
+//			Pdiag = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Pdiag2: " << bond2_diag[b].first << ", " << bond2_diag[b].second << endl;
+//			
+//			inew = CMK.get_transform()[bond2_horiz[b].first];
+//			jnew = CMK.get_transform()[bond2_horiz[b].second];
+//			Phoriz = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Phoriz2: " << bond2_horiz[b].first << ", " << bond2_horiz[b].second << endl;
+//			
+//			inew = CMK.get_transform()[bond2_vert[b].first];
+//			jnew = CMK.get_transform()[bond2_vert[b].second];
+//			Pvert = Projector(inew,jnew);
+//			if (VERBOSE) lout << "Pvert2: " << bond2_vert[b].first << ", " << bond2_vert[b].second << endl;
+//			
+//			obs.vec["C"](b) += avg(g.state, Pdiag, Pvert, g.state)-avg(g.state, Pdiag, Phoriz, g.state);
+//			
+//			lout << "b=" << b << "\t<C>=" << obs.vec["C"](b) << endl;
+//		}
+//		lout << Timer.info("corr") << endl;
+	}
+	if (CALC_CTOT)
+	{
+		obs.scal["Ctot"] = avg(g.state, Field, g.state);
+		lout << termcolor::blue << "Ctot=" << obs.scal["Ctot"] << ", Ctot/L=" << obs.scal["Ctot"]/L << termcolor::reset << endl;
 	}
 	
 	if (CALC_VAR)
@@ -500,7 +798,7 @@ int main (int argc, char* argv[])
 		{
 			auto Hsq = prod(H,H);
 			lout << Hsq.info() << endl;
-			var = abs(avg(g.state,Hsq,g.state)-pow(g.energy,2))/L;
+			var = abs(avg(g.state,Hsq,g.state,1ul,DMRG::DIRECTION::RIGHT,VERB)-pow(g.energy,2))/L;
 		}
 		else
 		{

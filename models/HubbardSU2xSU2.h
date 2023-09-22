@@ -81,11 +81,17 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, 
+	                           const vector<SUB_LATTICE> &G, const ParamHandler &P,
 	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
-	static qarray<2> singlet (int N=0) {return qarray<2>{1,1};};
+	static qarray<2> singlet (int N=0, int L=0)
+	{
+		assert(N%2==0);
+		int T = abs(0.5*(N-L));
+		return qarray<2>{1,2*T+1};
+	};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	static constexpr int spinfac = 1;
 	
@@ -138,7 +144,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary
 
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
     std::vector<std::vector<std::string>> labellist;
-    set_operators(F, P, pushlist, labellist, boundary);
+    set_operators(F, G, P, pushlist, labellist, boundary); // F, G are set in HubbardObservables
     
     this->construct_from_pushlist(pushlist, labellist, Lcell);
     this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
@@ -148,7 +154,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary
 
 template<typename Symmetry_>
 void HubbardSU2xSU2::
-set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = F.size();
@@ -160,10 +166,11 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		size_t lp2 = (loc+2)%N_sites;
 		size_t lp3 = (loc+3)%N_sites;
 		
-		auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
-		auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
-		auto Glp2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp2)));
-		auto Glp3 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp3)));
+		//auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
+		//auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
+		//auto Glp2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp2)));
+		//auto Glp3 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp3)));
+		//lout << G[loc] << "\t" << G[lp1] << "\t" << G[lp2] << "\t" << G[lp3] << endl;
 		
 		std::size_t orbitals       = F[loc].orbitals();
 		std::size_t next_orbitals  = F[lp1].orbitals();
@@ -172,7 +179,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		stringstream ss;
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		labellist[loc].push_back(ss.str());
-
+		
 		auto push_full = [&N_sites, &loc, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
 																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
 																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
@@ -192,7 +199,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				
 				if (range != 0)
 				{
-
 					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
 					ops[0] = first[j];
 					for (size_t i=1; i<range; ++i)
@@ -212,8 +218,12 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		
 		if (P.HAS("tFull"))
 		{
-			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(Gloc,0) * F[loc].sign());
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > c_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); c_ranges[i] = F[i].c(Gi,0);}
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(G[loc],0) * F[loc].sign());
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > c_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				c_ranges[i] = F[i].c(G[i],0);
+			}
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdag_sign_local};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {c_ranges};
@@ -238,11 +248,19 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		
 		if (P.HAS("Xfull"))
 		{
-			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagRloc = ((F[loc].ns() * F[loc].cdag(Gloc)) * F[loc].sign());
-			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagLloc = ((F[loc].cdag(Gloc) * F[loc].sign()) * F[loc].ns());
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagRloc = ((F[loc].ns() * F[loc].cdag(G[loc])) * F[loc].sign());
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagLloc = ((F[loc].cdag(G[loc]) * F[loc].sign()) * F[loc].ns());
 
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiLran(N_sites); for(size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); PsiLran[i] = (F[i].ns() * F[i].c(Gi));}
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiRran(N_sites); for(size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); PsiRran[i] = (F[i].c(Gi) * F[i].ns());}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiLran(N_sites);
+			for(size_t i=0; i<N_sites; i++)
+			{
+				PsiLran[i] = (F[i].ns() * F[i].c(G[i]));
+			}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiRran(N_sites);
+			for(size_t i=0; i<N_sites; i++)
+			{
+				PsiRran[i] = (F[i].c(G[i]) * F[i].ns());
+			}
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {PsidagLloc,PsidagRloc};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {PsiRran,PsiLran};
@@ -276,8 +294,8 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
 				for (std::size_t beta=0; beta<next_orbitals; ++beta)
 				{
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(Gloc, alfa) * F[loc].sign());
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> c_tight       = F[lp1].c(Glp1, beta);
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(G[loc], alfa) * F[loc].sign());
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> c_tight         = F[lp1].c(G[lp1], beta);
 
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, c_tight), -std::sqrt(2.)*std::sqrt(2.)*tpara(alfa,beta)));
 				}
@@ -330,14 +348,14 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
 				for (std::size_t beta=0; beta<next_orbitals; ++beta)
 				{
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiRdag_loc = ((F[loc].ns(alfa) * F[loc].cdag(Gloc,alfa)) * F[loc].sign());
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiR_tight = (F[lp1].c(Glp1,beta) * F[lp1].ns(beta));
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiRdag_loc = ((F[loc].ns(alfa) * F[loc].cdag(G[loc],alfa)) * F[loc].sign());
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiR_tight = (F[lp1].c(G[lp1],beta) * F[lp1].ns(beta));
 					
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiLdag_loc = ((F[loc].cdag(Gloc,alfa) * F[loc].sign()) * F[loc].ns(alfa));
-					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiL_tight = (F[lp1].ns(beta) * F[lp1].c(Glp1,beta));
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiLdag_loc = ((F[loc].cdag(G[loc],alfa) * F[loc].sign()) * F[loc].ns(alfa));
+					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiL_tight  = (F[lp1].ns(beta) * F[lp1].c(G[lp1],beta));
 
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsiLdag_loc, PsiR_tight), -std::sqrt(2.)*std::sqrt(2.)*Xpara(alfa,beta)));
-					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsiRdag_loc, PsiL_tight), -std::sqrt(2.)*std::sqrt(2.)*Xpara(alfa,beta)));					
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsiRdag_loc, PsiL_tight), -std::sqrt(2.)*std::sqrt(2.)*Xpara(alfa,beta)));
 				}
 			}
 		}
@@ -356,8 +374,8 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
 				for (std::size_t beta=0; beta<next3_orbitals; ++beta)
 				{
-					SiteOperatorQ<Symmetry_, Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(Gloc,alfa) * F[loc].sign());
-					SiteOperatorQ<Symmetry_, Eigen::MatrixXd> c_nnextn         = F[lp3].c(Glp3,beta);
+					SiteOperatorQ<Symmetry_, Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(G[loc],alfa) * F[loc].sign());
+					SiteOperatorQ<Symmetry_, Eigen::MatrixXd> c_nnextn         = F[lp3].c(G[lp3],beta);
 					
 					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, sign_tight, sign_nextn, c_nnextn), -std::sqrt(2.)*std::sqrt(2.)*tPrimePrime(alfa,beta)));
 				}

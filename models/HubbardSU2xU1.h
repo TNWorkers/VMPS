@@ -93,7 +93,7 @@ public:
 	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
-	static qarray<2> singlet (int N=0) {return qarray<2>{1,N};};
+	static qarray<2> singlet (int N=0, int L=0) {return qarray<2>{1,N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	static constexpr int spinfac = 1;
 	

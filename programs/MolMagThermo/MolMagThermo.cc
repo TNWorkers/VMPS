@@ -295,6 +295,8 @@ map<string,int> make_Lmap()
 	
 	m["kagome36d"] = 36;
 	
+	m["hyperkagome48"] = 48;
+	
 	return m;
 }
 
@@ -315,7 +317,7 @@ map<string,string> make_vertexMap()
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
-	Eigen::initParallel();
+	//Eigen::initParallel();
 	
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
@@ -516,7 +518,7 @@ int main (int argc, char* argv[])
 		{
 			base += make_string("_Jprime=",Jprime);
 		}
-		if (Jbiq != 1.)
+		if (Jbiq != 0.)
 		{
 			base += make_string("_R=",R);
 		}
@@ -592,7 +594,7 @@ int main (int argc, char* argv[])
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
-	omp_set_nested(1);
+	//omp_set_nested(1);
 	lout << "threads=" << omp_get_max_threads() << endl;
 	#else
 	lout << "not parallelized" << endl;
@@ -683,6 +685,21 @@ int main (int argc, char* argv[])
 			auto res = compress_CuthillMcKee(hopping,true);
 			hopping = res;
 		}
+	}
+	else if (MOL == "hyperkagome48")
+	{
+		MatrixXd bonds = loadMatrix("hyperkagome48.dat");
+		hopping.resize(L,L);
+		hopping.setZero();
+		for (int b=0; b<bonds.rows(); ++b)
+		{
+			int i = bonds(b,0);
+			int j = bonds(b,1);
+			hopping(i,j) = J;
+			hopping(j,i) = J;
+		}
+		auto res = compress_CuthillMcKee(hopping,true);
+		hopping = res;
 	}
 	else if (MOL == "kagome36d")
 	{

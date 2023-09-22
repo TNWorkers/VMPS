@@ -3,6 +3,9 @@
 
 #include <set>
 
+#include <Eigen/Dense>
+using namespace Eigen;
+
 #include "ParamHandler.h"
 #include "CuthillMcKeeCompressor.h" // from ALGS
 #include <boost/rational.hpp>
@@ -2503,9 +2506,15 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 ArrayXXd hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
-	assert(L==13 or L==22); // 33, 46, 61
+	assert(L==13 or L==22 or L==4); // 33, 46, 61 // 4: simplified model
 	// (6+)7+9+11+13
 	
+	if (L==4)
+	{
+		res(0,2) = lambda;
+		res(1,2) = lambda;
+		res(2,3) = lambda;
+	}
 	if (L==13)
 	{
 		for (int i=0; i<=10; ++i) res(i,i+1) = lambda;
@@ -2539,6 +2548,85 @@ ArrayXXd hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
 		auto res_ = compress_CuthillMcKee(res,true);
 		res = res_;
 	}
+	return res;
+}
+
+ArrayXXd hopping_coronene (int L, int VARIANT=0, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	assert(L==24);
+	
+	if (L==24)
+	{
+		res(0,2) = lambda;
+		res(0,3) = lambda;
+		res(1,3) = lambda;
+		res(1,4) = lambda;
+		res(2,5) = lambda;
+		res(3,6) = lambda;
+		res(4,7) = lambda;
+		res(5,8) = lambda;
+		res(5,9) = lambda;
+		res(6,9) = lambda;
+		res(6,10) = lambda;
+		res(7,10) = lambda;
+		res(7,11) = lambda;
+		res(8,12) = lambda;
+		res(9,13) = lambda;
+		res(10,14) = lambda;
+		res(11,15) = lambda;
+		res(12,16) = lambda;
+		res(13,16) = lambda;
+		res(13,17) = lambda;
+		res(14,17) = lambda;
+		res(14,18) = lambda;
+		res(15,18) = lambda;
+		res(16,19) = lambda;
+		res(17,20) = lambda;
+		res(18,21) = lambda;
+		res(19,22) = lambda;
+		res(20,22) = lambda;
+		res(20,23) = lambda;
+		res(21,23) = lambda;
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
+	
+	return res;
+}
+
+ArrayXXd hopping_corannulene (int L, int VARIANT=0, double lambda=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	assert(L==20);
+	
+	if (L==20)
+	{
+		for (int i=0; i<=13; ++i) res(i,i+1) = lambda;
+		res(0,14) = lambda;
+		
+		res(13,15) = lambda;
+		res(10,16) = lambda;
+		res(7,17) = lambda;
+		res(4,18) = lambda;
+		res(1,19) = lambda;
+		
+		for (int i=15; i<=18; ++i) res(i,i+1) = lambda;
+		res(15,19) = lambda;
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		compress_CuthillMcKee(res,true);
+	}
+	
 	return res;
 }
 

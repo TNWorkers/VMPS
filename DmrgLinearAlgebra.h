@@ -150,7 +150,8 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
             size_t power_of_O = 1ul,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT,
+            DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -170,10 +171,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		B.setVacuum();
 		for (size_t l=0; l<O.length(); ++l)
 		{
+			Stopwatch<> Timer;
 			contract_L(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << "avg <Ψ|O|Ψ> L→R, l=" << l << ", mem=" << round(B.memory(GB),3) << "GB, " << Timer.info("time") << endl;
+			}
 		}
 		// cout << B.print(true) << endl;
 //		return B.block[0][0][0](0,0);
@@ -194,10 +200,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
+			Stopwatch<> Timer;
 			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << "avg <Ψ|O|Ψ> R→L, l=" << l << ", mem=" << round(B.memory(GB),3) << "GB, " << Timer.info("time")  << endl;
+			}
 		}
 		out = contract_LR(Id,B);
 	}
@@ -358,7 +369,8 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
             size_t usePower1=1,
             size_t usePower2=1,
-            bool WARN=true)
+            bool WARN=true,
+            DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	if constexpr (Symmetry::NON_ABELIAN)
 	{
@@ -376,6 +388,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
+			Stopwatch<> Timer;
 			contract_R(B, 
 			           Vbra.A_at(l), O1.get_W_power(usePower1)[l], O2.get_W_power(usePower2)[l], Vket.A_at(l), 
 			           O1.locBasis(l), O1.get_qOp_power(usePower1)[l], O2.get_qOp_power(usePower2)[l],
@@ -383,6 +396,10 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << "avg <Ψ|O·O|Ψ> L→R, l=" << l << ", mem=" << round(B.memory(GB),3) << "GB, " << Timer.info("time") << endl;
+			}
 		}
 		return contract_LR(Id,B);
 		
@@ -395,7 +412,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			if (WARN)
 			{
 				lout << endl;
-				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
+				lout << "Warning: Result of contraction in <φ|O1·O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
 				lout << "MPS in question: " << Vket.info() << endl;
 				lout << "MPO1 in question: " << O1.info() << endl;
 				lout << "MPO2 in question: " << O2.info() << endl;
@@ -426,7 +443,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (WARN)
 			{
-				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
+				lout << "Warning: Result of contraction in <φ|O1·O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
 				lout << "MPS in question: " << Vket.info() << endl;
 				lout << "MPO1 in question: " << O1.info() << endl;
 				lout << "MPO2 in question: " << O2.info() << endl;
@@ -441,12 +458,13 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const vector<Mpo<Symmetry,MpoScalar>> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
             size_t usePower = 1ul,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT,
+            DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	Scalar out = 0;
 	for (int i=0; i<O.size(); ++i)
 	{
-		out += avg(Vbra, O[i], Vket, usePower, DIR);
+		out += avg(Vbra, O[i], Vket, usePower, DIR, CHOSEN_VERBOSITY);
 	}
 	return out;
 }
@@ -458,13 +476,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mps<Symmetry,Scalar> &Vket, 
             typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
             size_t usePower1 = 1ul,
-            size_t usePower2 = 1ul)
+            size_t usePower2 = 1ul,
+            bool WARN=true,
+            DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::SILENT)
 {
 	Scalar out = 0;
 	for (int i=0; i<O1.size(); ++i)
 	for (int j=0; j<O2.size(); ++j)
 	{
-		out += avg(Vbra, O1[i], O2[j], Vket, Qtarget, usePower1, usePower2);
+		out += avg(Vbra, O1[i], O2[j], Vket, Qtarget, usePower1, usePower2, WARN, CHOSEN_VERBOSITY);
 	}
 	return out;
 }
