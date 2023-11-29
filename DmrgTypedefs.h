@@ -138,6 +138,11 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 	return s;
 }
 
+SUB_LATTICE flip_sublattice(SUB_LATTICE sublat)
+{
+	return (sublat==A)? B:A;
+}
+
 enum BC
 {
 	// PERIODIC=true,

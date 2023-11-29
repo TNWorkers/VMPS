@@ -3302,7 +3302,15 @@ prod (const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bot
     
     std::vector<qType> qTots = Symmetry::reduceSilent(bottom.get_qTot(), top.get_qTot());
     auto it = std::find(qTots.begin(), qTots.end(), qTot);
-    assert(it != qTots.end() and "Cannot multiply these two operators to an operator with target quantum number");
+    if (it==qTots.end())
+    {
+    	lout << "qTot=" << qTot << endl;
+    	for (const auto& qTotVal:qTots)
+    	{
+    		lout << "val=" << qTotVal << endl;
+    	}
+    	assert(it != qTots.end() and "Cannot multiply these two operators to an operator with target quantum number");
+    }
     
     std::vector<std::map<std::array<qType, 2>, std::vector<std::vector<std::map<qType,OperatorType>>>>> O_bottom, O_top, O;
     std::vector<Qbasis<Symmetry>> qAux_bottom, qAux_top, qAux;

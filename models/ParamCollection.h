@@ -10,6 +10,7 @@ using namespace Eigen;
 #include "CuthillMcKeeCompressor.h" // from ALGS
 #include <boost/rational.hpp>
 #include "termcolor.hpp"
+#include "DmrgTypedefs.h" // for SUB_LATTICE
 
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {
@@ -2503,17 +2504,24 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 	return res;
 }
 
-ArrayXXd hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
+pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
 {
 	ArrayXXd res(L,L); res.setZero();
 	assert(L==13 or L==22 or L==4); // 33, 46, 61 // 4: simplified model
 	// (6+)7+9+11+13
+	
+	vector<SUB_LATTICE> G;
 	
 	if (L==4)
 	{
 		res(0,2) = lambda;
 		res(1,2) = lambda;
 		res(2,3) = lambda;
+		
+		G.push_back(static_cast<SUB_LATTICE>(1)); //0
+		G.push_back(static_cast<SUB_LATTICE>(1)); //1
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(1)); //3
 	}
 	if (L==13)
 	{
@@ -2538,17 +2546,54 @@ ArrayXXd hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
 		res(18,21) = lambda;
 		res(19,21) = lambda;
 		res(20,21) = lambda;
+		
+		G.push_back(static_cast<SUB_LATTICE>(1)); //0
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //1
+		G.push_back(static_cast<SUB_LATTICE>(1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //3
+		G.push_back(static_cast<SUB_LATTICE>(1)); //4
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //5
+		G.push_back(static_cast<SUB_LATTICE>(1)); //6
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //7
+		G.push_back(static_cast<SUB_LATTICE>(1)); //8
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //9
+		G.push_back(static_cast<SUB_LATTICE>(1)); //10
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //11
+		G.push_back(static_cast<SUB_LATTICE>(1)); //12
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //13
+		G.push_back(static_cast<SUB_LATTICE>(1)); //14
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //15
+		G.push_back(static_cast<SUB_LATTICE>(1)); //16
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //17
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //18
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //19
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //20
+		G.push_back(static_cast<SUB_LATTICE>(1)); //21
 	}
 	
 	res += res.transpose().eval();
 	
-	cout << "VARIANT=" << VARIANT << endl;
+	//cout << "VARIANT=" << VARIANT << endl;
 	if (VARIANT==0)
 	{
-		auto res_ = compress_CuthillMcKee(res,true);
-		res = res_;
+		//auto res_ = compress_CuthillMcKee(res,true);
+		CuthillMcKeeCompressor CMK(res,true);
+		CMK.apply_compression(res);
+		
+		vector<SUB_LATTICE> G_ = G;
+		for (int i=0; i<L; ++i)
+		{
+			G[CMK.get_transform()[i]] = G_[i];
+		}
+		
+//		for (int i=0; i<L; ++i)
+//		{
+//			lout << "i=" << i << ", G[i]=" << G[i]<< ", orig.G[i]=" << G_[i] << endl;
+//		}
 	}
-	return res;
+	
+	pair<ArrayXXd,vector<SUB_LATTICE> > ret(res,G);
+	return ret;
 }
 
 ArrayXXd hopping_coronene (int L, int VARIANT=0, double lambda=1.)
@@ -2733,6 +2778,49 @@ ArrayXXi calc_distanceMatrix (ArrayXXd adjacencyMatrix)
 	
 	ArrayXXi res(L,L); res = 0;
 	for (int d=0; d<dist.size(); ++d) res = res+d*dist[d];
+	return res;
+}
+
+ArrayXXi hopping_MnRing (int Ncells, double J1, double J2, double J3, double J4=0., double J5=0., double J6=0., double J7=0.)
+{
+	int L = 7*Ncells;
+	ArrayXXi res(L,L);
+	
+	for (int ic=0; ic<Ncells; ++ic)
+	{
+		int icell = ic*7;
+	
+		res((0+icell)%L,(1+icell)%L) = 1.;
+		res((1+icell)%L,(2+icell)%L) = 1.;
+		
+		res((0+icell)%L,(3+icell)%L) = J2/J1;
+		res((1+icell)%L,(3+icell)%L) = J2/J1;
+		res((1+icell)%L,(4+icell)%L) = J2/J1;
+		res((2+icell)%L,(4+icell)%L) = J2/J1;
+		
+		res((3+icell)%L,(4+icell)%L) = J3/J1;
+		res((3+icell)%L,(5+icell)%L) = J3/J1;
+		res((3+icell)%L,(6+icell)%L) = J3/J1;
+		res((4+icell)%L,(5+icell)%L) = J3/J1;
+		res((5+icell)%L,(6+icell)%L) = J3/J1;
+		
+		res((5+icell)%L,(7+icell)%L) = J2/J1;
+		res((5+icell)%L,(8+icell)%L) = J2/J1;
+		res((6+icell)%L,(8+icell)%L) = J2/J1;
+		res((6+icell)%L,(9+icell)%L) = J2/J1;
+		
+		res((0+icell)%L,(4+icell)%L) = J4/J1;
+		res((2+icell)%L,(3+icell)%L) = J4/J1;
+		res((1+icell)%L,(6+icell)%L) = J4/J1;
+		
+		res((5+icell)%L,(9+icell)%L) = J4/J1;
+		res((6+icell)%L,(7+icell)%L) = J4/J1;
+		res((4+icell)%L,(8+icell)%L) = J4/J1;
+	}
+	
+	res += res.transpose().eval();
+	compress_CuthillMcKee(res,true);
+	
 	return res;
 }
 

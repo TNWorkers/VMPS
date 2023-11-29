@@ -149,14 +149,14 @@ template<typename MpsType>
 void EntropyObserver<MpsType>::
 save (string filename) const
 {
-	saveMatrix(data, filename);
+	saveMatrix<double>(data, filename);
 }
 
 template<typename MpsType>
 void EntropyObserver<MpsType>::
 save (int it, string filename) const
 {
-	saveMatrix(data.topRows(it+1), filename);
+	saveMatrix<double>(data.topRows(it+1), filename);
 }
 
 #endif

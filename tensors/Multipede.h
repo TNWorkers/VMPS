@@ -12,6 +12,7 @@
 
 #include "MemCalc.h" // from TOOLS
 #include "symmetry/functions.h"
+#include "HDF5Interface.h"
 
 //include "symmetry/qarray.h"
 //include "DmrgExternal.h"
@@ -135,6 +136,12 @@ typedef typename MatrixType::Scalar Scalar;
 	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, const qarray<Symmetry::Nq> &Q=Symmetry::qvacuum());
 	
 	void addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs);
+	///@}
+	
+	///@{
+	void save (string filename, bool PRINT=false) const;
+	
+	void load (string filename, bool PRINT=false);
 	///@}
 	
 	///@{
@@ -721,6 +728,110 @@ BipedSliceQmid (qType qslice) const
 		}
 	}
 	return Bout;
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+save (string filename, bool PRINT) const 
+{
+	filename += ".h5";
+	if (PRINT) lout << termcolor::green << "Saving Multipede to: " << filename << termcolor::reset << std::endl;
+	remove(filename.c_str());
+	HDF5Interface target(filename, WRITE);
+	
+	target.save_scalar<size_t>(dim, "dim", "");
+	
+	for (size_t q=0; q<dim; ++q)
+	{
+		target.save_scalar<size_t>(block[q].shape()[0], make_string("dima_q=",q), "");
+		target.save_scalar<size_t>(block[q].shape()[1], make_string("dimb_q=",q), "");
+		//cout << "q=" << q << ", L.block[q].shape()[0]=" << L.block[q].shape()[0] << ", L.block[q].shape()[1]=" << L.block[q].shape()[1] << endl;
+	}
+	
+	for (size_t q=0; q<dim; ++q)
+	for (size_t a=0; a<block[q].shape()[0]; ++a)
+	for (size_t b=0; b<block[q].shape()[1]; ++b)
+	{
+		target.save_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+	}
+	
+	MatrixXi Min(dim,Symmetry::Nq);
+	MatrixXi Mout(dim,Symmetry::Nq);
+	MatrixXi Mmid(dim,Symmetry::Nq);
+	
+	for (int i=0; i<dim; ++i)
+	for (int q=0; q<Symmetry::Nq; ++q)
+	{
+		Min(i,q) = in(i)[q];
+		Mout(i,q) = out(i)[q];
+		Mmid(i,q) = mid(i)[q];
+	}
+	
+	target.save_matrix<int>(Min, "in", "");
+	target.save_matrix<int>(Mout, "out", "");
+	target.save_matrix<int>(Mmid, "mid", "");
+	
+	target.close();
+	
+	print();
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+load (string filename, bool PRINT)
+{
+	filename += ".h5";
+	if (PRINT) lout << termcolor::green << "Loading Multipede from: " << filename << termcolor::reset << std::endl;
+	HDF5Interface target(filename, READ);
+	
+	target.load_scalar<size_t>(dim, "dim", "");
+	
+	block.clear();
+	block.resize(dim);
+	
+	for (size_t q=0; q<dim; ++q)
+	{
+		size_t dima, dimb;
+		target.load_scalar<size_t>(dima, make_string("dima_q=",q), "");
+		target.load_scalar<size_t>(dimb, make_string("dimb_q=",q), "");
+		block[q].resize(boost::extents[dima][dimb]);
+		//cout << "q=" << q << ", dima=" << dima << ", dimb=" << dimb << endl;
+	}
+	
+	for (size_t q=0; q<dim; ++q)
+	for (size_t a=0; a<block[q].shape()[0]; ++a)
+	for (size_t b=0; b<block[q].shape()[1]; ++b)
+	{
+		target.load_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+	}
+	
+	MatrixXi Min, Mout, Mmid;
+	target.load_matrix<int>(Min, "in", "");
+	target.load_matrix<int>(Mout, "out", "");
+	target.load_matrix<int>(Mmid, "mid", "");
+	//cout << in.rows() << "\t" << out.rows() << "\t" << mid.rows() << "\t" << L.dim << endl;
+	assert(Min.rows() != 0);
+	
+	index.clear();
+	index.resize(dim);
+	dict.clear();
+	
+	for (int i=0; i<dim; ++i)
+	{
+		std::array<qType,Nlegs> quple;
+		for (int q=0; q<Symmetry::Nq; ++q)
+		{
+			quple[0][q] = Min(i,q);
+			quple[1][q] = Mout(i,q);
+			quple[2][q] = Mmid(i,q);
+		}
+		index[i] = quple;
+		dict.insert({quple,i});
+	}
+	
+	target.close();
+	
+	print();
 }
 
 #endif

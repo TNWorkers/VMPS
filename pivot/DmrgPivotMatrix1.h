@@ -17,6 +17,30 @@ struct PivotMatrix1Terms
 	
 	vector<qarray<Symmetry::Nq> > qloc;
 	vector<qarray<Symmetry::Nq> > qOp;
+	
+//	void save_L (string filename)
+//	{
+//		lout << termcolor::green << "Saving L to: " << filename << termcolor::reset << std::endl;
+//		L.save(filename);
+//	}
+//	
+//	void save_R (string filename)
+//	{
+//		lout << termcolor::green << "Saving R to: " << filename << termcolor::reset << std::endl;
+//		R.save(filename);
+//	}
+//	
+//	void load_L (string filename)
+//	{
+//		lout << termcolor::green << "Loading L from: " << filename << termcolor::reset << std::endl;
+//		L.load(filename);
+//	}
+//	
+//	void load_R (string filename)
+//	{
+//		lout << termcolor::green << "Loading R from: " << filename << termcolor::reset << std::endl;
+//		R.load(filename);
+//	}
 };
 
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>

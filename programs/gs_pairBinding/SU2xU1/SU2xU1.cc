@@ -26,13 +26,12 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
-#include "VUMPS/VumpsSolver.h"
-#include "VUMPS/VumpsLinearAlgebra.h"
 #include "models/ParamCollection.h"
 #include "solvers/DmrgSolver.h"
 #include "IntervalIterator.h"
 #include "EigenFiles.h"
 #include "SaveData.h"
+#include "../TOOLS/HDF5Interface.h"
 
 #include "models/HubbardSU2xU1.h"
 typedef VMPS::HubbardSU2xU1 MODEL;

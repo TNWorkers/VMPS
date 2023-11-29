@@ -22,6 +22,7 @@ map<string,int> make_Lmap()
 	m["T05"] = 5;
 	m["T06"] = 6;
 	// Triangulene:
+	m["HEX04"] = 4;
 	m["HEX13"] = 13;
 	m["HEX22"] = 22;
 	// Coronene:
@@ -95,6 +96,7 @@ int main (int argc, char* argv[])
 	int L = args.get<int>("L",2);
 	double tPerp = args.get<double>("tPerp",1.);
 	double U = args.get<double>("U",1.);
+	bool UPH = args.get<bool>("UPH",false);
 	double S = args.get<double>("S",0);
 	int D = 2*S+1;
 	string wd = args.get<string>("wd","./");
@@ -155,10 +157,10 @@ int main (int argc, char* argv[])
 	{
 		hopping = hopping_triangular(L,VARIANT);
 	}
-	else if (MOL.at(0)=='H' and MOL.at(1)=='E' and MOL.at(2)=='X')
-	{
-		hopping = hopping_triangulene(L,VARIANT);
-	}
+//	else if (MOL.at(0)=='H' and MOL.at(1)=='E' and MOL.at(2)=='X')
+//	{
+//		hopping = hopping_triangulene(L,VARIANT);
+//	}
 	else if (MOL.at(0)=='C' and MOL.at(1)=='O' and MOL.at(2)=='R')
 	{
 		if (L==20)
@@ -258,12 +260,14 @@ int main (int argc, char* argv[])
 	GlobParam.tol_state = args.get<double>("tol_state",1e-10);
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.CALC_S_ON_EXIT = false;
+	GlobParam.INITDIR = static_cast<DMRG::DIRECTION::OPTION>(args.get<int>("INITDIR",1)); // 1=left->right, 0=right->left
+	GlobParam.falphamin = args.get<double>("falphamin",0.1);
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
 	size_t end_2site = args.get<size_t>("end_2site",6ul); //GlobParam.max_halfsweeps-3
 	size_t period_2site = args.get<size_t>("period_2site",1ul);
-	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
@@ -300,18 +304,18 @@ int main (int argc, char* argv[])
 			vector<pair<int,int>> NMpairs = {make_pair(L,0), // half-filling, singlet
 				                             make_pair(L,2), // half-filling, triplet
 				                             //make_pair(L,4), // half-filling, quintet
-				                             
-				                             make_pair(L+2,0), // N+2, singlet
-				                             make_pair(L+2,2), // N+2, triplet
-				                             
-				                             make_pair(L-2,0), // N+2, singlet
-				                             make_pair(L-2,2), // N+2, triplet
-				                             
-				                             make_pair(L+1,1), // N+1, doublet
-				                             make_pair(L+1,3), // N+1, quintuplet
-				                             
-				                             make_pair(L-1,1), // N-2, doublet
-				                             make_pair(L-1,3), // N+1, quintuplet
+//				                             
+//				                             make_pair(L+2,0), // N+2, singlet
+//				                             make_pair(L+2,2), // N+2, triplet
+//				                             
+//				                             make_pair(L-2,0), // N+2, singlet
+//				                             make_pair(L-2,2), // N+2, triplet
+//				                             
+//				                             make_pair(L+1,1), // N+1, doublet
+//				                             make_pair(L+1,3), // N+1, quintuplet
+//				                             
+//				                             make_pair(L-1,1), // N-2, doublet
+//				                             make_pair(L-1,3), // N+1, quintuplet
 				                            };
 			
 			#pragma omp parallel for
@@ -337,6 +341,13 @@ int main (int argc, char* argv[])
 				{
 					#ifdef USING_ED
 					MODEL H(L,Nup,Ndn,params);
+//					SparseMatrixXd Hmatrix = H.Hmatrix();
+//					if (UPH)
+//					{
+//						Hmatrix += U*H.ntot();
+//						Hmatrix += ED::SparseId(H.dim(),U);
+//					}
+//					cout << H.ntot() << endl;
 					#pragma omp critical
 					{
 						lout << H.info() << endl;
@@ -346,8 +357,16 @@ int main (int argc, char* argv[])
 					#ifdef USING_ED
 					if (H.dim() <= 200 and abs(U)>1e-5)
 					{
-						
 						g.energy = H.eigenvalues()(0);
+						g.state = H.eigenvectors().col(0);
+//						MatrixXd Hdense = Hmatrix;
+//						SelfAdjointEigenSolver<MatrixXd> Eugen(Hdense);
+//						g.energy = Eugen.eigenvalues()(0);
+						#pragma omp critical
+						{
+							lout << "U=" << U << ", N=" << N << ", M=" << M << ", E=" << setprecision(16) << g.energy << endl;
+							lout << H.eigenvalues() << endl;
+						}
 					}
 					else
 					#endif
@@ -363,6 +382,9 @@ int main (int argc, char* argv[])
 						{
 							LanczosSolver<ED::SpinfulFermions,VectorXd,double> Lutz(LANCZOS::REORTHO::FULL);
 							Lutz.edgeState(H, g, LANCZOS::EDGE::GROUND, 1e-7, 1e-4);
+							//LanczosSolver<SparseMatrixXd,VectorXd,double> Lutz(LANCZOS::REORTHO::FULL);
+							//Lutz.edgeState(Hmatrix, g, LANCZOS::EDGE::GROUND, 1e-7, 1e-4);
+							
 							#pragma omp critical
 							{
 								lout << Lutz.info() << endl;
@@ -380,6 +402,31 @@ int main (int argc, char* argv[])
 							double eavg = 1.-navg+davg;
 							lout << "U=" << U << ", N=" << N << ", M=" << M << ", d=" << davg << ", e=" << eavg << ", nh=" << davg+eavg << endl;
 						}
+					}
+					
+					MatrixXd SdagS(L,L); SdagS.setZero();
+					for (int i=0; i<L; ++i)
+					for (int j=0; j<L; ++j)
+					{
+						SparseMatrixXd Op;
+						Op = 0.25*(H.n<UP>(i)-H.n<DN>(i))*(H.n<UP>(j)-H.n<DN>(j));
+						SdagS(i,j) += ED::avg(g.state, Op, g.state);
+						if (i!=j)
+						{
+							Op = -0.5*H.cdagc<UP>(i,j)*H.cdagc<DN>(j,i);
+							SdagS(i,j) += ED::avg(g.state, Op, g.state);
+							Op = -0.5*H.cdagc<DN>(i,j)*H.cdagc<UP>(j,i);
+							SdagS(i,j) += ED::avg(g.state, Op, g.state);
+						}
+						else
+						{
+							Op = 0.5*H.n(i)-H.d(i);
+							SdagS(i,j) += ED::avg(g.state, Op, g.state);
+						}
+					}
+					#pragma omp critical
+					{
+						lout << "U=" << U << ", N=" << N << ", M=" << M << ", SdagS.sum()=" << SdagS.sum() << endl;
 					}
 				}
 				

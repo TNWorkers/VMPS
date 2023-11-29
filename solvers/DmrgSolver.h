@@ -1,6 +1,13 @@
 #ifndef STRAWBERRY_DMRGSOLVER_WITH_Q
 #define STRAWBERRY_DMRGSOLVER_WITH_Q
 
+#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+#include <cstdlib> // For rand() and srand()
+#include <ctime>   // For time()
+#include <cstdio> // For file access
+//#include <filesystem>
+#endif
+
 /// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
 /// \endcond
@@ -131,9 +138,10 @@ public:
 	}
 	
 	/**Compute observable during sweeping process*/
-	void set_observable (string label, const Mpo<typename MpHamiltonian::Symmetry,typename MpHamiltonian::Scalar_> &Operator)
+	void set_observable (string label, const Mpo<typename MpHamiltonian::Symmetry,typename MpHamiltonian::Scalar_> &Operator, double N=1.)
 	{
 		obs_labels.push_back(label);
+		obs_normalizations.push_back(N);
 		observables.push_back(Operator);
 	}
 	
@@ -187,6 +195,14 @@ private:
 	
 	vector<Mpo<typename MpHamiltonian::Symmetry,typename MpHamiltonian::Scalar_>> observables;
 	vector<string> obs_labels;
+	vector<double> obs_normalizations;
+	
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	string EnvSaveLabel;
+	PivotMatrix1<Symmetry,Scalar,Scalar> Heff_curr;
+	PivotMatrix1<Symmetry,Scalar,Scalar> Heff_next;
+	void load_pivot (const vector<MpHamiltonian> &H);
+	#endif
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -255,7 +271,12 @@ double DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	res += Heff_curr.memory(memunit);
+	res += Heff_next.memory(memunit);
+	#else
 	for (size_t l=0; l<N_sites; ++l) res += Heff[l].memory(memunit);
+	#endif
 	return res;
 }
 
@@ -263,6 +284,26 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE)
 {
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	srand(time(0));
+//	std::filesystem::path folderPath = "./tmp";
+//	if (!std::filesystem::exists(folderPath))
+//	{
+//		// Create the folder if it doesn't exist
+//		if (std::filesystem::create_directory(folderPath))
+//		{
+//			lout << "Folder ./tmp created successfully." << endl;
+//		}
+//		else
+//		{
+//			cerr << "Failed to create folder ./tmp !" << endl;
+//		}
+//	}
+	int randomNumber = rand();
+	EnvSaveLabel = make_string("./tmp/EnvTmp",randomNumber);
+	lout << termcolor::green << "Saving environments to files starting with: " << EnvSaveLabel << termcolor::reset << endl;
+	#endif
+	
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
@@ -273,35 +314,53 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 	N_sites = H[0].length();
 	N_phys  = H[0].volume();
 	
-//	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
-//	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
-	
-	// set edges
-	Heff.clear();
-	Heff.resize(N_sites);
-	for (int l=0; l<N_sites; ++l) Heff[l].Terms.resize(H.size());
-	if (Vout.state.Boundaries.IS_TRIVIAL())
-	{
-//		Heff[0].L.setVacuum();
-//		Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
-//		
-		for (int t=0; t<H.size(); ++t)
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		Heff_curr.Terms.resize(H.size());
+		Heff_next.Terms.resize(H.size());
+		if (Vout.state.Boundaries.IS_TRIVIAL())
 		{
-			Heff[0].Terms[t].L.setVacuum();
-			Heff[N_sites-1].Terms[t].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
+			for (int t=0; t<H.size(); ++t)
+			{
+				Heff_curr.Terms[t].L.setVacuum();
+				Heff_curr.Terms[t].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
+				
+				Heff_curr.Terms[t].L.save(make_string(EnvSaveLabel,"_L_t=",t,"_l=",0));
+				Heff_curr.Terms[t].R.save(make_string(EnvSaveLabel,"_R_t=",t,"_l=",N_sites-1));
+			}
 		}
-	}
-	else
-	{
-//		Heff[0].L         = Vout.state.get_boundaryTensor(DMRG::DIRECTION::LEFT);
-//		Heff[N_sites-1].R = Vout.state.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
-//		
-		for (int t=0; t<H.size(); ++t)
+		else
 		{
-			Heff[0].Terms[t].L         = Vout.state.get_boundaryTensor(DMRG::DIRECTION::LEFT);
-			Heff[N_sites-1].Terms[t].R = Vout.state.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+			for (int t=0; t<H.size(); ++t)
+			{
+				Heff_curr.Terms[t].L = Vout.state.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+				Heff_curr.Terms[t].R = Vout.state.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+				
+				Heff_curr.Terms[t].L.save(make_string(EnvSaveLabel,"_L_t=",t,"_l=",0));
+				Heff_curr.Terms[t].R.save(make_string(EnvSaveLabel,"_R_t=",t,"_l=",N_sites-1));
+			}
 		}
-	}
+	#else
+		// set edges
+		Heff.clear();
+		Heff.resize(N_sites);
+		for (int l=0; l<N_sites; ++l) Heff[l].Terms.resize(H.size());
+		if (Vout.state.Boundaries.IS_TRIVIAL())
+		{
+			for (int t=0; t<H.size(); ++t)
+			{
+				Heff[0].Terms[t].L.setVacuum();
+				Heff[N_sites-1].Terms[t].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
+			}
+		}
+		else
+		{
+			for (int t=0; t<H.size(); ++t)
+			{
+				Heff[0].Terms[t].L         = Vout.state.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+				Heff[N_sites-1].Terms[t].R = Vout.state.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+			}
+		}
+	#endif
 	
 	Stopwatch<> PrepTimer;
 	if (!USE_STATE)
@@ -408,11 +467,14 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 		{
 			for (int l=N_sites-1; l>0; --l)
 			{
-				if (!USE_STATE) {Vout.state.setRandom(l);} // Avoids overflow for large chains. Don't set random for loaded states.
+				if (!USE_STATE) {Vout.state.setRandom(l);} // Don't set random for loaded states.
 				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
 				build_R(H,Vout,l-1);
+				#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+				Heff_curr = Heff_next;
+				#endif
 			}
-			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR, NULL, true); // removes large numbers from first matrix
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR, NULL, true); // removes large numbers from matrix
 			SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 			SweepStat.pivot = 0;
 		}
@@ -420,11 +482,14 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 		{
 			for (size_t l=0; l<N_sites-1; ++l)
 			{
-				if (!USE_STATE) {Vout.state.setRandom(l);} // Avoids overflow for large chains. Don't set random for loaded states.
+				if (!USE_STATE) {Vout.state.setRandom(l);} // Don't set random for loaded states.
 				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
 				build_L(H,Vout,l+1);
+				#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+				Heff_curr = Heff_next;
+				#endif
 			}
-			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, N_sites-1, DMRG::BROOM::QR, NULL, true); // removes large numbers from first matrix
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, N_sites-1, DMRG::BROOM::QR, NULL, true); // removes large numbers from matrix
 			SweepStat.CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 			SweepStat.pivot = N_sites-1;
 		}
@@ -773,6 +838,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 			errorCalcInfo << HsqTimer.info("<H^2>") << endl;
 		}
 	}
+	#ifndef DMRG_SOLVER_MEMEFFICIENT_ENV
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_2SITE and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
 	{
 		Stopwatch<> HsqTimer;
@@ -807,9 +873,15 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Errt(H.size());
 			for (size_t t=0; t<H.size(); ++t)
 			{
+				#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+				contract_GRALF (Heff_curr.Terms[t].L, Vout.state.A[SweepStat.pivot], H[t].W[SweepStat.pivot], 
+				                Nsaved[SweepStat.pivot], Heff_curr.Terms[t].R, 
+				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], SweepStat.CURRENT_DIRECTION);
+				#else
 				contract_GRALF (Heff[SweepStat.pivot].Terms[t].L, Vout.state.A[SweepStat.pivot], H[t].W[SweepStat.pivot], 
 				                Nsaved[SweepStat.pivot], Heff[SweepStat.pivot].Terms[t].R, 
 				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], SweepStat.CURRENT_DIRECTION);
+				#endif
 			}
 			
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err = Errt[0];
@@ -841,6 +913,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 		{
 			size_t loc1 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;
 			size_t loc2 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;
+			// mem-efficient: load Heff[loc1] and Heff[loc2] from file
 			
 			// calculate the nullspace tensor F/G with QR_NULL
 			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
@@ -958,6 +1031,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 //		<< ", ratio=" << err_state/err_exact
 //		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
 	}
+	#endif
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps) // full variance: for testing purposes only
 	{
 		assert(H.size() == 1 and "DMRG::CONVTEST::VAR_FULL is not implemented for several terms!");
@@ -984,10 +1058,7 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	}
 	
 	Eold = Vout.energy;
-	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST)
-	{
-		Vref = Vout.state;
-	}
+	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST) Vref = Vout.state;
 	
 	// calculate stats
 	Mmax = Vout.state.calc_Mmax();
@@ -1048,8 +1119,9 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 		for (int o=0; o<observables.size(); ++o)
 		{
 			Scalar res = avg(Vout.state, observables[o], Vout.state);
-			lout << obs_labels[0] << "=" << res;
-			if (obs_labels[0] == "S(S+1)") lout << " -> Stot=" << calc_S_from_SSp1(real(res));
+			lout << obs_labels[o] << "=" << res;
+			if (obs_labels[o] == "S(S+1)") lout << " -> Stot=" << calc_S_from_SSp1(real(res));
+			if (obs_normalizations[o] != 1.) lout << ", normalized=" << res/obs_normalizations[o];
 			lout << endl;
 		}
 	}
@@ -1122,31 +1194,42 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	
 	Stopwatch<> OheadTimer;
 	
-	//Heff[SweepStat.pivot].W = H.W[SweepStat.pivot];
-	for (size_t t=0; t<H.size(); ++t) Heff[SweepStat.pivot].Terms[t].W = H[t].W[SweepStat.pivot];
-	
-//	precalc_blockStructure (Heff[SweepStat.pivot].L, 
-//	                        Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], 
-//	                        Heff[SweepStat.pivot].R, 
-//	                        H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), 
-//	                        Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
-//	Heff[SweepStat.pivot].qloc = H.locBasis(SweepStat.pivot);
-//	Heff[SweepStat.pivot].qOp  = H.opBasis (SweepStat.pivot);
-	
-	if (H.size() == 1)
-	{
-		precalc_blockStructure (Heff[SweepStat.pivot].Terms[0].L, 
-	                            Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].W, Vout.state.A[SweepStat.pivot], 
-	                            Heff[SweepStat.pivot].Terms[0].R, 
-	                            H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), 
-	                            Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
-	}
-	
-	for (int t=0; t<H.size(); ++t)
-	{
-		Heff[SweepStat.pivot].Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
-		Heff[SweepStat.pivot].Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
-	}
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		load_pivot(H);
+		for (size_t t=0; t<H.size(); ++t) Heff_curr.Terms[t].W = H[t].W[SweepStat.pivot];
+		
+		if (H.size() == 1)
+		{
+			precalc_blockStructure (Heff_curr.Terms[0].L, 
+			                        Vout.state.A[SweepStat.pivot], H[0].W[SweepStat.pivot], Vout.state.A[SweepStat.pivot], 
+			                        Heff_curr.Terms[0].R, 
+			                        H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), 
+			                        Heff_curr.qlhs, Heff_curr.qrhs, Heff_curr.factor_cgcs);
+		}
+		
+		for (int t=0; t<H.size(); ++t)
+		{
+			Heff_curr.Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
+			Heff_curr.Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
+		}
+	#else
+		for (size_t t=0; t<H.size(); ++t) Heff[SweepStat.pivot].Terms[t].W = H[t].W[SweepStat.pivot];
+		
+		if (H.size() == 1)
+		{
+			precalc_blockStructure (Heff[SweepStat.pivot].Terms[0].L, 
+			                        Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].W, Vout.state.A[SweepStat.pivot], 
+			                        Heff[SweepStat.pivot].Terms[0].R, 
+			                        H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), 
+			                        Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
+		}
+		
+		for (int t=0; t<H.size(); ++t)
+		{
+			Heff[SweepStat.pivot].Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
+			Heff[SweepStat.pivot].Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
+		}
+	#endif
 	
 	// contract environment for excited states
 	if (Psi0.size() > 0)
@@ -1177,7 +1260,11 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		Lutz.edgeState(Heff_curr, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	#else
+		Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	#endif
 	
 	if (Psi0.size() > 0)
 	{
@@ -1219,7 +1306,11 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
 	Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
 	Stopwatch<> SweepTimer;
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff_curr);
+	#else
 	Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff[SweepStat.pivot]);
+	#endif
 	time_sweep += SweepTimer.time();
 	
 	Stopwatch<> LRtimer;
@@ -1236,6 +1327,25 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 //		cout << Vout.state.test_ortho() << ", old_dot=" << norm << ", dot=" << Vout.state.dot(Vout.state) << endl;
 	}
 }
+
+#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+load_pivot (const vector<MpHamiltonian> &H)
+{
+	for (int t=0; t<H.size(); ++t)
+	{
+		//if (SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
+		{
+			Heff_curr.Terms[t].L.load(make_string(EnvSaveLabel,"_L_t=",t,"_l=",SweepStat.pivot));
+		}
+		//else
+		{
+			Heff_curr.Terms[t].R.load(make_string(EnvSaveLabel,"_R_t=",t,"_l=",SweepStat.pivot));
+		}
+	}
+}
+#endif
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
@@ -1370,7 +1480,7 @@ void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweep_to_edge (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT)
 {
 	assert(SweepStat.pivot == 0 or SweepStat.pivot==1 or SweepStat.pivot==N_sites-2 or SweepStat.pivot==N_sites-1);
-
+	
 	// assert(SweepStat.pivot==1 or SweepStat.pivot==N_sites-2);
 	
 	if (SweepStat.pivot==1)
@@ -1379,6 +1489,9 @@ sweep_to_edge (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 		if (MAKE_ENVIRONMENT)
 		{
 			build_R(H,Vout,0);
+			#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+			Heff_curr = Heff_next;
+			#endif
 			SweepStat.pivot = 0;
 		}
 	}
@@ -1388,6 +1501,9 @@ sweep_to_edge (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 		if (MAKE_ENVIRONMENT)
 		{
 			build_L(H,Vout,N_sites-1);
+			#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+			Heff_curr = Heff_next;
+			#endif
 			SweepStat.pivot = N_sites-1;
 		}
 	}
@@ -1457,6 +1573,29 @@ cleanup (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 		Vout.state.min_Nsv = 1;
 		lout << termcolor::blue << "DmrgSolver::cleanup notice: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
 	}
+	
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	std::array<string,2> LR = {"L", "R"};
+	for (int i=0; i<2; ++i)
+	for (size_t t=0; t<H.size(); ++t)
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		std::string filename = make_string(EnvSaveLabel,"_",LR[i],"_t=",t,"_l=",l,".h5");
+		
+		//if (i==0 and l==0) {continue;}
+		//if (i==1 and l==N_sites-1) {continue;}
+		
+		// Delete the file using c_str() to convert std::string to const char*
+		if (remove(filename.c_str()) != 0)
+		{
+			perror(make_string("Error deleting file ",filename).c_str());
+		}
+		else
+		{
+			lout << termcolor::green << "File " << filename << " successfully deleted" << termcolor::reset << endl;
+		}
+	}
+	#endif
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1596,6 +1735,10 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 adapt_alpha_rsvd (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+	load_pivot(H);
+	#endif
+	
 	// adapt alpha
 	if (Psi0.size() > 0)
 	{
@@ -1624,19 +1767,35 @@ adapt_alpha_rsvd (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar
 //	precalc_blockStructure (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].R, 
 //	                        H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
 	
-	for (size_t t=0; t<H.size(); ++t)
-	{
-		Heff[SweepStat.pivot].Terms[t].W    = H[t].W[SweepStat.pivot];
-		Heff[SweepStat.pivot].Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
-		Heff[SweepStat.pivot].Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
-	}
-	if (H.size() == 1)
-	{
-		precalc_blockStructure (Heff[SweepStat.pivot].Terms[0].L, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].W, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].R, 
-	                            H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
-	}
-	
-	HxV(Heff[SweepStat.pivot], Vtmp1, Vtmp2);
+	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		for (size_t t=0; t<H.size(); ++t)
+		{
+			Heff_curr.Terms[t].W    = H[t].W[SweepStat.pivot];
+			Heff_curr.Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
+			Heff_curr.Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
+		}
+		if (H.size() == 1)
+		{
+			precalc_blockStructure (Heff_curr.Terms[0].L, Vout.state.A[SweepStat.pivot], Heff_curr.Terms[0].W, Vout.state.A[SweepStat.pivot], Heff_curr.Terms[0].R, 
+			                        H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), Heff_curr.qlhs, Heff_curr.qrhs, Heff_curr.factor_cgcs);
+		}
+		
+		HxV(Heff_curr, Vtmp1, Vtmp2);
+	#else
+		for (size_t t=0; t<H.size(); ++t)
+		{
+			Heff[SweepStat.pivot].Terms[t].W    = H[t].W[SweepStat.pivot];
+			Heff[SweepStat.pivot].Terms[t].qloc = H[t].locBasis(SweepStat.pivot);
+			Heff[SweepStat.pivot].Terms[t].qOp  = H[t].opBasis (SweepStat.pivot);
+		}
+		if (H.size() == 1)
+		{
+			precalc_blockStructure (Heff[SweepStat.pivot].Terms[0].L, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].W, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].Terms[0].R, 
+			                        H[0].locBasis(SweepStat.pivot), H[0].opBasis(SweepStat.pivot), Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
+		}
+		
+		HxV(Heff[SweepStat.pivot], Vtmp1, Vtmp2);
+	#endif
 	
 	double DeltaEtrunc = std::real(dot(Vtmp1,Vtmp2))-Vout.energy;
 	
@@ -1727,7 +1886,12 @@ build_L (const vector<MpHamiltonian> &H, const Eigenstate<Mps<Symmetry,Scalar> >
 	
 	for (size_t t=0; t<H.size(); ++t)
 	{
+		#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		contract_L(Heff_curr.Terms[t].L, Vout.state.A[loc-1], H[t].W[loc-1], Vout.state.A[loc-1], H[t].locBasis(loc-1), H[t].opBasis(loc-1), Heff_next.Terms[t].L);
+		Heff_next.Terms[t].L.save(make_string(EnvSaveLabel,"_L_t=",t,"_l=",loc));
+		#else
 		contract_L(Heff[loc-1].Terms[t].L, Vout.state.A[loc-1], H[t].W[loc-1], Vout.state.A[loc-1], H[t].locBasis(loc-1), H[t].opBasis(loc-1), Heff[loc].Terms[t].L);
+		#endif
 	}
 }
 
@@ -1739,7 +1903,12 @@ build_R (const vector<MpHamiltonian> &H, const Eigenstate<Mps<Symmetry,Scalar> >
 	
 	for (size_t t=0; t<H.size(); ++t)
 	{
+		#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+		contract_R(Heff_curr.Terms[t].R, Vout.state.A[loc+1], H[t].W[loc+1], Vout.state.A[loc+1], H[t].locBasis(loc+1), H[t].opBasis(loc+1), Heff_next.Terms[t].R);
+		Heff_next.Terms[t].R.save(make_string(EnvSaveLabel,"_R_t=",t,"_l=",loc));
+		#else
 		contract_R(Heff[loc+1].Terms[t].R, Vout.state.A[loc+1], H[t].W[loc+1], Vout.state.A[loc+1], H[t].locBasis(loc+1), H[t].opBasis(loc+1), Heff[loc].Terms[t].R);
+		#endif
 	}
 }
 
