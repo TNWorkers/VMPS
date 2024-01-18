@@ -17,6 +17,7 @@ class FermionSite
 	typedef double Scalar;
 	typedef Symmetry_ Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<complex<Scalar>,Eigen::Dynamic,Eigen::Dynamic> > ComplexOperatorType;
 	
 public:
 	
@@ -38,6 +39,7 @@ public:
 	OperatorType Sz_1s() const {return Sz_1s_;}
 	OperatorType Sp_1s() const {return Sp_1s_;}
 	OperatorType Sm_1s() const {return Sm_1s_;}
+	ComplexOperatorType exp_ipiSz_1s() const {return exp_ipiSz_1s_;}
 	
 	OperatorType Tz_1s() const {return 0.5*(n_1s()-Id_1s());}
 	OperatorType cc_1s() const {return cc_1s_;}
@@ -75,6 +77,7 @@ protected:
 	OperatorType Sz_1s_; //orbital spin
 	OperatorType Sp_1s_; //orbital spin
 	OperatorType Sm_1s_; //orbital spin
+	ComplexOperatorType exp_ipiSz_1s_; // string
 	
 	OperatorType Tz_1s_; //orbital pseude spin
 	OperatorType cc_1s_; //pairing
@@ -118,6 +121,7 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE
 	Sz_1s_       = OperatorType(getQ(SZ),basis_1s_);
 	Sp_1s_       = OperatorType(getQ(SP),basis_1s_);
 	Sm_1s_       = OperatorType(getQ(SM),basis_1s_);
+	exp_ipiSz_1s_= ComplexOperatorType(getQ(SZ),basis_1s_);
 	
 	cc_1s_       = OperatorType(getQ(UPDN,-1),basis_1s_);
 	cdagcdag_1s_ = OperatorType(getQ(UPDN,+1),basis_1s_);
@@ -193,8 +197,15 @@ fill_SiteOps (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE
 		Sz_1s_ = 0.5*(nup_1s_-ndn_1s_);
 		Sp_1s_ = cup_1s_.adjoint() * cdn_1s_;
 		Sm_1s_ = Sp_1s_.adjoint();
+		
+		exp_ipiSz_1s_("up","up") = 1.i;
+		exp_ipiSz_1s_("dn","dn") = -1.i;
 	}
 	
+	if (!REMOVE_EMPTY)  exp_ipiSz_1s_("empty","empty")   = 1.+0.i;
+	if (!REMOVE_DOUBLE) exp_ipiSz_1s_("double","double") = 1.+0.i;
+	
+//	cout << "cup_1s_=" << endl << MatrixXcd(exp_ipiSz_1s_.template plain<complex<double> >().data) << endl;
 //	cout << "cup_1s_=" << endl << MatrixXd(cup_1s_.template plain<double>().data) << endl;
 //	cout << "cdn_1s_=" << endl << MatrixXd(cdn_1s_.template plain<double>().data) << endl;
 //	cout << "cdagup_1s_=" << endl << MatrixXd(cdagup_1s_.template plain<double>().data) << endl;

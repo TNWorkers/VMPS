@@ -62,6 +62,23 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COM
 	return res;
 }
 
+ArrayXXd extend_to_thermal (const ArrayXXd &tFull, double factor)
+{
+	int L = tFull.rows();
+	ArrayXXd res(2*L,2*L); res.setZero();
+	
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		if (abs(tFull(i,j)) > 1e-10)
+		{
+			res(2*i,2*j) = tFull(i,j);
+			res(2*i+1,2*j+1) = factor*tFull(i,j);
+		}
+	}
+	return res;
+}
+
 ArrayXXd create_1D_AB (size_t L, double lambda1A=1., double lambda1B=1., double lambda2A=0., double lambda2B=0.)
 {
 	ArrayXXd res(L,L);
@@ -2504,10 +2521,10 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 	return res;
 }
 
-pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, double lambda=1.)
+pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, double lambda=1., double lambda2=1., string BC="")
 {
 	ArrayXXd res(L,L); res.setZero();
-	assert(L==13 or L==22 or L==4); // 33, 46, 61 // 4: simplified model
+	assert(L==13 or L==8 or L==22 or L==4); // 33, 46, 61 // 4: simplified model, 8: simplified, larger unit cell with different coupling
 	// (6+)7+9+11+13
 	
 	vector<SUB_LATTICE> G;
@@ -2523,7 +2540,52 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //2
 		G.push_back(static_cast<SUB_LATTICE>(1)); //3
 	}
-	if (L==13)
+	else if (L==8)
+	{
+		if (BC == "CUT_HEX")
+		{
+			res(0,2) = lambda;
+			res(1,2) = lambda;
+			res(2,3) = lambda;
+			
+			res(3,4) = lambda2; // tinter
+			
+			res(4,5) = lambda;
+			res(5,6) = lambda;
+			res(5,7) = lambda;
+			
+			// AABA|BBAB
+			G.push_back(static_cast<SUB_LATTICE>(1)); //0
+			G.push_back(static_cast<SUB_LATTICE>(1)); //1
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //2
+			G.push_back(static_cast<SUB_LATTICE>(1)); //3
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //4
+			G.push_back(static_cast<SUB_LATTICE>(1)); //5
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //6
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //7
+		}
+		else
+		{
+			res(0,1) = lambda;
+			res(1,2) = lambda;
+			res(1,3) = lambda;
+			res(2,4) = lambda2; // thex
+			res(3,5) = lambda2; // thex
+			res(4,6) = lambda;
+			res(5,6) = lambda;
+			res(6,7) = lambda;
+			
+			G.push_back(static_cast<SUB_LATTICE>(1)); //0
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //1
+			G.push_back(static_cast<SUB_LATTICE>(1)); //2
+			G.push_back(static_cast<SUB_LATTICE>(1)); //3
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //4
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //5
+			G.push_back(static_cast<SUB_LATTICE>(1)); //6
+			G.push_back(static_cast<SUB_LATTICE>(-1)); //7
+		}
+	}
+	else if (L==13)
 	{
 		for (int i=0; i<=10; ++i) res(i,i+1) = lambda;
 		res(0,11) = lambda;
@@ -2534,41 +2596,75 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 	}
 	else if (L==22)
 	{
-		for (int i=0; i<=16; ++i) res(i,i+1) = lambda;
-		res(0,17) = lambda;
+		//for (int i=0; i<=16; ++i) res(i,i+1) = lambda;
+		//res(0,17) = lambda;
 		
-		res(2,18) = lambda;
-		res(16,18) = lambda;
-		res(4,19) = lambda;
-		res(8,19) = lambda;
-		res(10,20) = lambda;
-		res(14,20) = lambda;
+		//res(2,18) = lambda;
+		//res(16,18) = lambda;
+		//res(4,19) = lambda;
+		//res(8,19) = lambda;
+		//res(10,20) = lambda;
+		//res(14,20) = lambda;
+		//res(18,21) = lambda;
+		//res(19,21) = lambda;
+		//res(20,21) = lambda;
+		
+		res(11,15) = lambda;
+		res(15,19) = lambda;
+		
+		res(8,11) = lambda;
+		res(16,19) = lambda;
+		
+		res(5,8) = lambda;
+		res(8,12) = lambda;
+		res(12,16) = lambda;
+		res(16,20) = lambda;
+		
+		res(3,5) = lambda;
+		res(9,12) = lambda;
+		res(17,20) = lambda;
+		
+		res(1,3) = lambda;
+		res(3,6) = lambda;
+		res(6,9) = lambda;
+		res(9,13) = lambda;
+		res(13,17) = lambda;
+		res(17,21) = lambda;
+		
+		res(0,1) = lambda;
+		res(4,6) = lambda;
+		res(10,13) = lambda;
 		res(18,21) = lambda;
-		res(19,21) = lambda;
-		res(20,21) = lambda;
+		
+		res(0,2) = lambda;
+		res(2,4) = lambda;
+		res(4,7) = lambda;
+		res(7,10) = lambda;
+		res(10,14) = lambda;
+		res(14,18) = lambda;
 		
 		G.push_back(static_cast<SUB_LATTICE>(1)); //0
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //1
-		G.push_back(static_cast<SUB_LATTICE>(1)); //2
-		G.push_back(static_cast<SUB_LATTICE>(-1)); //3
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(1)); //3
 		G.push_back(static_cast<SUB_LATTICE>(1)); //4
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //5
-		G.push_back(static_cast<SUB_LATTICE>(1)); //6
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //6
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //7
 		G.push_back(static_cast<SUB_LATTICE>(1)); //8
-		G.push_back(static_cast<SUB_LATTICE>(-1)); //9
+		G.push_back(static_cast<SUB_LATTICE>(1)); //9
 		G.push_back(static_cast<SUB_LATTICE>(1)); //10
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //11
-		G.push_back(static_cast<SUB_LATTICE>(1)); //12
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //12
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //13
-		G.push_back(static_cast<SUB_LATTICE>(1)); //14
-		G.push_back(static_cast<SUB_LATTICE>(-1)); //15
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //14
+		G.push_back(static_cast<SUB_LATTICE>(1)); //15
 		G.push_back(static_cast<SUB_LATTICE>(1)); //16
-		G.push_back(static_cast<SUB_LATTICE>(-1)); //17
-		G.push_back(static_cast<SUB_LATTICE>(-1)); //18
+		G.push_back(static_cast<SUB_LATTICE>(1)); //17
+		G.push_back(static_cast<SUB_LATTICE>(1)); //18
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //19
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //20
-		G.push_back(static_cast<SUB_LATTICE>(1)); //21
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //21
 	}
 	
 	res += res.transpose().eval();
@@ -2956,7 +3052,8 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 //	return sqrt(var);
 //}
 
-vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
+// Warning: changed arguments to L,Ly,maxPower from Ly,maxPower on 2024-01-18
+vector<Param> Tinf_params_fermions (size_t L, size_t Ly, size_t maxPower=1ul)
 {
 	vector<Param> res;
 	res.push_back({"Ly",Ly});
@@ -2972,6 +3069,17 @@ vector<Param> Tinf_params_fermions (size_t Ly, size_t maxPower=1ul)
 		res.push_back({"t",1.,0});
 		res.push_back({"t",0.,1});
 	}
+	vector<SUB_LATTICE> G;
+	for (int l=0; l<L; l+=4)
+	{
+		G.push_back(static_cast<SUB_LATTICE>(1));
+		G.push_back(static_cast<SUB_LATTICE>(-1));
+		G.push_back(static_cast<SUB_LATTICE>(-1));
+		G.push_back(static_cast<SUB_LATTICE>(1));
+	}
+	res.push_back({"G",G});
+	//for (size_t l=0; l<L; ++l) {lout << G[l];}
+	//lout << endl;
 	return res;
 }
 

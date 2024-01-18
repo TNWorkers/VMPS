@@ -590,14 +590,13 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
+void OxV (const Mpo<Symmetry,MpoScalar> &H, const Mpo<Symmetry,MpoScalar> &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE=true, double tol_compr=1e-4, int Mincr=100, int Mlimit=10000, int max_halfsweeps=100, int min_halfsweeps=1, bool MEASURE_DISTANCE=true)
 {
 	Stopwatch<> Chronos;
 	
 	if (Vin.calc_Mmax() <= 4)
 	{
-		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1);
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT, 200, 1, -1, DMRG::BROOM::QR);
 	}
 	else
 	{

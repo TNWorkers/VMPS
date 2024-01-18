@@ -232,6 +232,17 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {c_ranges,cdag_ranges};
 			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);
 		}
+		if (P.HAS("tFullA"))
+		{
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> c_sign_local = (F[loc].c(1) * F[loc].sign_local(1));
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(1) * F[loc].sign_local(1));
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > c_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {c_ranges[i] = F[i].c(1);}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cdag_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {cdag_ranges[i] = F[i].cdag(1);}
+			
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdag_sign_local,c_sign_local};
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {c_ranges,cdag_ranges};
+			push_full("tFullA", "tAᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);
+		}
 		if (P.HAS("Vzfull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tz(0)};

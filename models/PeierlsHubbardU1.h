@@ -1,13 +1,6 @@
 #ifndef HUBBARDMODELU1_H_COMPLEX
 #define HUBBARDMODELU1_H_COMPLEX
 
-//#include "symmetry/S1xS2.h"
-//#include "symmetry/U1.h"
-//#include "bases/FermionBase.h"
-//#include "models/HubbardObservables.h"
-//#include "Mpo.h"
-//#include "ParamReturner.h"
-//#include "Geometry2D.h" // from TOOLS
 #include "models/PeierlsHubbardU1xU1.h"
 
 namespace VMPS

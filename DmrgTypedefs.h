@@ -143,6 +143,20 @@ SUB_LATTICE flip_sublattice(SUB_LATTICE sublat)
 	return (sublat==A)? B:A;
 }
 
+void sublattice_check (const ArrayXXd &hopping, const vector<SUB_LATTICE> &G)
+{
+	for (size_t i=0; i<hopping.rows(); ++i)
+	for (size_t j=0; j<hopping.cols(); ++j)
+	{
+		if (hopping(i,j)!=0.)
+		{
+			if (G[i]==G[j]) lout << "sublattice error: G[" << i << "]=" << G[i] << ", G[" << j << "]=" << G[j] << endl;
+			assert(G[i]!=G[j] and "Sublattice check");
+		}
+	}
+	lout << "Sublattice check passed!" << endl;
+}
+
 enum BC
 {
 	// PERIODIC=true,

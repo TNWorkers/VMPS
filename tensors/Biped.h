@@ -16,6 +16,31 @@
 #include "symmetry/functions.h"
 #include "DmrgConglutinations.h"
 
+double xlogx (double x)
+{
+	if (x > 0.0)
+	{
+		if (x < 1e-30)
+		{
+			// For very small x, x * log(x) is effectively 0
+			return 0.0;
+		}
+		else
+		{
+			// Direct computation for larger x
+			return x * log(x);
+		}
+	}
+	else if (x == 0.0)
+	{
+		return 0.0; // mathematically, limit of x*log(x) as x approaches 0 is 0
+	}
+	else
+	{
+		return NAN; // log(x) is not defined for negative x
+	}
+}
+
 template<typename Symmetry>
 class Qbasis;
 
@@ -850,7 +875,8 @@ truncateSVD (size_t minKeep, size_t maxKeep, EpsScalar eps_truncWeight, double &
 	for (const auto &[q,s] : allSV)
 	{
 		qn_orderedSV[q].push_back(s);
-		entropy += -Symmetry::degeneracy(q) * s*s * std::log(s*s);
+		//entropy += -Symmetry::degeneracy(q) * s*s * std::log(s*s);
+		entropy += -Symmetry::degeneracy(q) * xlogx(s*s);
 	}
 	for (const auto & [q,vec_sv]: qn_orderedSV)
 	{

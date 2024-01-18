@@ -180,6 +180,8 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type exp_ipiSz (size_t locx, size_t locy=0, double factor=1.) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Scomptot (SPINOP_LABEL Sa, size_t locy=0, double factor=1., int dLphys=1) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sz (size_t locx, size_t locy=0) const;
@@ -1426,6 +1428,28 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	return make_local(locx,locy, F[locx].Scomp(Sa,locy), factor, PROP::BOSONIC, HERMITIAN);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry,Scalar>::
+exp_ipiSz (size_t locx, size_t locy, double factor) const
+{
+	bool HERMITIAN = false;
+	//return make_local(locx,locy, F[locx].exp_ipiSz(locy), factor, PROP::BOSONIC, HERMITIAN);
+	
+	assert(locx<F.size() and locy<F[locx].dim());
+	stringstream ss;
+	ss << F[locx].exp_ipiSz(locy).label() << "(" << locx << "," << locy;
+	if (factor != 1.) ss << ",factor=" << factor;
+	ss << ")";
+	
+	Mpo<Symmetry,Scalar > Mout(F.size(), F[locx].exp_ipiSz(locy).Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) Mout.setLocBasis(F[l].get_basis().qloc(),l);
+	
+	Mout.setLocal(locx, (factor * F[locx].exp_ipiSz(locy)).template plain<complex<double> >().template cast<complex<double> >());
+	
+	return Mout;
 }
 
 template<typename Symmetry, typename Scalar>

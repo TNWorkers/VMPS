@@ -80,7 +80,7 @@ public:
 const map<string,any> KondoU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
-	{"Jxy",1.}, {"Jz",1.}, {"Jdir",0.},
+	{"Jxy",0.}, {"Jz",0.}, {"J",1.}, {"Jdir",0.},
 	{"U",0.}, {"Uph",0.}, {"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
@@ -210,7 +210,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
-
+		
 		if (P.HAS("tFull"))
 		{
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cup_sign_local = kroneckerProduct(B[loc].Id(),F[loc].c(UP,0) * F[loc].sign());
@@ -252,9 +252,12 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		// Kondo-J
 		param1d Jxy = P.fill_array1d<double>("Jxy", "Jorbxy", Forbitals, loc%Lcell);
 		labellist[loc].push_back(Jxy.label);
-
+		
 		param1d Jz = P.fill_array1d<double>("Jz", "Jorbz", Forbitals, loc%Lcell);
 		labellist[loc].push_back(Jz.label);
+		
+		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
+		labellist[loc].push_back(J.label);
 		
 		// Hubbard-U
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
@@ -300,31 +303,34 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		ArrayXXd Jzperp   = B[loc].ZeroHopping();
 		ArrayXd  Bxorb    = B[loc].ZeroField();
 		ArrayXd  muorb    = B[loc].ZeroField();
+		ArrayXd  nuorb    = B[loc].ZeroField();
 		ArrayXd  Bxsuborb = F[loc].ZeroField();
 		ArrayXd  Kxorb    = B[loc].ZeroField();
 		ArrayXXd Dyperp   = B[loc].ZeroHopping();
 		ArrayXXd Jperp    = F[loc].ZeroHopping();
 		ArrayXXd Vxysubperp   = F[loc].ZeroHopping();
 		ArrayXXd Vzsubperp   = F[loc].ZeroHopping();
+		ArrayXXd C   = F[loc].ZeroHopping();
 		
 		if (Borbitals > 0 and Forbitals > 0)
 		{
-			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,muorb,Kz.a), F[loc].Id());
-			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,Uph.a,t0.a-mu.a,Bzsub.a,tPerp.a,Vperp.a,Vzsubperp,Vxysubperp,Jperp,Jperp));
+			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,muorb,nuorb,Kz.a), F[loc].Id());
+			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,Uph.a,t0.a-mu.a,Bzsub.a,tPerp.a,Vperp.a,Vzsubperp,Vxysubperp,Jperp,Jperp,C));
 			auto Hloc = Himp + Hsub;
 			
 			for (int alfa=0; alfa<Forbitals; ++alfa)
 			{
-				if (Jxy(alfa) != 0.)
+				// Kondo Hamiltonian:
+				if (abs(Jxy(alfa)) > 0. or abs(J(alfa)) > 0.)
 				{
 					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
-					Hloc += 0.5*Jxy(alfa) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
-					Hloc += 0.5*Jxy(alfa) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
+					Hloc += 0.5*(Jxy(alfa)+J(alfa)) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
+					Hloc += 0.5*(Jxy(alfa)+J(alfa)) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
 				}
-				if (Jz(alfa) != 0.)
+				if (abs(Jz(alfa)) > 0. or abs(J(alfa)))
 				{
 					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
-					Hloc +=      Jz(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
+					Hloc +=      (Jz(alfa)+J(alfa)) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
 				}
 			}
 			

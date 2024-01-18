@@ -446,17 +446,19 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		Eigenstate<Mps<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> > th;
 		
 		DMRG::CONTROL::GLOB GlobParam;
-				fDMRG.GlobParam.CALC_S_ON_EXIT = false;
-		DMRG::CONTROL::DYN  DynParam;
+		fDMRG.GlobParam.CALC_S_ON_EXIT = false;
+		DMRG::CONTROL::DYN DynParam;
 		if (dLphys == 2)
 		{
 			GlobParam.Minit = 10ul;
 			GlobParam.Qinit = 10ul;
+			GlobParam.INITDIR = DMRG::DIRECTION::RIGHT; // 1=left->right, 0=right->left
 			
 			size_t start_2site = 0ul;
 			size_t end_2site = 10ul;
-			int period_2site = 2ul;
-			DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+			//int period_2site = 2ul;
+			DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+			DynParam.max_alpha_rsvd = [] (size_t i) {return (i<20ul)? 1e8:0.;};
 			fDMRG.DynParam = DynParam;
 			fDMRG.userSetDynParam();
 		}
@@ -465,7 +467,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		th.state.eps_truncWeight = 0.;
 		fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
 		
-		lout << Htherm.info() << endl;
+		//lout << Htherm.info() << endl;
 		th.state.entropy_skim();
 		lout << th.state.entropy().transpose() << endl;
 		
@@ -497,21 +499,43 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		while (ALL == false)
 		{
 			lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
-//			fDMRG = typename HamiltonianThermal::Solver(DMRG::VERBOSITY::ON_EXIT);
-//			fDMRG.GlobParam = GlobParam;
-//			fDMRG.userSetGlobParam();
-//			if (dLphys == 2)
-//			{
-//				fDMRG.DynParam = DynParam;
-//				fDMRG.userSetDynParam();
-//			}
-//			th.state.eps_truncWeight = 0.;
-			//fDMRG.push_back(th.state);
-			//double energy1 = th.energy;
-			fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
-			//double energy2 = th.energy;
+			
+			typename HamiltonianThermal::Solver fDMRGnew(DMRG::VERBOSITY::ON_EXIT);
+			
+			DMRG::CONTROL::GLOB GlobParam;
+			fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
+			if (GlobParam.INITDIR == DMRG::DIRECTION::RIGHT)
+			{
+				GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
+			}
+			else
+			{
+				GlobParam.INITDIR = DMRG::DIRECTION::RIGHT;
+			}
+			fDMRGnew.GlobParam = GlobParam;
+			fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
+			fDMRGnew.GlobParam.min_halfsweeps = 30ul;
+			fDMRGnew.GlobParam.min_halfsweeps = 30ul;
+			
+			DMRG::CONTROL::DYN DynParam;
+			if (dLphys == 2)
+			{
+				GlobParam.Minit = 10ul;
+				GlobParam.Qinit = 10ul;
+				
+				size_t start_2site = 0ul;
+				size_t end_2site = 10ul;
+				//int period_2site = 2ul;
+				DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+				DynParam.max_alpha_rsvd = [] (size_t i) {return (i<30ul)? 1e8:0.;};
+				fDMRGnew.DynParam = DynParam;
+			}
+			
+			fDMRGnew.userSetGlobParam();
+			fDMRGnew.userSetDynParam();
+			
+			fDMRGnew.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
 			th.state.entropy_skim();
-			//if (abs(energy1-energy2) > 1.) throw;
 			
 			if (dLphys==2)
 			{
@@ -667,8 +691,9 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 				
 				//Mps<Symmetry,Scalar> PhiTmp;
 				lout << "applying 1-1/2*dβ*H+1/8*(dβ*H)^2 and compressing for dβ=" << betasteps[i] << endl;
-				//OxV_exact(U,PhiT,PhiTmp,1e-9,DMRG::VERBOSITY::ON_EXIT,200,1,Mlim);
+				//OxV_exact(U,PhiT,PhiTmp,1e-9,DMRG::VERBOSITY::ON_EXIT,200,1,Mlim,DMRG::BROOM::QR);
 				//HxV(U,PhiT,PhiTmp,true,tol_compr_beta,50,Mlim);
+				//OxV(U,U,PhiT,true,tol_compr_beta,50,Mlim,16,6,false);
 				OxV(U,U,PhiT,true,tol_compr_beta,50,Mlim,16,6,false);
 				//PhiT = PhiTmp;
 				
@@ -741,7 +766,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			double chic = 0;
 			if (CALC_CHI)
 			{
-				#ifdef USING_SU2
+				#if defined(USING_SU2xU1) or defined(USING_SU2xSU2)
 				chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
 				chiz = chi/3.;
 				for (int l=0; l<dLphys*L; l+=dLphys)
@@ -773,6 +798,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			VectorXd nphys(Lcell); nphys.setZero();
 			//VectorXd SdagSphys(Lcell); for (int j=0; j<Lcell; ++j) SdagSphys(j) = 0.;
 			double nancl = 0.;
+			#if not defined(USING_SU2xSU2)
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
 				for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
@@ -784,6 +810,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 					nancl += isReal(avg(PhiT, Hprop.n(j,dLphys%2), PhiT));
 				}
 			}
+			#endif
 //			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
 //			{
 //				for (int j=0, icell=0; j<dLphys*(L-1); j+=dLphys, icell+=1)

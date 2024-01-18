@@ -64,6 +64,7 @@ const std::map<string,std::any> KondoU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
 	{"J",1.}, {"Jdir",0.}, 
+	{"Jxy",0.}, {"Jz",0.},
 	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
@@ -135,6 +136,7 @@ add_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		ArrayXXd Jzperp  = B[loc].ZeroHopping();
 		ArrayXd  Bzorb   = B[loc].ZeroField();
 		ArrayXd  muorb   = B[loc].ZeroField();
+		ArrayXd  nuorb   = B[loc].ZeroField();
 		ArrayXd  Kzorb   = B[loc].ZeroField();
 		ArrayXXd Dyperp  = B[loc].ZeroHopping();
 		
@@ -146,9 +148,9 @@ add_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 		ArrayXXd Vperp   = F[loc].ZeroHopping();
 		ArrayXXd Jperp   = F[loc].ZeroHopping();
 		
-		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bx.a,muorb,Kzorb,Kx.a,Dyperp), F[loc].Id());
+		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bx.a,muorb,nuorb,Kzorb,Kx.a,Dyperp), F[loc].Id());
 		auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template coupling_Bx<double>(Bxsub.a));
-
+		
 		pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Himp+Hsub), 1.));
 	}
 }

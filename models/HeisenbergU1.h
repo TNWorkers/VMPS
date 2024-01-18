@@ -99,7 +99,7 @@ public:
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"J",0.}, {"Jprime",0.}, {"Jrung",0.},
 	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
 	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	{"R",0.},
@@ -302,6 +302,26 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
 			push_full("Jzfull", "Jzᵢⱼ", first, last, {1.0});
+		}
+		if (P.HAS("JxyfullA"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sp(1), B[loc].Sm(1)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = B[i].Sp(1); 
+			                                  Sm_ranges[i] = B[i].Sm(1);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges};
+			push_full("JxyfullA", "JxyAᵢⱼ", first, last, {0.5,0.5});
+		}
+		if (P.HAS("JzfullA"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sz(1)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sz_ranges[i] = B[i].Sz(1);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
+			push_full("JzfullA", "JzAᵢⱼ", first, last, {1.0});
 		}
 		if (P.HAS("Rfull"))
 		{

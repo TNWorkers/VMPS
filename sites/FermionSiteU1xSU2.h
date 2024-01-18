@@ -19,22 +19,23 @@ class FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >
 	typedef double Scalar;
 	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<complex<Scalar>,Eigen::Dynamic,Eigen::Dynamic> > ComplexOperatorType;
 	
 public:
 	FermionSite() {};
 	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1., int k_input=0);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
-	OperatorType F_1s() const {return F_1s_;}
+	OperatorType F_1s()  const {return F_1s_;}
 	
 	OperatorType c_1s(SPIN_INDEX sigma, SUB_LATTICE G) const
-		{
-			if (sigma == UP and G == A) {return cupA_1s_;}
-			else if (sigma == UP and G == B) {return cupB_1s_;}
-			else if (sigma == DN and G == A) {return cdnA_1s_;}
-			return cdnB_1s_; //else if sigma==DN and G==B
-		}
-	OperatorType cdag_1s(SPIN_INDEX sigma, SUB_LATTICE G) const {return c_1s(sigma, G).adjoint();}
+	{
+		if      (sigma == UP and G == A) {return cupA_1s_;}
+		else if (sigma == UP and G == B) {return cupB_1s_;}
+		else if (sigma == DN and G == A) {return cdnA_1s_;}
+		return cdnB_1s_; //else: sigma==DN and G==B
+	}
+	OperatorType cdag_1s(SPIN_INDEX sigma, SUB_LATTICE G) const {return c_1s(sigma,G).adjoint();}
 	
 	OperatorType n_1s() const {return n_1s(UP) + n_1s(DN);}
 	OperatorType n_1s(SPIN_INDEX sigma) const { if (sigma == UP) {return nup_1s_;} return ndn_1s_; }
@@ -44,6 +45,7 @@ public:
 	OperatorType Sz_1s() const {return Sz_1s_;}
 	OperatorType Sp_1s() const {return Sp_1s_;}
 	OperatorType Sm_1s() const {return Sm_1s_;}
+	ComplexOperatorType exp_ipiSz_1s() const {return exp_ipiSz_1s_;}
 	
 	OperatorType T_1s() const {return T_1s_;}
 	
@@ -68,6 +70,7 @@ protected:
 	OperatorType Sp_1s_; //orbital spin
 	OperatorType Sm_1s_; //orbital spin
 	OperatorType T_1s_; //orbital isospin
+	ComplexOperatorType exp_ipiSz_1s_; //string order term
 };
 
 FermionSite<Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::ChargeSU2> > >::
@@ -114,6 +117,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	cdnB_1s_ = OperatorType({+1,2},basis_1s_,"c↓(B)");
 	nh_1s_ = OperatorType({0,1},basis_1s_,"nh");
 	T_1s_ = OperatorType({0,3},basis_1s_,"T");
+	exp_ipiSz_1s_ = ComplexOperatorType({0,1},basis_1s_,"exp_ipiSz");
 	
 	// create operators one orbitals
 	if (!REMOVE_HOLON) Id_1s_("holon", "holon") = 1.;
@@ -126,7 +130,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	
 	if (!REMOVE_HOLON) nh_1s_("holon","holon") = 1.;
 	
-	if (!REMOVE_HOLON) T_1s_( "holon", "holon" ) = std::sqrt(0.75);
+	if (!REMOVE_HOLON) T_1s_( "holon","holon") = std::sqrt(0.75);
 	
 	if (!REMOVE_HOLON and !REMOVE_DN) cupA_1s_( "dn", "holon" ) = sqrt(2.);
 	if (!REMOVE_HOLON and !REMOVE_UP) cupA_1s_( "holon", "up" ) = -1.;
@@ -145,7 +149,12 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	
 	Sz_1s_ = 0.5 * (std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{0,1}) - std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{0,1}));
 	Sp_1s_ = -std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cdnA_1s_,{+2,1});
-	Sm_1s_ = Sp_1s_.adjoint();
+	Sm_1s_ = -std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cupA_1s_,{-2,1});
+	//Sm_1s_ = Sp_1s_.adjoint();
+	
+	if (!REMOVE_UP) exp_ipiSz_1s_("up","up") = +1.i;
+	if (!REMOVE_DN) exp_ipiSz_1s_("dn","dn") = -1.i;
+	if (!REMOVE_HOLON) exp_ipiSz_1s_("holon","holon") = 1.;
 }
 
 #endif //FERMIONSITESU2xU1_H_

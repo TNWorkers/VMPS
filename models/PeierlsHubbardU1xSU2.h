@@ -1,5 +1,5 @@
-#ifndef HUBBARDMODELSU2CHARGE_H_
-#define HUBBARDMODELSU2CHARGE_H_
+#ifndef HUBBARDMODELU1XSU2CHARGE_H_
+#define HUBBARDMODELU1XSU2CHARGE_H_
 
 #include "models/HubbardSU2xU1.h"
 #include "symmetry/SU2.h"
@@ -11,39 +11,14 @@
 
 namespace VMPS
 {
-
-/** \class HubbardSU2
-  * \ingroup Hubbard
-  *
-  * \brief Hubbard Model
-  *
-  * MPO representation of 
-  * 
-  * \f$
-  * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-  * - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-  * + U \sum_i n_{i\uparrow} n_{i\downarrow}
-  * + V \sum_{<ij>} n_{i} n_{j}
-  * - X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
-  * +H_{tJ}
-  * \f$.
-  * with
-  * \f[
-  * H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
-  * \f]
-  * \note: The term before \f$n_i n_j\f$ is not set and has to be adjusted with \p V
-  * \note Makes use only of the spin-SU(2) smmetry.
-  * \note If the nnn-hopping is positive, the ground state energy is lowered.
-  * \warning \f$J>0\f$ is antiferromagnetic
-  */
-class PeierlsHubbardSU2charge : public Mpo<Sym::SU2<Sym::ChargeSU2>,complex<double> >,
-                                public HubbardObservables<Sym::SU2<Sym::ChargeSU2>,complex<double> >,
-                                public ParamReturner
+class PeierlsHubbardU1xSU2 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::SU2<Sym::ChargeSU2> >,complex<double> >,
+                                   public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::SU2<Sym::ChargeSU2> >,complex<double> >,
+                                   public ParamReturner
 {
 public:
 	
-	typedef Sym::SU2<Sym::ChargeSU2> Symmetry;
-	MAKE_TYPEDEFS(PeierlsHubbardSU2charge)
+	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
+	MAKE_TYPEDEFS(PeierlsHubbardU1xSU2)
 	typedef Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
@@ -55,14 +30,14 @@ private:
 public:
 	
 	///@{
-	PeierlsHubbardSU2charge() : Mpo(){};
+	PeierlsHubbardU1xSU2() : Mpo(){};
 	
-	PeierlsHubbardSU2charge(Mpo<Symmetry, complex<double> > &Mpo_input, const vector<Param> &params)
+	PeierlsHubbardU1xSU2(Mpo<Symmetry, complex<double> > &Mpo_input, const vector<Param> &params)
 	:Mpo<Symmetry,complex<double> >(Mpo_input),
-	 HubbardObservables(this->N_sites,params,PeierlsHubbardSU2charge::defaults),
-	 ParamReturner(PeierlsHubbardSU2charge::sweep_defaults)
+	 HubbardObservables(this->N_sites,params,PeierlsHubbardU1xSU2::defaults),
+	 ParamReturner(PeierlsHubbardU1xSU2::sweep_defaults)
 	{
-		ParamHandler P(params,PeierlsHubbardSU2charge::defaults);
+		ParamHandler P(params,PeierlsHubbardU1xSU2::defaults);
 		size_t Lcell = P.size();
 		N_phys = 0;
 		for (size_t l=0; l<N_sites; ++l) N_phys += P.get<size_t>("Ly",l%Lcell);
@@ -72,7 +47,7 @@ public:
 		this->HAMILTONIAN = true;
 	};
 	
-	PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	PeierlsHubbardU1xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
 	template<typename Symmetry_> 
@@ -80,7 +55,7 @@ public:
 	                           PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
-	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
+	static qarray<2> singlet (int N=0, int L=0) {return qarray<2>{0,N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	static constexpr int spinfac = 1;
 	
@@ -90,7 +65,7 @@ public:
 
 // V is standard next-nearest neighbour density interaction
 // Vz and Vxy are anisotropic isospin-isospin next-nearest neighbour interaction
-const map<string,any> PeierlsHubbardSU2charge::defaults = 
+const map<string,any> PeierlsHubbardU1xSU2::defaults = 
 {
 	{"t",1.+0.i}, {"tPrime",0.i}, {"tRung",1.+0.i}, {"tPrimePrime",0.i},
 	{"mu",0.}, {"t0",0.}, 
@@ -104,7 +79,7 @@ const map<string,any> PeierlsHubbardSU2charge::defaults =
 	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
-const map<string,any> PeierlsHubbardSU2charge::sweep_defaults = 
+const map<string,any> PeierlsHubbardU1xSU2::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
@@ -115,11 +90,11 @@ const map<string,any> PeierlsHubbardSU2charge::sweep_defaults =
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 
-PeierlsHubbardSU2charge::
-PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
-:Mpo<Symmetry,complex<double> > (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
- HubbardObservables(L,params,PeierlsHubbardSU2charge::defaults),
- ParamReturner(PeierlsHubbardSU2charge::sweep_defaults)
+PeierlsHubbardU1xSU2::
+PeierlsHubbardU1xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry,complex<double> > (L, qarray<Symmetry::Nq>({0,1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
+ HubbardObservables(L,params,PeierlsHubbardU1xSU2::defaults),
+ ParamReturner(PeierlsHubbardU1xSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	size_t Lcell = P.size();
@@ -142,8 +117,7 @@ PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC 
 	
 	PushType<SiteOperator<Symmetry,complex<double>>,complex<double>> pushlist;
 	std::vector<std::vector<std::string>> labellist;
-	PeierlsHubbardSU2charge::set_operators(F, G, P, pushlist, labellist, boundary); // F, G are set in HubbardObservables
-	//add_operators(F, P, pushlist, labellist, boundary);
+	PeierlsHubbardU1xSU2::set_operators(F, G, P, pushlist, labellist, boundary); // F, G are set in HubbardObservables
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
 	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
@@ -152,7 +126,7 @@ PeierlsHubbardSU2charge (const size_t &L, const vector<Param> &params, const BC 
 }
 
 template<typename Symmetry_>
-void PeierlsHubbardSU2charge::
+void PeierlsHubbardU1xSU2::
 set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_LATTICE> &G, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
@@ -264,7 +238,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_L
 		param2d Jzperp = P.fill_array2d<double>("JzRung", "Jz", "JzPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jperp = P.fill_array2d<double>("JRung", "J", "JPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
-		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
 		labellist[loc].push_back(Uph.label);
 		//labellist[loc].push_back(t0.label);
@@ -274,30 +248,17 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_L
 		labellist[loc].push_back(Jzperp.label);
 		labellist[loc].push_back(Jperp.label);
 		labellist[loc].push_back(Bz.label);
-		labellist[loc].push_back(Bx.label);
-		
-		ArrayXXcd Vperp = F[loc].ZeroHopping();
-		
-		auto sum_array = [] (const ArrayXXcd& a1, const ArrayXXcd& a2)
-		{
-			ArrayXXcd res(a1.rows(), a1.cols());
-			for (int i=0; i<a1.rows(); ++i)
-			for (int j=0; j<a1.rows(); ++j)
-			{
-				res(i,j) = a1(i,j) + a2(i,j);
-			}
-			return res;
-		};
+		labellist[loc].push_back(Vperp.label);
 		
 		auto Hloc = Mpo<Symmetry_,complex<double> >::get_N_site_interaction
 		(
-			F[loc].template HubbardHamiltonian<complex<double>,Symmetry_>(Uph.a.cast<complex<double>>(), 
-			                                                              tPerp.a.cast<complex<double>>(), 
-			                                                              Vperp.cast<complex<double>>(), 
-			                                                              sum_array(Jperp.a.cast<complex<double>>(),Jzperp.a.cast<complex<double>>()), 
-			                                                              sum_array(Jperp.a.cast<complex<double>>(),Jxyperp.a.cast<complex<double>>()), 
-			                                                              Bz.a.cast<complex<double>>(), 
-			                                                              Bx.a.cast<complex<double>>())
+			F[loc].template HubbardHamiltonian<complex<double>,Symmetry_>(
+				Uph.a.cast<complex<double>>(), 
+				tPerp.a.cast<complex<double>>(),
+				Vperp.a.cast<complex<double>>(),
+				Jzperp.a.cast<complex<double>>(),
+				Jxyperp.a.cast<complex<double>>(),
+				Bz.a.cast<complex<double>>())
 		);
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.+0.i));
 	}

@@ -121,7 +121,7 @@ HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, co
  HubbardObservables(L,params,HubbardSU2::defaults),
  ParamReturner(HubbardSU2::sweep_defaults)
 {
-	ParamHandler P(params,defaults);	
+	ParamHandler P(params,defaults);
 	size_t Lcell = P.size();
 	
 	for (size_t l=0; l<N_sites; ++l)

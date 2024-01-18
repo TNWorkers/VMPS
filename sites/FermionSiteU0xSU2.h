@@ -19,6 +19,8 @@ class FermionSite<Sym::SU2<Sym::ChargeSU2> >
 	typedef double Scalar;
 	typedef Sym::SU2<Sym::ChargeSU2> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<complex<Scalar>,Eigen::Dynamic,Eigen::Dynamic> > ComplexOperatorType;
+	
 public:
 	FermionSite() {};
 	FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_DN, int mfactor_input=1, int k_input=0);
@@ -43,21 +45,23 @@ public:
 	OperatorType Sz_1s() const {return Sz_1s_;}
 	OperatorType Sp_1s() const {return Sp_1s_;}
 	OperatorType Sm_1s() const {return Sm_1s_;}
+	ComplexOperatorType exp_ipiSz_1s() const {return exp_ipiSz_1s_;}
 	
 	OperatorType T_1s() const {return T_1s_;}
 
 	Qbasis<Symmetry> basis_1s() const {return basis_1s_;}
 protected:
+	
 	Qbasis<Symmetry> basis_1s_;
-
+	
 	OperatorType Id_1s_; //identity
 	OperatorType F_1s_; //Fermionic sign
-
+	
 	OperatorType cupA_1s_; //annihilation
 	OperatorType cdnA_1s_; //annihilation
 	OperatorType cupB_1s_; //annihilation
 	OperatorType cdnB_1s_; //annihilation
-
+	
 	OperatorType nup_1s_; //particle number
 	OperatorType ndn_1s_; //particle number
 	OperatorType nh_1s_; //holon number
@@ -65,6 +69,7 @@ protected:
 	OperatorType Sp_1s_; //orbital spin
 	OperatorType Sm_1s_; //orbital spin
 	OperatorType T_1s_; //orbital isospin
+	ComplexOperatorType exp_ipiSz_1s_; //string order term
 };
 
 FermionSite<Sym::SU2<Sym::ChargeSU2> >::
@@ -121,6 +126,7 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	cdnB_1s_ = OperatorType({2},basis_1s_,"c↓(B)");
 	nh_1s_ = OperatorType({1},basis_1s_,"nh");
 	T_1s_ = OperatorType({3},basis_1s_,"T");
+	exp_ipiSz_1s_ = ComplexOperatorType({1},basis_1s_,"exp_ipiSz");
 	
 	// create operators for one orbital
 	if (!REMOVE_HOLON) Id_1s_("holon", "holon") = 1.;
@@ -158,8 +164,13 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 //	cout << "cdagdnA_1s_*cdnA_1s_=" << endl << MatrixXd(OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}).plain<double>().data) << endl << endl;
 	
 	Sz_1s_ = 0.5 * (std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{1}) - std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{1}));
+	//cout << "cSz_1s_=" << endl << MatrixXd(Sz_1s_.plain<double>().data) << endl << endl;
 	Sp_1s_ = -std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cdnA_1s_,{1});
 	Sm_1s_ = Sp_1s_.adjoint();
+	
+	if (!REMOVE_UP) exp_ipiSz_1s_("up","up") = +1.i;
+	if (!REMOVE_DN) exp_ipiSz_1s_("dn","dn") = -1.i;
+	if (!REMOVE_HOLON) exp_ipiSz_1s_("holon","holon") = 1.;
 }
 
 #endif //FERMIONSITESU2xU0_H_
