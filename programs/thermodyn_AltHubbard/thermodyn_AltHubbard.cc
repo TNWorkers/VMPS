@@ -2,14 +2,14 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	
-	size_t Ly = args.get<size_t>("Ly",2ul);
+	size_t Ly = args.get<size_t>("Ly",1ul);
 	assert(Ly==1 and "Please choose Ly=1 for now!");
 	int dLphys = (Ly==2)? 1:2;
 	size_t L = args.get<size_t>("L",40ul);
 	
-	double S = args.get<int>("S",0);
+	//double S = args.get<int>("S",0);
 	int N = args.get<int>("N",2*L);
-	double T = (N-2*L)/2;
+	//double T = (N-2*L)/2;
 	double UA = args.get<double>("UA",0.);
 	double UB = args.get<double>("UB",8.);
 	
@@ -255,11 +255,8 @@ int main (int argc, char* argv[])
 	bool TEST_EIGEN = args.get<bool>("TEST_EIGEN",false);
 	if (TEST_EIGEN)
 	{
-		// test that PhiT is an eigenstate:
+		// test that PhiT is an eigenstate of Hp:
 		auto avgHp = avg(PhiT, Hp, PhiT);
-		//MODEL::StateXcd HxPhiT;
-		//OxV_exact(Hp, PhiT, HxPhiT, 2., DMRG::VERBOSITY::SILENT);
-		//cout << "dot=" << dot(HxPhiT,HxPhiT) << endl;
 		auto avgHpHp = (maxPower>=2)? avg(PhiT,Hp,PhiT,2) : avg(PhiT,Hp,Hp,PhiT);
 		double test = abs(avgHpHp-avgHp);
 		if (test < 1e-4)
