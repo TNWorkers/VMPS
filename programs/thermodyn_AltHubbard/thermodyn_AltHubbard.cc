@@ -63,7 +63,7 @@ int main (int argc, char* argv[])
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
-	string wd = args.get<string>("wd","./loc/"); correct_foldername(wd);
+	string wd = args.get<string>("wd","./"); correct_foldername(wd);
 	string param_base = make_string("UA=",UA,"_UB=",UB);
 	param_base += make_string("_beta=",beta);
 	string base = make_string("L=",L,"_Ly=",Ly,"_i=",i0,"_j=",j0,"_PBC=",PBC,"_",param_base);
