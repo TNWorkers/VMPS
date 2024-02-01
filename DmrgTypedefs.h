@@ -405,7 +405,7 @@ struct DMRG
 			function<DMRG::ITERATION::OPTION(size_t)> iteration = CONTROL::DEFAULT::iteration;
 		};
 		
-		struct LANCZOS
+		struct LOC
 		{
 			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
 			double tol_eigval                    = CONTROL::DEFAULT::tol_eigval_Lanczos;

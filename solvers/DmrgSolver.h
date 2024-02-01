@@ -61,11 +61,11 @@ public:
 	//call this function if you want to set the parameters for the solver by yourself
 	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
 	void userSetDynParam     () { USER_SET_DYNPARAM      = true; }
-	void userSetLanczosParam () { USER_SET_LANCZOSPARAM  = true; }
+	void userSetLocParam () { USER_SET_LOCPARAM  = true; }
 	
 	DMRG::CONTROL::GLOB GlobParam;
-	DMRG::CONTROL::DYN  DynParam;
-	DMRG::CONTROL::LANCZOS LanczosParam;
+	DMRG::CONTROL::DYN DynParam;
+	DMRG::CONTROL::LOC LocParam;
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	inline DMRG::VERBOSITY::OPTION get_verbosity () const {return CHOSEN_VERBOSITY;};
@@ -160,9 +160,9 @@ private:
 	double DeltaEopt;
 	double max_alpha_rsvd, min_alpha_rsvd;
 	
-	bool USER_SET_GLOBPARAM    = false;
-	bool USER_SET_DYNPARAM     = false;
-	bool USER_SET_LANCZOSPARAM = false;
+	bool USER_SET_GLOBPARAM = false;
+	bool USER_SET_DYNPARAM  = false;
+	bool USER_SET_LOCPARAM  = false;
 	
 	SweepStatus SweepStat;
 	
@@ -1151,11 +1151,11 @@ iteration_zero (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> 
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
-	LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LocParam.REORTHO);
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
-	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff0, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.set_dimK(min(LocParam.dimK, dim(g.state)));
+	Lutz.edgeState(Heff0, g, EDGE, LocParam.tol_eigval, LocParam.tol_state, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -1256,14 +1256,14 @@ iteration_one (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
-	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LocParam.REORTHO);
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
-	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
+	Lutz.set_dimK(min(LocParam.dimK, dim(g.state)));
 	#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
-		Lutz.edgeState(Heff_curr, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+		Lutz.edgeState(Heff_curr, g, EDGE, LocParam.tol_eigval, LocParam.tol_state, false);
 	#else
-		Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+		Lutz.edgeState(Heff[SweepStat.pivot], g, EDGE, LocParam.tol_eigval, LocParam.tol_state, false);
 	#endif
 	
 	if (Psi0.size() > 0)
@@ -1417,11 +1417,11 @@ iteration_two (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> >
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
-	LanczosSolver<PivotMatrix2<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	LanczosSolver<PivotMatrix2<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LocParam.REORTHO);
 	
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
-	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	Lutz.set_dimK(min(LocParam.dimK, dim(g.state)));
+	Lutz.edgeState(Heff2, g, EDGE, LocParam.tol_eigval, LocParam.tol_state, false);
 	time_lanczos += LanczosTimer.time();
 	
 	if (Psi0.size() > 0)
@@ -1621,7 +1621,7 @@ edgeState (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	{
 		ss << "Term#" << t << ":" << H[t].info() << ";";
 	}
-	Hinfo == ss.str();
+	Hinfo = ss.str();
 	
 	Stopwatch<> TotalTimer;
 	
@@ -1861,11 +1861,11 @@ adapt_alpha_rsvd (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar
 //	
 //	Eigenstate<PivotVector<Symmetry,Scalar> > g;
 //	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[SweepStat.pivot]);
-//	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+//	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LocParam.REORTHO);
 //	
 //	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
-//	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-//	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+//	Lutz.set_dimK(min(LocParam.dimK, dim(g.state)));
+//	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LocParam.tol_eigval, LocParam.tol_state, false);
 //	
 //	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 //	{

@@ -111,7 +111,7 @@ struct VUMPS
 			function<size_t(size_t)> iteration           = CONTROL::DEFAULT::iteration;
 		};
 		
-		struct LANCZOS
+		struct LOC
 		{
 			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
 			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;

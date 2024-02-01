@@ -5,7 +5,7 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",1ul);
 	assert(Ly==1 and "Please choose Ly=1 for now!");
 	int dLphys = (Ly==2)? 1:2;
-	size_t L = args.get<size_t>("L",40ul);
+	size_t L = args.get<size_t>("L",20ul);
 	
 	//double S = args.get<int>("S",0);
 	int N = args.get<int>("N",2*L);
@@ -174,7 +174,7 @@ int main (int argc, char* argv[])
 			double Uval = (l%2==0)? UA:UB;
 			params_Tfin.push_back({"Uph",Uval,transform[l]*dLphys});
 			params_Tfin.push_back({"Uph",0.,transform[l]*dLphys+1});
-			lout << "l=" << l << ", Uval=" << Uval << ", l+1=" << l+1 << ", Uval=0" << endl;
+			//lout << "l=" << l << ", Uval=" << Uval << ", l+1=" << l+1 << ", Uval=0" << endl;
 		}
 		params_Tfin.push_back({"G",Gext});
 	}
