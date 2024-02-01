@@ -129,7 +129,7 @@ int main (int argc, char* argv[])
 	{
 		Gext.push_back(G[l]);
 		Gext.push_back(flip_sublattice(G[l]));
-		lout << "l=" << l << ", " << G[l] << ", " << flip_sublattice(G[l]) << endl;
+		//lout << "l=" << l << ", " << G[l] << ", " << flip_sublattice(G[l]) << endl;
 	}
 	lout << "Extended sublattice structure:" << endl;
 	for (size_t l=0; l<2*L; ++l) {lout << Gext[l];}

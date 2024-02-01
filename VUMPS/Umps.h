@@ -45,11 +45,11 @@ class Umps
 	
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
-
+	
 public:
 	
 	/**Does nothing.*/
-	Umps<Symmetry,Scalar>(){};
+	Umps(){};
 	
 	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN);

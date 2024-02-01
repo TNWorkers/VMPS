@@ -1662,7 +1662,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			{
 				if (loc<H.length()-dLphys)
 				{
-					Res = H.cdagc<UP,UP>(loc,loc+dLphys,0,0);
+					Res = H.template cdagc<UP,UP>(loc,loc+dLphys,0,0);
 					OPERATOR_IS_SET = true;
 				}
 				else
@@ -1694,7 +1694,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			{
 				if (loc<H.length()-dLphys)
 				{
-					Res = H.cdagc<UP,UP>(loc+dLphys,loc,0,0);
+					Res = H.template cdagc<UP,UP>(loc+dLphys,loc,0,0);
 					OPERATOR_IS_SET = true;
 				}
 				else
@@ -1726,7 +1726,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			{
 				if (loc<H.length()-dLphys)
 				{
-					Res = H.cdagc<UP,DN>(loc,loc+dLphys,0,0);
+					Res = H.template cdagc<UP,DN>(loc,loc+dLphys,0,0);
 					OPERATOR_IS_SET = true;
 				}
 				else
@@ -1758,7 +1758,7 @@ get_Op (const Hamiltonian &H, size_t loc, std::string spec, double factor, size_
 			{
 				if (loc<H.length()-dLphys)
 				{
-					Res = H.cdagc<DN,UP>(loc+dLphys,loc,0,0);
+					Res = H.template cdagc<DN,UP>(loc+dLphys,loc,0,0);
 					OPERATOR_IS_SET = true;
 				}
 				else
