@@ -38,7 +38,7 @@ int main (int argc, char* argv[])
 	size_t MlimitBra = args.get<size_t>("MlimitBra",1000ul);
 	double dt_back = args.get<double>("dt_back",0.1);
 	double dt_forw = args.get<double>("dt_forw",0.1);
-	double tmax = args.get<double>("tmax",12.);
+	double tmax = args.get<double>("tmax",8.);
 	lout << "tmax=" << tmax << endl;
 	double tol_compr_forw = args.get<double>("tol_compr_forw",1e-5);
 	double tol_compr_back = args.get<double>("tol_compr_back",1e-5);
@@ -208,7 +208,7 @@ int main (int argc, char* argv[])
 			double Uval = (l%2==0)? UA:UB;
 			pparams.push_back({"Uph",+Uval,transform[l]*dLphys});
 			pparams.push_back({"Uph",-Uval,transform[l]*dLphys+1});
-			lout << "l=" << l << ", Uval=" << Uval << ", l+1=" << l+1 << ", Uval=" << -Uval << endl;
+			//lout << "l=" << l << ", Uval=" << Uval << ", l+1=" << l+1 << ", Uval=" << -Uval << endl;
 		}
 		
 		pparams.push_back({"G",Gext});
