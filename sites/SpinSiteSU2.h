@@ -21,7 +21,7 @@ class SpinSite<Sym::SU2<Sym::SpinSU2>,0ul>
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
 public:
 	SpinSite() {};
-	SpinSite(std::size_t D_input);
+	SpinSite(std::size_t D_input, int mfactor_input=1);
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	
@@ -42,7 +42,7 @@ protected:
 };
 
 SpinSite<Sym::SU2<Sym::SpinSU2>,0ul>::
-SpinSite(std::size_t D_input)
+SpinSite(std::size_t D_input, int mfactor_input)
 :D(D_input)
 {
 	//create basis for one Spin Site

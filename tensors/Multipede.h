@@ -734,6 +734,8 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
 save (string filename, bool PRINT) const 
 {
+	//cout << "saving Multipede to: " << filename << endl;
+	
 	filename += ".h5";
 	if (PRINT) lout << termcolor::green << "Saving Multipede to: " << filename << termcolor::reset << std::endl;
 	remove(filename.c_str());
@@ -745,14 +747,24 @@ save (string filename, bool PRINT) const
 	{
 		target.save_scalar<size_t>(block[q].shape()[0], make_string("dima_q=",q), "");
 		target.save_scalar<size_t>(block[q].shape()[1], make_string("dimb_q=",q), "");
-		//cout << "q=" << q << ", L.block[q].shape()[0]=" << L.block[q].shape()[0] << ", L.block[q].shape()[1]=" << L.block[q].shape()[1] << endl;
 	}
 	
 	for (size_t q=0; q<dim; ++q)
 	for (size_t a=0; a<block[q].shape()[0]; ++a)
 	for (size_t b=0; b<block[q].shape()[1]; ++b)
 	{
-		target.save_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+		if constexpr (std::is_same<typename MatrixType::Scalar,complex<double>>::value)
+		{
+			MatrixXd Re = block[q][a][b].real();
+			MatrixXd Im = block[q][a][b].imag();
+			string label = make_string("block_q=",q,"_a=",a,"_b=",b);
+			target.save_matrix(Re,label+"Re","");
+			target.save_matrix(Im,label+"Im","");
+		}
+		else
+		{
+			target.save_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+		}
 	}
 	
 	MatrixXi Min(dim,Symmetry::Nq);
@@ -766,6 +778,11 @@ save (string filename, bool PRINT) const
 		Mout(i,q) = out(i)[q];
 		Mmid(i,q) = mid(i)[q];
 	}
+/*	lout << "Min=" << endl << Min.transpose() << endl;*/
+/*	lout << "Mout=" << endl << Mout.transpose() << endl;*/
+/*	lout << "Mmid=" << endl << Mmid.transpose() << endl;*/
+/*	lout << "Min.rows()=" << Min.rows() << endl;*/
+	//assert(Min.rows() != 0);
 	
 	target.save_matrix<int>(Min, "in", "");
 	target.save_matrix<int>(Mout, "out", "");
@@ -780,11 +797,13 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
 load (string filename, bool PRINT)
 {
+	//cout << "loading Multipede from: " << filename << endl;
+	
 	filename += ".h5";
 	if (PRINT) lout << termcolor::green << "Loading Multipede from: " << filename << termcolor::reset << std::endl;
-	HDF5Interface target(filename, READ);
+	HDF5Interface source(filename, READ);
 	
-	target.load_scalar<size_t>(dim, "dim", "");
+	source.load_scalar<size_t>(dim, "dim", "");
 	
 	block.clear();
 	block.resize(dim);
@@ -792,8 +811,8 @@ load (string filename, bool PRINT)
 	for (size_t q=0; q<dim; ++q)
 	{
 		size_t dima, dimb;
-		target.load_scalar<size_t>(dima, make_string("dima_q=",q), "");
-		target.load_scalar<size_t>(dimb, make_string("dimb_q=",q), "");
+		source.load_scalar<size_t>(dima, make_string("dima_q=",q), "");
+		source.load_scalar<size_t>(dimb, make_string("dimb_q=",q), "");
 		block[q].resize(boost::extents[dima][dimb]);
 		//cout << "q=" << q << ", dima=" << dima << ", dimb=" << dimb << endl;
 	}
@@ -802,13 +821,24 @@ load (string filename, bool PRINT)
 	for (size_t a=0; a<block[q].shape()[0]; ++a)
 	for (size_t b=0; b<block[q].shape()[1]; ++b)
 	{
-		target.load_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+		if constexpr (std::is_same<typename MatrixType::Scalar,complex<double>>::value)
+		{
+			MatrixXd Re, Im;
+			string label = make_string("block_q=",q,"_a=",a,"_b=",b);
+			source.load_matrix(Re, label+"Re", "");
+			source.load_matrix(Im, label+"Im", "");
+			block[q][a][b] = Re+1.i*Im;
+		}
+		else
+		{
+			source.load_matrix(block[q][a][b], make_string("block_q=",q,"_a=",a,"_b=",b), "");
+		}
 	}
 	
 	MatrixXi Min, Mout, Mmid;
-	target.load_matrix<int>(Min, "in", "");
-	target.load_matrix<int>(Mout, "out", "");
-	target.load_matrix<int>(Mmid, "mid", "");
+	source.load_matrix<int>(Min, "in", "");
+	source.load_matrix<int>(Mout, "out", "");
+	source.load_matrix<int>(Mmid, "mid", "");
 	//cout << in.rows() << "\t" << out.rows() << "\t" << mid.rows() << "\t" << L.dim << endl;
 	assert(Min.rows() != 0);
 	
@@ -829,7 +859,7 @@ load (string filename, bool PRINT)
 		dict.insert({quple,i});
 	}
 	
-	target.close();
+	source.close();
 	
 	print();
 }

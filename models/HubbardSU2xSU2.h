@@ -97,7 +97,7 @@ public:
 	
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-		
+	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
 };
@@ -165,12 +165,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const vector<SUB_L
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		size_t lp3 = (loc+3)%N_sites;
-		
-		//auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
-		//auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
-		//auto Glp2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp2)));
-		//auto Glp3 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp3)));
-		//lout << G[loc] << "\t" << G[lp1] << "\t" << G[lp2] << "\t" << G[lp3] << endl;
 		
 		std::size_t orbitals       = F[loc].orbitals();
 		std::size_t next_orbitals  = F[lp1].orbitals();

@@ -1001,18 +1001,18 @@ calc_qList (const std::vector<OperatorType> &opList)
     std::vector<qType> qList(range+1);
     qList[0] = qVac;
     int count = 0;
-    for(int i=0; i<Qtree[range-1].size(); ++i)
+    for (int i=0; i<Qtree[range-1].size(); ++i)
     {
-        if(Qtree[range-1][i].current == qTot)
+        if (Qtree[range-1][i].current == qTot)
         {
             ++count;
-            for(int j=0; j<range-1; ++j)
+            for (int j=0; j<range-1; ++j)
             {
                 qList[j+1] = Qtree[range-1][i].history[j];
             }
             qList[range] = qTot;
             #if DEBUG_VERBOSITY > 1
-            if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+            if (VERB != DMRG::VERBOSITY::OPTION::SILENT)
             {
                 lout << "This branch of quantum numbers leads to the total MPO quantum number: {" << Sym::format<Symmetry>(qList[0]) << "} -> ";
                 for(int j=0; j<range-1; ++j)
@@ -1024,7 +1024,9 @@ calc_qList (const std::vector<OperatorType> &opList)
             #endif
         }
     }
-    assert(count == 1 and "Either no or more than one quantum number branch leads to the total MPO quantum number");
+    if (count > 1) {lout  << termcolor::red << count << " quantum number branches lead to the total MPO quantum number" << termcolor::reset << endl;}
+    else if (count == 0) {lout << termcolor::red << "No quantum number branch leads to the total MPO quantum number" << termcolor::reset << endl;}
+    assert(count == 1);
     return qList;
 }
 

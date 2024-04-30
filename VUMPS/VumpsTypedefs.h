@@ -64,7 +64,8 @@ struct VUMPS
 			constexpr static char   saveName[]                 = "UmpsBackup";
 			constexpr static bool FULLMMAX_FILENAME            = true;
 			constexpr static bool CALC_S_ON_EXIT               = true;
-			constexpr static bool Niter_before_save            = 100;
+			constexpr static int Niter_before_save             = 100;
+			constexpr static bool CALC_STATE_ERROR             = true;
 			
 			//DYN DEFAULTS
 			static size_t max_deltaM          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
@@ -99,6 +100,7 @@ struct VUMPS
 			bool FULLMMAX_FILENAME            = CONTROL::DEFAULT::FULLMMAX_FILENAME;
 			bool CALC_S_ON_EXIT               = CONTROL::DEFAULT::CALC_S_ON_EXIT;
 			int Niter_before_save             = CONTROL::DEFAULT::Niter_before_save;
+			bool CALC_STATE_ERROR             = CONTROL::DEFAULT::CALC_STATE_ERROR;
 		};
 		
 		struct DYN

@@ -103,6 +103,8 @@ public:
 	
 	std::string info (bool REDUCED=false) const;
 	
+	int get_dAux_max (int power=1) const;
+	
 	//double memory(MEMUNIT memunit=GB) const;
 	
 	//double sparsity(bool USE_SQUARE=false, bool PER_MATRIX=true) const;
@@ -323,6 +325,19 @@ info (bool REDUCED) const
 	//     ss << ", sparsity(sq)=" << sparsity(true);
 	// }
 	return ss.str();
+}
+
+template<typename Symmetry, typename Scalar>
+int Mpo<Symmetry,Scalar>::
+get_dAux_max (int power) const
+{
+	VectorXi res(this->size());
+	auto qAux = this->get_qAux_power(power);
+	for (std::size_t l=0; l<this->size(); ++l)
+	{
+		res(l) = qAux[l].fullM();
+	}
+	return res.maxCoeff();
 }
 
 /*template<typename Symmetry, typename Scalar>

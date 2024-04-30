@@ -40,7 +40,7 @@ public:
 	                       string wd, string th_label, bool LOAD_BETA=false, bool SAVE_BETA=true,
 	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::HALFSWEEPWISE,
 	                       vector<double> stateSavePoints={}, vector<string> stateSaveLabels={}, 
-	                       int Ntaylor=0, bool CALC_C=true, bool CALC_CHI=true);
+	                       int Ntaylor=0, bool CALC_C=true, bool CALC_CHI=true, bool USE_PHIT=false);
 	
 	void continue_beta_propagation (const Hamiltonian &Hprop, int Lcell, int dLphys, 
 	                                double s_betainit, double betainit, double betamax, double dbeta, double tol_compr_beta, size_t Mlim, qarray<Hamiltonian::Symmetry::Nq> Q,
@@ -146,6 +146,11 @@ public:
 	vector<vector<MatrixXcd>> get_GwqCell (int z) const {return Green[z].get_GwqCell();};
 	
 	void set_Ncells (int Ncells_input) {Ncells=Ncells_input;};
+	
+	void set_PhiT (const Mps<Symmetry,Scalar> &PhiT_input)
+	{
+		PhiT = PhiT_input;
+	}
 	
 private:
 	
@@ -425,7 +430,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
                   string wd, string th_label, bool LOAD_BETA, bool SAVE_BETA,
                   DMRG::VERBOSITY::OPTION VERB, 
                   vector<double> stateSavePoints, vector<string> stateSaveLabels, 
-                  int Ntaylor, bool CALC_C, bool CALC_CHI)
+                  int Ntaylor, bool CALC_C, bool CALC_CHI, bool USE_PHIT)
 {
 	for (const auto &spec:specs)
 	{
@@ -442,136 +447,151 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 	}
 	else
 	{
-		typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::ON_EXIT);
-		Eigenstate<Mps<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> > th;
-		
-		DMRG::CONTROL::GLOB GlobParam;
-		fDMRG.GlobParam.CALC_S_ON_EXIT = false;
-		DMRG::CONTROL::DYN DynParam;
-		if (dLphys == 2)
+		if (!USE_PHIT)
 		{
-			GlobParam.Minit = 10ul;
-			GlobParam.Qinit = 10ul;
-			GlobParam.INITDIR = DMRG::DIRECTION::RIGHT; // 1=left->right, 0=right->left
-			
-			size_t start_2site = 0ul;
-			size_t end_2site = 10ul;
-			//int period_2site = 2ul;
-			DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
-			DynParam.max_alpha_rsvd = [] (size_t i) {return (i<20ul)? 1e8:0.;};
-			fDMRG.DynParam = DynParam;
-			fDMRG.userSetDynParam();
-		}
-		fDMRG.GlobParam = GlobParam;
-		fDMRG.userSetGlobParam();
-		th.state.eps_truncWeight = 0.;
-		fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
-		
-		//lout << Htherm.info() << endl;
-		th.state.entropy_skim();
-		lout << th.state.entropy().transpose() << endl;
-		
-		bool ALL;
-		
-		if (dLphys==2)
-		{
-			vector<bool> ENTROPY_CHECK1;
-			for (int l=0; l<dLphys*L-1; l+=dLphys) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
-			
-			vector<bool> ENTROPY_CHECK2;
-			for (int l=1; l<dLphys*L-1; l+=dLphys) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
-			
-			ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
-			      all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
-			
-			//ALL = true;
-		}
-		else
-		{
-//			vector<bool> ENTROPY_CHECK;
-//			for (int l=0; l<L-1; l+=1) ENTROPY_CHECK.push_back(abs(th.state.entropy()(l))<1e-10);
-//			
-//			ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-			
-			ALL = true;
-		}
-		
-		while (ALL == false)
-		{
-			lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
-			
-			typename HamiltonianThermal::Solver fDMRGnew(DMRG::VERBOSITY::ON_EXIT);
+			lout << "Computing T=infinity state" << endl;
+			typename HamiltonianThermal::Solver fDMRG(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<Mps<Symmetry,typename HamiltonianThermal::Mpo::Scalar_> > th;
 			
 			DMRG::CONTROL::GLOB GlobParam;
-			fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
-			if (GlobParam.INITDIR == DMRG::DIRECTION::RIGHT)
-			{
-				GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
-			}
-			else
-			{
-				GlobParam.INITDIR = DMRG::DIRECTION::RIGHT;
-			}
-			fDMRGnew.GlobParam = GlobParam;
-			fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
-			fDMRGnew.GlobParam.min_halfsweeps = 30ul;
-			fDMRGnew.GlobParam.min_halfsweeps = 30ul;
-			
+			fDMRG.GlobParam.CALC_S_ON_EXIT = false;
 			DMRG::CONTROL::DYN DynParam;
 			if (dLphys == 2)
 			{
 				GlobParam.Minit = 10ul;
 				GlobParam.Qinit = 10ul;
+				GlobParam.INITDIR = DMRG::DIRECTION::RIGHT; // 1=left->right, 0=right->left
 				
 				size_t start_2site = 0ul;
 				size_t end_2site = 10ul;
 				//int period_2site = 2ul;
 				DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
-				DynParam.max_alpha_rsvd = [] (size_t i) {return (i<30ul)? 1e8:0.;};
-				fDMRGnew.DynParam = DynParam;
+				DynParam.max_alpha_rsvd = [] (size_t i) {return (i<20ul)? 1e8:0.;};
+				fDMRG.DynParam = DynParam;
+				fDMRG.userSetDynParam();
 			}
+			fDMRG.GlobParam = GlobParam;
+			fDMRG.userSetGlobParam();
+			th.state.eps_truncWeight = 0.;
+			fDMRG.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
 			
-			fDMRGnew.userSetGlobParam();
-			fDMRGnew.userSetDynParam();
-			
-			fDMRGnew.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
+			//lout << Htherm.info() << endl;
 			th.state.entropy_skim();
+			lout << th.state.entropy().transpose() << endl;
+			
+			bool ALL;
 			
 			if (dLphys==2)
 			{
-				lout << th.state.entropy().transpose() << endl;
-				vector<bool> ENTROPY_CHECK1, ENTROPY_CHECK2;
+				vector<bool> ENTROPY_CHECK1;
+				for (int l=0; l<dLphys*L-1; l+=dLphys) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
 				
-				for (int l=0; l<2*L-1; l+=2) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
-				for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
+				vector<bool> ENTROPY_CHECK2;
+				for (int l=1; l<dLphys*L-1; l+=dLphys) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
 				
-				for (int l=1; l<2*L-1; l+=2)
-				{
-					bool TEST = abs(th.state.entropy()(l))<1e-10;
-				}
 				ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
-				      all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+					  all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+				
+				//ALL = true;
 			}
-//			else
-//			{
-//				vector<bool> ENTROPY_CHECK;
-//				for (int l=0; l<L-1; l+=1) ENTROPY_CHECK.push_back(abs(th.state.entropy()(l))<1e-10);
-//				
-//				ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-//			}
+			else
+			{
+	//			vector<bool> ENTROPY_CHECK;
+	//			for (int l=0; l<L-1; l+=1) ENTROPY_CHECK.push_back(abs(th.state.entropy()(l))<1e-10);
+	//			
+	//			ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
+				
+				ALL = true;
+			}
+			
+			while (ALL == false)
+			{
+				lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
+				
+				typename HamiltonianThermal::Solver fDMRGnew(DMRG::VERBOSITY::ON_EXIT);
+				
+				DMRG::CONTROL::GLOB GlobParam;
+				fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
+				if (GlobParam.INITDIR == DMRG::DIRECTION::RIGHT)
+				{
+					GlobParam.INITDIR = DMRG::DIRECTION::LEFT;
+				}
+				else
+				{
+					GlobParam.INITDIR = DMRG::DIRECTION::RIGHT;
+				}
+				fDMRGnew.GlobParam = GlobParam;
+				fDMRGnew.GlobParam.CALC_S_ON_EXIT = false;
+				fDMRGnew.GlobParam.min_halfsweeps = 30ul;
+				fDMRGnew.GlobParam.min_halfsweeps = 30ul;
+				
+				DMRG::CONTROL::DYN DynParam;
+				if (dLphys == 2)
+				{
+					GlobParam.Minit = 10ul;
+					GlobParam.Qinit = 10ul;
+					
+					size_t start_2site = 0ul;
+					size_t end_2site = 10ul;
+					//int period_2site = 2ul;
+					DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+					DynParam.max_alpha_rsvd = [] (size_t i) {return (i<30ul)? 1e8:0.;};
+					fDMRGnew.DynParam = DynParam;
+				}
+				
+				fDMRGnew.userSetGlobParam();
+				fDMRGnew.userSetDynParam();
+				
+				fDMRGnew.edgeState(Htherm, th, Q, LANCZOS::EDGE::GROUND, false);
+				th.state.entropy_skim();
+				
+				if (dLphys==2)
+				{
+					lout << th.state.entropy().transpose() << endl;
+					vector<bool> ENTROPY_CHECK1, ENTROPY_CHECK2;
+					
+					for (int l=0; l<2*L-1; l+=2) ENTROPY_CHECK1.push_back(abs(th.state.entropy()(l))>1e-10);
+					for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK2.push_back(abs(th.state.entropy()(l))<1e-10);
+					
+					for (int l=1; l<2*L-1; l+=2)
+					{
+						bool TEST = abs(th.state.entropy()(l))<1e-10;
+					}
+					ALL = all_of(ENTROPY_CHECK1.begin(), ENTROPY_CHECK1.end(), [](const bool v){return v;}) and 
+						  all_of(ENTROPY_CHECK2.begin(), ENTROPY_CHECK2.end(), [](const bool v){return v;});
+				}
+	//			else
+	//			{
+	//				vector<bool> ENTROPY_CHECK;
+	//				for (int l=0; l<L-1; l+=1) ENTROPY_CHECK.push_back(abs(th.state.entropy()(l))<1e-10);
+	//				
+	//				ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
+	//			}
+			}
+			
+			for (int l=0; l<L-dLphys; l+=dLphys)
+			{
+				double val = 0.;
+				if (dLphys==1)
+				{
+					val = avg(th.state, Htherm.SdagS(l,l,0,1), th.state);
+				}
+				else
+				{
+					val = avg(th.state, Htherm.SdagS(l,l+1,0,0), th.state);
+				}
+				cout << termcolor::yellow
+					 << "l=" << l
+					// << ", avg(th.state, Htherm.SdagS(NN), th.state)=" << avg(th.state, Htherm.SdagS(l,l+dLphys), th.state) 
+					 << ", avg_loc=" << val
+					 << termcolor::reset
+					 << endl;
+			}
+			
+			PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
 		}
 		
-		for (int l=0; l<L-dLphys; l+=dLphys)
-		{
-			cout << termcolor::yellow
-				 << "l=" << l
-				// << ", avg(th.state, Htherm.SdagS(NN), th.state)=" << avg(th.state, Htherm.SdagS(l,l+dLphys), th.state) 
-				 << ", avg_loc=" << avg(th.state, Htherm.SdagS(l,l,0,1), th.state) 
-				 << termcolor::reset
-				 << endl;
-		}
-		
-		PhiT = th.state.template cast<typename Hamiltonian::Mpo::Scalar_>();
+		// continue with PhiT
 		PhiT.eps_truncWeight = tol_compr_beta;
 		PhiT.min_Nsv = 0ul;
 		PhiT.max_Nsv = Mlim;
@@ -631,32 +651,6 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 		if constexpr (Hamiltonian::FAMILY == HEISENBERG) BetaFiler << "\tSpSm\tSzSz";
 		BetaFiler << "truncWeightGlob\ttruncWeightLoc\tMmax";
 		BetaFiler << endl;
-		
-		// using auxiliary Hamiltonian Hchi
-//		MpoTerms<typename MODEL::Symmetry,double> Terms;
-//		for (int i=0; i<L; ++i)
-//		{
-//			ArrayXXd Jfull(L,L);
-//			Jfull.setZero();
-//			Jfull.row(i).setConstant(1.);
-//			Jfull.matrix().diagonal().setZero();
-//			
-//			Hamiltonian Hterm = Hamiltonian(L, {{"Jfull",Jfull},{"maxPower",1ul},{"Ly",(dLphys==2)?1ul:2ul},{"Jrung",0.}}, BC::OPEN, DMRG::VERBOSITY::SILENT);
-//			Terms.set_verbosity(DMRG::VERBOSITY::SILENT);
-//			Hterm.set_verbosity(DMRG::VERBOSITY::SILENT);
-//			if (i==0)
-//			{
-//				Terms = Hterm;
-//			}
-//			else
-//			{
-//				Terms = MODEL::sum(Terms,Hterm);
-//			}
-//		}
-//		Mpo<typename Hamiltonian::Symmetry,double> Hmpo(Terms);
-//		Hamiltonian Hchi = Hamiltonian(Hmpo,{{"maxPower",1ul},{"Ly",(dLphys==2)?1ul:2ul}});
-//		lout << "Hchi: " << Hchi.info() << endl;
-//		lout << endl;
 		
 		Mpo<Symmetry,typename Hamiltonian::Mpo::Scalar_> Hpropsq;
 		if (Ntaylor>0)
@@ -766,7 +760,7 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 			double chic = 0;
 			if (CALC_CHI)
 			{
-				#if defined(USING_SU2xU1) or defined(USING_SU2xSU2)
+				#if defined(USING_SU2xU1) or defined(USING_SU2xSU2) or defined(USING_SU2)
 				chi = isReal(beta*avg(PhiT, Hprop.Sdagtot(0,sqrt(3.),dLphys), Hprop.Stot(0,1.,dLphys), PhiT))/L;
 				chiz = chi/3.;
 				for (int l=0; l<dLphys*L; l+=dLphys)
@@ -793,14 +787,17 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //			svec.push_back(s);
 			
 			auto PhiTtmp = PhiT; PhiTtmp.entropy_skim();
+			cout << "aa" << endl;
 			lout << "S=" << PhiTtmp.entropy().transpose() << endl;
 			
 			VectorXd nphys(Lcell); nphys.setZero();
 			//VectorXd SdagSphys(Lcell); for (int j=0; j<Lcell; ++j) SdagSphys(j) = 0.;
 			double nancl = 0.;
+			cout << "a" << endl;
 			#if not defined(USING_SU2xSU2)
 			if constexpr (Hamiltonian::FAMILY == HUBBARD or Hamiltonian::FAMILY == KONDO)
 			{
+				cout << "b" << endl;
 				for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
 				{
 					nphys(icell%Lcell) += isReal(avg(PhiT, Hprop.n(j,0), PhiT));
@@ -811,8 +808,18 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 				}
 			}
 			#endif
-//			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
-//			{
+			#if not defined(USING_SU2)
+			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+			{
+				cout << "c" << endl;
+				for (int j=0, icell=0; j<dLphys*L; j+=dLphys, icell+=1)
+				{
+					nphys(icell%Lcell) += isReal(avg(PhiT, Hprop.Sz(j,0), PhiT));
+				}
+				for (int j=dLphys-1; j<dLphys*L; j+=dLphys)
+				{
+					nancl += isReal(avg(PhiT, Hprop.Sz(j,dLphys%2), PhiT));
+				}
 //				for (int j=0, icell=0; j<dLphys*(L-1); j+=dLphys, icell+=1)
 //				{
 //					//cout << "j,j+dLphys=" << j << "," << j+dLphys << ", icell=" << icell << ", icellmodLcell=" << icell%Lcell << ", val=" <<  isReal(avg(PhiT, Hprop.SdagS(j,j+dLphys,0,0), PhiT)) << endl;
@@ -825,7 +832,9 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 //			{
 //				SpSm = isReal(avg(PhiT, Hprop.SpSm(L/4,3*L/4), PhiT));
 //				SzSz = isReal(avg(PhiT, Hprop.SzSz(L/4,3*L/4), PhiT));
-//			}
+			}
+			#endif
+			cout << "d" << endl;
 			
 			nphys /= L;
 			double nphystot = nphys.sum();
@@ -844,11 +853,13 @@ beta_propagation (const Hamiltonian &Hprop, const HamiltonianThermal &Htherm, in
 				lout << ", nphys=" << nphys.transpose() << ", sum=" << nphystot << ", nancl=" << nancl;
 				BetaFiler << "\t" << nphystot;
 			}
-//			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
-//			{
+			else if constexpr (Hamiltonian::FAMILY == HEISENBERG)
+			{
+				lout << ", Mphys=" << nphys.transpose() << ", sum=" << nphystot << ", Mancl=" << nancl;
+				BetaFiler << "\t" << nphystot;
 //				lout << ", SpSm(" << L/4 << "," << 3*L/4 << ")=" << SpSm << ", SzSz(" << L/4 << "," << 3*L/4 << ")=" << SzSz;
 //				BetaFiler << "\t" << SpSm << "\t" << SzSz;
-//			}
+			}
 			BetaFiler << "\t" << PhiT.get_truncWeight().sum() << "\t" << PhiT.get_truncWeight().maxCoeff() << "\t" << PhiT.calc_Mmax();
 //			if constexpr (Hamiltonian::FAMILY == HEISENBERG)
 //			{

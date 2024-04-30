@@ -1135,9 +1135,9 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		Qtot = Qtot_input;
 		Qmulti = vector<qarray<Nq> >(1,Qtot);
 		this->pivot = -1;
-	
+		
 		calc_Qlimits();
-	
+		
 		// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
 		auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean, const size_t &loc) -> vector<qarray<Nq> >
 		{
@@ -3868,15 +3868,15 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	size_t loc1 = this->pivot;
 	size_t loc2 = this->pivot+distance;
 	
-//	assert(O.locality() >= loc1 and O.locality() <= loc2);
-//	lout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;
-//	lout << O.Qtarget() << endl;
+	//assert(O.locality() >= loc1 and O.locality() <= loc2);
+/*	lout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;*/
+/*	lout << O.Qtarget() << endl;*/
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	L.setIdentity(1,1,inBasis(loc1));
 	
-	for (size_t l=loc1; l<distance+1; ++l)
+	for (size_t l=loc1; l<loc1+distance+1; ++l)
 	{
 		contract_L(L, A[l], O.W_at(l), A[l], O.locBasis(l), O.opBasis(l), Lnext);
 		L = Lnext;

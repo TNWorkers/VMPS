@@ -144,8 +144,8 @@ FermionSite (bool REMOVE_DOUBLE, bool REMOVE_EMPTY, bool REMOVE_UP, bool REMOVE_
 	if (!REMOVE_HOLON and !REMOVE_UP) cdnB_1s_( "up", "holon" ) = -1.*sqrt(2.);
 	if (!REMOVE_HOLON and !REMOVE_DN) cdnB_1s_( "holon", "dn" ) = 1.;
 	
-	nup_1s_  = std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{0,1});
-	ndn_1s_	 = std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{0,1});
+	nup_1s_ = std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{0,1});
+	ndn_1s_ = std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{0,1});
 	
 	Sz_1s_ = 0.5 * (std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cupA_1s_,{0,1}) - std::sqrt(0.5) * OperatorType::prod(cdnA_1s_.adjoint(),cdnA_1s_,{0,1}));
 	Sp_1s_ = -std::sqrt(0.5) * OperatorType::prod(cupA_1s_.adjoint(),cdnA_1s_,{+2,1});

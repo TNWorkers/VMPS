@@ -1298,10 +1298,10 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 	Stopwatch<> ErrorTimer;
 	double t_err = 0;
-//		lout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
+//	lout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
 	if (abs(err_state_old-err_state)/err_state > 1e-3 or N_iterations_without_expansion<=1 or N_iterations<=6)
 	{
-		calc_errors(H, Vout, true);
+		calc_errors(H, Vout, GlobParam.CALC_STATE_ERROR);
 		t_err = ErrorTimer.time();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1313,10 +1313,10 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		calc_errors(H, Vout, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
+			lout << "State error seems converged and will not be recalculated until the next expansion!" << endl;
 		}
 	}
-		
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << Vout.state.test_ortho() << endl;
@@ -1497,7 +1497,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	double t_err = 0;
 	if (abs(err_state_old-err_state)/err_state_old > 0.001 or N_iterations_without_expansion<=1 or N_iterations<=6)
 	{
-		calc_errors(H, Vout, true);
+		calc_errors(H, Vout, GlobParam.CALC_STATE_ERROR);
 		t_err = ErrorTimer.time();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1506,7 +1506,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	}
 	else
 	{
-		calc_errors(H, Vout, false);
+		if (GlobParam.CALC_STATE_ERROR) {calc_errors(H, Vout, false);}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
@@ -1622,7 +1622,7 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
-	// calc_errors(Vout);
+	// if (GlobParam.CALC_STATE_ERROR) {calc_errors(Vout);}
 	Vout.energy = min(eL,eR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)

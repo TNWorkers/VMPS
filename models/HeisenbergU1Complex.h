@@ -74,7 +74,7 @@ const std::map<string,std::any> HeisenbergU1Complex::defaults =
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
 	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
-	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, {"mfactor",1}
 };
 
 const std::map<string,std::any> HeisenbergU1Complex::sweep_defaults = 

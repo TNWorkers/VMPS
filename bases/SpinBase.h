@@ -31,6 +31,7 @@ public:
 	
 	typedef Symmetry_ Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<complex<Scalar>,Eigen::Dynamic,Eigen::Dynamic> > ComplexOperatorType;
 	typedef typename Symmetry::qType qType;
 	
 	SpinBase(){};
@@ -39,7 +40,7 @@ public:
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
 	 */
-	SpinBase (std::size_t L_input, std::size_t D_input);
+	SpinBase (std::size_t L_input, std::size_t D_input, int mfactor=1);
 	
 	/**amount of states*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
@@ -161,6 +162,9 @@ public:
 	template<class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type bead (STRING STR, size_t orbital=0) const;
 	
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),ComplexOperatorType>::type exp_ipiSz (size_t orbital=0) const;
+	
 	/**Identity*/
 	OperatorType Id (std::size_t orbital=0) const;
 	
@@ -242,8 +246,8 @@ private:
 
 template <typename Symmetry_, size_t order>
 SpinBase<Symmetry_,order>::
-SpinBase (std::size_t L_input, std::size_t D_input)
-:SpinSite<Symmetry,order>(D_input), N_orbitals(L_input)
+SpinBase (std::size_t L_input, std::size_t D_input, int mfactor)
+:SpinSite<Symmetry,order>(D_input,mfactor), N_orbitals(L_input)
 {
 	//create basis for spin 0
 	typename Symmetry::qType Q=Symmetry::qvacuum();
@@ -331,44 +335,62 @@ n (std::size_t orbital) const
 	return Oout;
 }
 
-template<typename Symmetry_, size_t order>
-template <typename Dummy>
-typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
-bead (STRING STR, std::size_t orbital) const
-{
-	if (STR == STRINGZ)
-	{
-		if (this->D%2==0)
-		{
-			lout << termcolor::red << "Warning: exp(iπSz) is not correct for half-integer S!" << termcolor::reset << endl;
-		}
-		return make_operator(this->exp_i_pi_Sz(), orbital, "exp(iπSz)");
-	}
-	else if (STR == STRINGX)
-	{
-		if (this->D%2==0)
-		{
-			lout << termcolor::red << "Warning: exp(iπSx) is not correct for half-integer S!" << termcolor::reset << endl;
-		}
-		return make_operator(this->exp_i_pi_Sx(), orbital, "exp(iπSx)");
-	}
-	else
-	{
-		if (this->D%2==0)
-		{
-			lout << termcolor::red << "Warning: exp(iπSy) is not correct for half-integer S!" << termcolor::reset << endl;
-		}
-		return make_operator(this->exp_i_pi_Sy(), orbital, "exp(iπSy)");
-	}
-}
+/*template<typename Symmetry_, size_t order>*/
+/*template <typename Dummy>*/
+/*typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::*/
+/*bead (STRING STR, std::size_t orbital) const*/
+/*{*/
+/*	if (STR == STRINGZ)*/
+/*	{*/
+/*		if (this->D%2==0)*/
+/*		{*/
+/*			lout << termcolor::red << "Warning: exp(iπSz) is not correct for half-integer S!" << termcolor::reset << endl;*/
+/*		}*/
+/*		return make_operator(this->exp_i_pi_Sz(), orbital, "exp(iπSz)");*/
+/*	}*/
+/*	else if (STR == STRINGX)*/
+/*	{*/
+/*		if (this->D%2==0)*/
+/*		{*/
+/*			lout << termcolor::red << "Warning: exp(iπSx) is not correct for half-integer S!" << termcolor::reset << endl;*/
+/*		}*/
+/*		return make_operator(this->exp_i_pi_Sx(), orbital, "exp(iπSx)");*/
+/*	}*/
+/*	else*/
+/*	{*/
+/*		if (this->D%2==0)*/
+/*		{*/
+/*			lout << termcolor::red << "Warning: exp(iπSy) is not correct for half-integer S!" << termcolor::reset << endl;*/
+/*		}*/
+/*		return make_operator(this->exp_i_pi_Sy(), orbital, "exp(iπSy)");*/
+/*	}*/
+/*}*/
+
+/*template<typename Symmetry_, size_t order>*/
+/*template <typename Dummy>*/
+/*typename std::enable_if<Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::*/
+/*bead (STRING STR, std::size_t orbital) const*/
+/*{*/
+/*	lout << termcolor::red << "Warning: returning Id instead of exp(iπSa) with SU(2) symmetry!" << termcolor::reset << endl;*/
+/*	return make_operator(this->Id_1s(), orbital,"Id");*/
+/*}*/
 
 template<typename Symmetry_, size_t order>
 template <typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
-bead (STRING STR, std::size_t orbital) const
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > >::type SpinBase<Symmetry_,order>::
+exp_ipiSz (std::size_t orbital) const
 {
-	lout << termcolor::red << "Warning: returning Id instead of exp(iπSa) with SU(2) symmetry!" << termcolor::reset << endl;
-	return make_operator(this->Id_1s(), orbital,"Id");
+	//return make_operator(this->exp_ipiSz(), orbital, PROP::NON_FERMIONIC,"exp(i*π*Sz)");
+	ComplexOperatorType out;
+	if (N_orbitals == 1)
+	{
+		out = this->exp_i_pi_Sz(); out.label() = "exp(i*π*Sz)";
+		return out;
+	}
+	else
+	{
+		throw; // not implemented
+	}
 }
 
 template<typename Symmetry_, size_t order>

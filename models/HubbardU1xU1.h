@@ -75,7 +75,7 @@ public:
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
-	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
+	static qarray<2> singlet (int N=0, int L=0) {return qarray<2>{0,N};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	static constexpr int spinfac = 2;
 	

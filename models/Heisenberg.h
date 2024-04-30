@@ -92,7 +92,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
 	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
 	{"mu",0.}, {"nu",0.}, // couple to Sz_i-1/2 and Sz_i+1/2
-	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, {"mfactor",1}
 };
 
 const std::map<string,std::any> Heisenberg::sweep_defaults = 
@@ -219,59 +219,59 @@ add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
 				auto tight_iSy = B[(loc+1)%N_sites].Scomp(iSY,beta);
 				
 				// Set first to 1 in order to avoid warning for half-integer spin
-				auto local_iSw = B[loc].Id();
-				auto tight_iSw = B[(loc+1)%N_sites].Id();
-				if (abs(Jwpara(alfa,beta)) != 0.)
-				{
-					local_iSw= local_iSy*B[loc].bead(STRINGZ,alfa);
-					tight_iSw= B[(loc+1)%N_sites].bead(STRINGX,alfa)*tight_iSy;
-				}
-				
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Sx), Jxpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_iSy, tight_iSy), -Jypara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_iSw, tight_iSw), -Jwpara(alfa,beta)));
-				
-				// Hamiltonian after the Kennedy-Tasaki transformation of the bilinear-biquadratic chain:
-				// H = Σ_i h_i - β (h_i)^2
-				// AKLT point: H = Σ_i h_i + 1/3 (h_i)^2
-				// To test the AKLT point (4-fold degenerate ground state with OBC), set betaKT = -1/3
-				// All terms of (h_i)^2 are multiplied out in the following:
-				
-				auto xx_local = local_Sx*local_Sx;
-				auto zz_local = local_Sz*local_Sz;
-				auto ww_mlocal = local_iSw*local_iSw;
-				
-				auto xx_tight = tight_Sx*tight_Sx;
-				auto zz_tight = tight_Sz*tight_Sz;
-				auto ww_mtight = tight_iSw*tight_iSw;
-				
-				auto xz_local = local_Sx*local_Sz;
-				auto ixw_local = local_Sx*local_iSw;
-				auto izw_local = local_Sz*local_iSw;
-				
-				auto zx_local = local_Sz*local_Sx;
-				auto iwx_local = local_iSw*local_Sx;
-				auto iwz_local = local_iSw*local_Sz;
-				
-				auto xz_tight = tight_Sx*tight_Sz;
-				auto ixw_tight = tight_Sx*tight_iSw;
-				auto izw_tight = tight_Sz*tight_iSw;
-				
-				auto zx_tight = tight_Sz*tight_Sx;
-				auto iwx_tight = tight_iSw*tight_Sx;
-				auto iwz_tight = tight_iSw*tight_Sz;
-				
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(xx_local, xx_tight), -betaKTpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(zz_local, zz_tight), -betaKTpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(ww_mlocal, ww_mtight), -betaKTpara(alfa,beta)));
-				
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(xz_local, xz_tight), -betaKTpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(ixw_local, ixw_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from x-term
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(izw_local, izw_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from z-term
-				
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(zx_local, zx_tight), -betaKTpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(iwx_local, iwx_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from x-term
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(iwz_local, iwz_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from z-term
+/*				auto local_iSw = B[loc].Id();*/
+/*				auto tight_iSw = B[(loc+1)%N_sites].Id();*/
+/*				if (abs(Jwpara(alfa,beta)) != 0.)*/
+/*				{*/
+/*					local_iSw= local_iSy*B[loc].bead(STRINGZ,alfa);*/
+/*					tight_iSw= B[(loc+1)%N_sites].bead(STRINGX,alfa)*tight_iSy;*/
+/*				}*/
+/*				*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Sx), Jxpara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_iSy, tight_iSy), -Jypara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_iSw, tight_iSw), -Jwpara(alfa,beta)));*/
+/*				*/
+/*				// Hamiltonian after the Kennedy-Tasaki transformation of the bilinear-biquadratic chain:*/
+/*				// H = Σ_i h_i - β (h_i)^2*/
+/*				// AKLT point: H = Σ_i h_i + 1/3 (h_i)^2*/
+/*				// To test the AKLT point (4-fold degenerate ground state with OBC), set betaKT = -1/3*/
+/*				// All terms of (h_i)^2 are multiplied out in the following:*/
+/*				*/
+/*				auto xx_local = local_Sx*local_Sx;*/
+/*				auto zz_local = local_Sz*local_Sz;*/
+/*				auto ww_mlocal = local_iSw*local_iSw;*/
+/*				*/
+/*				auto xx_tight = tight_Sx*tight_Sx;*/
+/*				auto zz_tight = tight_Sz*tight_Sz;*/
+/*				auto ww_mtight = tight_iSw*tight_iSw;*/
+/*				*/
+/*				auto xz_local = local_Sx*local_Sz;*/
+/*				auto ixw_local = local_Sx*local_iSw;*/
+/*				auto izw_local = local_Sz*local_iSw;*/
+/*				*/
+/*				auto zx_local = local_Sz*local_Sx;*/
+/*				auto iwx_local = local_iSw*local_Sx;*/
+/*				auto iwz_local = local_iSw*local_Sz;*/
+/*				*/
+/*				auto xz_tight = tight_Sx*tight_Sz;*/
+/*				auto ixw_tight = tight_Sx*tight_iSw;*/
+/*				auto izw_tight = tight_Sz*tight_iSw;*/
+/*				*/
+/*				auto zx_tight = tight_Sz*tight_Sx;*/
+/*				auto iwx_tight = tight_iSw*tight_Sx;*/
+/*				auto iwz_tight = tight_iSw*tight_Sz;*/
+/*				*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(xx_local, xx_tight), -betaKTpara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(zz_local, zz_tight), -betaKTpara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(ww_mlocal, ww_mtight), -betaKTpara(alfa,beta)));*/
+/*				*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(xz_local, xz_tight), -betaKTpara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(ixw_local, ixw_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from x-term*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(izw_local, izw_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from z-term*/
+/*				*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(zx_local, zx_tight), -betaKTpara(alfa,beta)));*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(iwx_local, iwx_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from x-term*/
+/*				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(iwz_local, iwz_tight), -betaKTpara(alfa,beta))); // sign: i^2*(-1) from z-term*/
 			}
 		}
 		

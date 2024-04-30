@@ -98,7 +98,7 @@ const std::map<string,std::any> HeisenbergSU2::defaults =
 {
 	{"J",1.}, {"Jprime",0.}, {"Jprimeprime",0.}, {"Jrung",1.},
 	{"R",0.}, {"Offset",0.},
-	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, {"mfactor",1}
 };
 
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 

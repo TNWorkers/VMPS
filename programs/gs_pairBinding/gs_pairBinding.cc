@@ -217,7 +217,7 @@ int main (int argc, char* argv[])
 	lout << boost::asio::ip::host_name() << endl;
 	lout << args.info() << endl;
 	
-	cout << hopping << endl;
+	//cout << hopping << endl;
 //	for (int i=0; i<hopping.rows(); ++i)
 //	for (int j=i; j<hopping.rows(); ++j)
 //	{
@@ -246,7 +246,7 @@ int main (int argc, char* argv[])
 	size_t Mincr_per = args.get<size_t>("Mincr_per",2ul);
 	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;};
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",120ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",2000ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	// glob. params
@@ -254,8 +254,8 @@ int main (int argc, char* argv[])
 	GlobParam.Minit = args.get<size_t>("Minit",100ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",100ul);
 	GlobParam.Mlimit = Mlimit;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",44ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",44ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",16ul);
 	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-12);
 	GlobParam.tol_state = args.get<double>("tol_state",1e-10);
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
@@ -265,14 +265,21 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",6ul); //GlobParam.max_halfsweeps-3
+	size_t end_2site = args.get<size_t>("end_2site",4ul);
 	size_t period_2site = args.get<size_t>("period_2site",1ul);
-	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i)
+	{
+		if (end_2site==0) {return DMRG::ITERATION::ONE_SITE;}
+		else
+		{
+			return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;
+		}
+	};
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
-	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-8);
-	double alpha = args.get<double>("alpha",100.);
+	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-4);
+	double alpha = args.get<double>("alpha",1000.);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));

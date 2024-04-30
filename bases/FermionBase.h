@@ -639,7 +639,11 @@ exp_ipiSz (std::size_t orbital) const
 	//return make_operator(this->exp_ipiSz(), orbital, PROP::NON_FERMIONIC,"exp(i*π*Sz)");
 	
 	ComplexOperatorType out;
-	if (N_orbitals == 1) {out = this->exp_ipiSz_1s(); out.label() = "exp(i*π*Sz)"; return out;}
+	if (N_orbitals == 1)
+	{
+		out = this->exp_ipiSz_1s(); out.label() = "exp(i*π*Sz)";
+		return out;
+	}
 	else
 	{
 		throw; // not implemented

@@ -207,6 +207,7 @@ protected:
 	
 	vector<SpinBase   <Symmetry> > B;
 	vector<FermionBase<Symmetry> > F;
+	vector<SUB_LATTICE> G;
 };
 
 template<typename Symmetry>
@@ -226,8 +227,22 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 	
 	for (size_t l=0; l<L; ++l)
 	{
-		B[l] = SpinBase<Symmetry> (P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("LyF",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		B[l] = SpinBase<Symmetry> (P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), P.get<int>("mfactor",l%Lcell));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),
+		                             P.get<bool>("REMOVE_DOUBLE",l%Lcell),
+		                             P.get<bool>("REMOVE_EMPTY",l%Lcell),
+		                             P.get<bool>("REMOVE_UP",l%Lcell),
+		                             P.get<bool>("REMOVE_DN",l%Lcell),
+		                             P.get<int>("mfactor",l%Lcell),
+		                             P.get<int>("k",l%Lcell));
+	}
+	
+	G.resize(L);
+	if (P.HAS("G")) {G = P.get<vector<SUB_LATTICE> >("G");}
+	else // set default (-1)^l
+	{
+		G[0] = static_cast<SUB_LATTICE>(1);
+		for (int l=1; l<L; l+=1) G[l] = static_cast<SUB_LATTICE>(-1*G[l-1]);
 	}
 }
 

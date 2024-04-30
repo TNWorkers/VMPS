@@ -1419,29 +1419,33 @@ ArrayXXd hopping_Archimedean (string vertex_conf, int VARIANT=0, double lambda1=
 		int L=12;
 		res.resize(L,L); res.setZero();
 		
+		// A
 		res(0,1) = lambda1;
-		res(1,4) = lambda2;
-		res(4,8) = lambda1;
-		res(5,8) = lambda2;
-		res(2,5) = lambda1;
-		res(0,2) = lambda2;
-		
 		res(0,3) = lambda1;
 		res(1,3) = lambda1;
 		
+		// B
+		res(2,6) = lambda1;
+		res(2,5) = lambda1;
+		res(5,6) = lambda1;
+		
+		// C
 		res(4,9) = lambda1;
+		res(4,8) = lambda1;
 		res(8,9) = lambda1;
 		
-		res(5,6) = lambda1;
-		res(2,6) = lambda1;
-		
-		res(3,7) = lambda2;
-		res(6,10) = lambda2;
-		res(9,11) = lambda2;
-		
+		// D
 		res(7,10) = lambda1;
-		res(10,11) = lambda1;
 		res(7,11) = lambda1;
+		res(10,11) = lambda1;
+		
+		res(3,7) = lambda2; // A-D
+		res(6,10) = lambda2; // B-D
+		res(9,11) = lambda2; // C-D <--
+		
+		res(0,2) = lambda2; // A-B  <--
+		res(1,4) = lambda2; // A-C
+		res(5,8) = lambda2; // B-C
 	}
 	
 	res += res.transpose().eval();
@@ -1538,7 +1542,7 @@ ArrayXXd hopping_fullerene (int L=60, int VARIANT=0, double lambda1=1., double l
 	ArrayXXd res(L,L); res.setZero();
 	
 	// lambda1: pentagon bond, lambda2: hexagon bond
-	if (L== 60)
+	if (L == 60)
 	{
 		if (VARIANT==1) // inwards spiral
 		{
@@ -2521,10 +2525,78 @@ ArrayXXd hopping_Mn32 (double lambda_cap=1., double lambda_corner=0., double lam
 	return res;
 }
 
+pair<ArrayXXd,vector<SUB_LATTICE> > hopping_PPV (int L, int VARIANT=0, double t0=1., double tsingle=1., double tdouble=1., string BC="")
+{
+	ArrayXXd res(L,L); res.setZero();
+	assert(L==8);
+	vector<SUB_LATTICE> G;
+	
+	if (BC == "INIT_HEX")
+	{
+		res(0,1) = t0;
+		res(0,2) = t0;
+		res(1,3) = t0;
+		res(2,4) = t0;
+		res(3,5) = t0;
+		res(4,5) = t0;
+		res(5,6) = tsingle; // tvinyl(single)
+		res(6,7) = tdouble; // tvinyl(double)
+		// intermolecular hopping is is tsingle
+		
+		// AABA|BBAB
+		G.push_back(static_cast<SUB_LATTICE>(1)); //0
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //1
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(1)); //3
+		G.push_back(static_cast<SUB_LATTICE>(1)); //4
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //5
+		G.push_back(static_cast<SUB_LATTICE>(1)); //6
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //7
+	}
+	else // PPV
+	{
+		res(0,1) = tsingle;
+		res(1,2) = t0;
+		res(1,3) = t0;
+		res(2,4) = t0;
+		res(3,5) = t0;
+		res(4,6) = t0;
+		res(5,6) = t0;
+		res(6,7) = tsingle; // tvinyl(single)
+		// intermolecular hopping is is tdouble
+		
+		G.push_back(static_cast<SUB_LATTICE>(1)); //0
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //1
+		G.push_back(static_cast<SUB_LATTICE>(1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(1)); //3
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //4
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //5
+		G.push_back(static_cast<SUB_LATTICE>(1)); //6
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //7
+	}
+	
+	res += res.transpose().eval();
+	
+	if (VARIANT==0)
+	{
+		CuthillMcKeeCompressor CMK(res,true);
+		CMK.apply_compression(res);
+		
+		vector<SUB_LATTICE> G_ = G;
+		for (int i=0; i<L; ++i)
+		{
+			G[CMK.get_transform()[i]] = G_[i];
+		}
+	}
+	
+	pair<ArrayXXd,vector<SUB_LATTICE> > ret(res,G);
+	return ret;
+}
+
 pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, double lambda=1., double lambda2=1., string BC="")
 {
 	ArrayXXd res(L,L); res.setZero();
-	assert(L==13 or L==8 or L==22 or L==4); // 33, 46, 61 // 4: simplified model, 8: simplified, larger unit cell with different coupling
+	assert(L==13 or L==8 or L==10 or L==22 or L==4); // 33, 46, 61 // 4: simplified model, 8: simplified, larger unit cell with different coupling
 	// (6+)7+9+11+13
 	
 	vector<SUB_LATTICE> G;
@@ -2547,12 +2619,11 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 			res(0,2) = lambda;
 			res(1,2) = lambda;
 			res(2,3) = lambda;
-			
 			res(3,4) = lambda2; // tinter
-			
 			res(4,5) = lambda;
 			res(5,6) = lambda;
 			res(5,7) = lambda;
+			// intermolecular hopping is thex (2x)
 			
 			// AABA|BBAB
 			G.push_back(static_cast<SUB_LATTICE>(1)); //0
@@ -2574,6 +2645,7 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 			res(4,6) = lambda;
 			res(5,6) = lambda;
 			res(6,7) = lambda;
+			// intermolecular hopping is tinter
 			
 			G.push_back(static_cast<SUB_LATTICE>(1)); //0
 			G.push_back(static_cast<SUB_LATTICE>(-1)); //1
@@ -2585,6 +2657,37 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 			G.push_back(static_cast<SUB_LATTICE>(-1)); //7
 		}
 	}
+	else if (L==10) //porphyrine coarse-grained
+	{
+		res(0,1) = lambda;
+		
+		res(1,2) = lambda;
+		res(1,3) = lambda;
+		
+		res(2,4) = lambda;
+		res(4,6) = lambda;
+		
+		res(3,5) = lambda;
+		res(5,7) = lambda;
+		
+		res(6,8) = lambda;
+		res(7,8) = lambda;
+		
+		res(8,9) = lambda;
+		
+		G.push_back(static_cast<SUB_LATTICE>(1)); //0
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //1
+		G.push_back(static_cast<SUB_LATTICE>(1)); //2
+		G.push_back(static_cast<SUB_LATTICE>(1)); //3
+		
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //4
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //5
+		
+		G.push_back(static_cast<SUB_LATTICE>(1)); //6
+		G.push_back(static_cast<SUB_LATTICE>(1)); //7
+		G.push_back(static_cast<SUB_LATTICE>(-1)); //8
+		G.push_back(static_cast<SUB_LATTICE>(1)); //9
+	}
 	else if (L==13)
 	{
 		for (int i=0; i<=10; ++i) res(i,i+1) = lambda;
@@ -2594,21 +2697,8 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 		res(2,12) = lambda;
 		res(10,12) = lambda;
 	}
-	else if (L==22)
+	else if (L==22) // for triangulene proper, lambda2 is the NNN hopping t3
 	{
-		//for (int i=0; i<=16; ++i) res(i,i+1) = lambda;
-		//res(0,17) = lambda;
-		
-		//res(2,18) = lambda;
-		//res(16,18) = lambda;
-		//res(4,19) = lambda;
-		//res(8,19) = lambda;
-		//res(10,20) = lambda;
-		//res(14,20) = lambda;
-		//res(18,21) = lambda;
-		//res(19,21) = lambda;
-		//res(20,21) = lambda;
-		
 		res(11,15) = lambda;
 		res(15,19) = lambda;
 		
@@ -2665,6 +2755,30 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //19
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //20
 		G.push_back(static_cast<SUB_LATTICE>(-1)); //21
+		
+		res(12,15) = lambda2;
+		res(11,16) = lambda2;
+		res(8,19) = lambda2;
+		
+		res(5,9) = lambda2;
+		res(3,12) = lambda2;
+		res(6,8) = lambda2;
+		
+		res(13,16) = lambda2;
+		res(12,17) = lambda2;
+		res(9,20) = lambda2;
+		
+		res(2,3) = lambda2;
+		res(1,4) = lambda2;
+		res(0,6) = lambda2;
+		
+		res(6,10) = lambda2;
+		res(7,9) = lambda2;
+		res(4,13) = lambda2;
+		
+		res(10,21) = lambda2;
+		res(14,17) = lambda2;
+		res(13,18) = lambda2;
 	}
 	
 	res += res.transpose().eval();
@@ -2686,6 +2800,55 @@ pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene (int L, int VARIANT=0, d
 //		{
 //			lout << "i=" << i << ", G[i]=" << G[i]<< ", orig.G[i]=" << G_[i] << endl;
 //		}
+	}
+	
+	pair<ArrayXXd,vector<SUB_LATTICE> > ret(res,G);
+	return ret;
+}
+
+pair<ArrayXXd,vector<SUB_LATTICE> > hopping_triangulene_dimer (int VARIANT=0, double lambda=1., double lambda2=1., string BC="")
+{
+	auto [T,G0] = hopping_triangulene(22,1,lambda,lambda2);
+	ArrayXXd res(44,44); res = 0.;
+	res.topLeftCorner(22,22) = T;
+	res.bottomRightCorner(22,22) = T;
+	
+	ArrayXXd coupling(44,44); coupling = 0.;
+	coupling(2,1+22) = lambda;
+	coupling(7,5+22) = lambda;
+	coupling(14,11+22) = lambda;
+	
+	coupling(2,1+22) = lambda2;
+	coupling(2,5+22) = lambda2;
+	
+	coupling(4,3+22) = lambda2;
+	
+	coupling(7,1+22) = lambda2;
+	coupling(7,11+22) = lambda2;
+	
+	coupling(10,8+22) = lambda2;
+	
+	coupling(14,5+22) = lambda2;
+	coupling(14,11+22) = lambda2;
+	
+	coupling += coupling.transpose().eval();
+	
+	res += coupling;
+	
+	vector<SUB_LATTICE> G;
+	for (int i=0; i<22; ++i) G.push_back(G0[i]);
+	for (int i=0; i<22; ++i) G.push_back(flip_sublattice(G0[i]));
+	
+	if (VARIANT==0)
+	{
+		CuthillMcKeeCompressor CMK(res,true);
+		CMK.apply_compression(res);
+		
+		vector<SUB_LATTICE> G_ = G;
+		for (int i=0; i<44; ++i)
+		{
+			G[CMK.get_transform()[i]] = G_[i];
+		}
 	}
 	
 	pair<ArrayXXd,vector<SUB_LATTICE> > ret(res,G);

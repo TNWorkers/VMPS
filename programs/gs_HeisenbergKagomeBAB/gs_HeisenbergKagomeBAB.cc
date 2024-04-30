@@ -165,43 +165,51 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
-	DMRG::CONTROL::GLOB GlobParam;
-	GlobParam.Minit = args.get<size_t>("Minit",500ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",10ul);
-	GlobParam.Mlimit = Mlimit;
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",20ul);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
-	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-7);
-	GlobParam.tol_state = args.get<double>("tol_state",1e-5);
-	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.savePeriod = args.get<size_t>("savePeriod",2ul);
-	GlobParam.saveName = args.get<string>("saveName",statefile);
-	GlobParam.INITDIR = static_cast<DMRG::DIRECTION::OPTION>(args.get<int>("INITDIR",1)); // 1=left->right, 0=right->left
-	//GlobParam.FULLMMAX_FILENAME = FULLMMAX_FILENAME;
-	
+	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
-	double eps_svd = args.get<double>("eps_svd",0.);
-	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
+	int max_Nrich = args.get<int>("max_Nrich",-1);
+	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
 	size_t Mincr_per = args.get<size_t>("Mincr_per",2ul);
-	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;};
+	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",Mlimit);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",10000ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",4ul);
+	size_t end_2site = args.get<size_t>("end_2site",6ul);
 	DynParam.iteration = [start_2site,end_2site] (size_t i) {return (i>=start_2site and i<end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	
+	// glob. params
+	DMRG::CONTROL::GLOB GlobParam;
+	GlobParam.Mlimit = Mlimit;
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16ul);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
+	GlobParam.Minit = args.get<size_t>("Minit",20ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",20ul);
+	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
+	GlobParam.CALC_S_ON_EXIT = false;
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",2);
+	GlobParam.saveName = make_string(wd,"state/",base);
+	GlobParam.INITDIR = static_cast<DMRG::DIRECTION::OPTION>(args.get<int>("INITDIR",1)); // 1=left->right, 0=right->left
+	GlobParam.falphamin = args.get<double>("falphamin",0.5);
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
 	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-4);
-	double alpha = args.get<double>("alpha",100.);
+	double alpha = args.get<double>("alpha",1e3);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};
+	DynParam.iteration = [start_2site,end_2site] (size_t i)
+	{
+		if (end_2site==0) {return DMRG::ITERATION::ONE_SITE;}
+		else
+		{
+			return (i>=start_2site and i<=end_2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;
+		}
+	};
 	
-	DMRG::CONTROL::LANCZOS LanczosParam;
-	size_t dimK = args.get<size_t>("dimK",500ul);
-	LanczosParam.dimK = dimK;
+	lout.set(make_string(base,".log"), wd+"log", true);
+	lout << boost::asio::ip::host_name() << endl;
 	
 	// kagome sites
 	vector<vector<int>> i_evn;
@@ -235,8 +243,7 @@ int main (int argc, char* argv[])
 //		}
 //	}
 	
-	SaveData obs;
-	obs.add_scalars({"E", "e", "var", "em", "Mlimit", "fullMmax", "Ctot"});
+	obs.add_scalars({"E", "e", "var", "em", "Mlimit", "fullMmax", "Ctot", "Ctotsq"});
 	obs.add_matrices(L, L, {"SdagS"});
 	obs.add_strings({"history"});
 	
@@ -244,6 +251,7 @@ int main (int argc, char* argv[])
 	lout << H.info() << endl;
 	
 	OPERATOR Field;
+	vector<OPERATOR> FieldTerms;
 	
 	///////////////////////////////////////////
 	/////////// chiral correlations ///////////
@@ -511,6 +519,7 @@ int main (int argc, char* argv[])
 			{
 				Field = sum(Field,Term);
 			}
+			FieldTerms.push_back(Term);
 		}
 		for (int b=0; b<bondOddOdd2_opp.size(); ++b)
 		{
@@ -531,6 +540,7 @@ int main (int argc, char* argv[])
 			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
 			
 			Field = sum(Field,Term);
+			FieldTerms.push_back(Term);
 		}
 		for (int b=0; b<bondOddEvn1_opp.size(); ++b)
 		{
@@ -551,6 +561,7 @@ int main (int argc, char* argv[])
 			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
 			
 			Field = sum(Field,Term);
+			FieldTerms.push_back(Term);
 		}
 		for (int b=0; b<bondOddEvn2_opp.size(); ++b)
 		{
@@ -571,6 +582,7 @@ int main (int argc, char* argv[])
 			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
 			
 			Field = sum(Field,Term);
+			FieldTerms.push_back(Term);
 		}
 		for (int b=0; b<bondEvn1_opp.size(); ++b)
 		{
@@ -591,6 +603,7 @@ int main (int argc, char* argv[])
 			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
 			
 			Field = sum(Field,Term);
+			FieldTerms.push_back(Term);
 		}
 		for (int b=0; b<bondEvn2_opp.size(); ++b)
 		{
@@ -611,8 +624,10 @@ int main (int argc, char* argv[])
 			OPERATOR Term = diff(prod(Popp,Pp),prod(Popp,Pm));
 			
 			Field = sum(Field,Term);
+			FieldTerms.push_back(Term);
 		}
 		lout << "Field=" << endl << Field.info() << endl;
+		lout << "#Terms=" << FieldTerms.size() << endl;
 	}
 	/////////// chiral correlations ///////////
 	///////////////////////////////////////////
@@ -628,10 +643,10 @@ int main (int argc, char* argv[])
 	MODEL::Solver DMRG(VERB);
 	DMRG.GlobParam = GlobParam;
 	DMRG.DynParam = DynParam;
-	DMRG.LanczosParam = LanczosParam;
+	//DMRG.LanczosParam = LanczosParam;
 	DMRG.userSetGlobParam();
 	DMRG.userSetDynParam();
-	DMRG.userSetLanczosParam();
+	//DMRG.userSetLanczosParam();
 	obs.scal["Mlimit"] = Mlimit;
 	
 	if (CALC_GS)
@@ -654,46 +669,46 @@ int main (int argc, char* argv[])
 		
 		//////////// excited states ////////////
 		////////////////////////////////////////
-		int Nexc = args.get<int>("Nexc",0);
-		double Epenalty = args.get<double>("Epenalty",1e2);
-		vector<Eigenstate<MODEL::StateXd>> excited(Nexc);
-		if (Nexc>0)
-		{
-			lout << endl << termcolor::blue << "CALC_GAP" << termcolor::reset << endl;
-			for (int n=0; n<Nexc; ++n)
-			{
-				lout << "------ n=" << n << " ------" << endl;
-				GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_n=",n,"_",base);
-				MODEL::Solver DMRGe(VERB);
-				DMRGe.Epenalty = Epenalty;
-				lout << "Epenalty=" << DMRGe.Epenalty << endl;
-				DMRGe.userSetGlobParam();
-				DMRGe.userSetDynParam();
-				DMRGe.userSetLanczosParam();
-				DMRGe.GlobParam = GlobParam;
-				DMRGe.DynParam = DynParam;
-				DMRGe.LanczosParam = LanczosParam;
-				DMRGe.push_back(g.state);
-				for (int m=0; m<n; ++m)
-				{
-					DMRGe.push_back(excited[m].state);
-				}
-				
-//				VectorXd overlaps(n+1);
-				
-				DMRGe.edgeState(H, excited[n], Q, LANCZOS::EDGE::GROUND);
-				
-//				overlaps(0) = dot(g.state,excited[n].state);
-//				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
+//		int Nexc = args.get<int>("Nexc",0);
+//		double Epenalty = args.get<double>("Epenalty",1e2);
+//		vector<Eigenstate<MODEL::StateXd>> excited(Nexc);
+//		if (Nexc>0)
+//		{
+//			lout << endl << termcolor::blue << "CALC_GAP" << termcolor::reset << endl;
+//			for (int n=0; n<Nexc; ++n)
+//			{
+//				lout << "------ n=" << n << " ------" << endl;
+//				GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_n=",n,"_",base);
+//				MODEL::Solver DMRGe(VERB);
+//				DMRGe.Epenalty = Epenalty;
+//				lout << "Epenalty=" << DMRGe.Epenalty << endl;
+//				DMRGe.userSetGlobParam();
+//				DMRGe.userSetDynParam();
+//				DMRGe.userSetLanczosParam();
+//				DMRGe.GlobParam = GlobParam;
+//				DMRGe.DynParam = DynParam;
+//				DMRGe.LanczosParam = LanczosParam;
+//				DMRGe.push_back(g.state);
+//				for (int m=0; m<n; ++m)
+//				{
+//					DMRGe.push_back(excited[m].state);
+//				}
 //				
-//				lout << endl;
-//				lout << "excited[" << n << "].energy=" << setprecision(16) << excited[n].energy << endl;
+////				VectorXd overlaps(n+1);
 //				
-//				overlaps(0) = dot(g.state,excited[n].state);
-//				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
-//				lout << "final overlap=" << overlaps.transpose() << endl;
-			}
-		}
+//				DMRGe.edgeState(H, excited[n], Q, LANCZOS::EDGE::GROUND);
+//				
+////				overlaps(0) = dot(g.state,excited[n].state);
+////				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
+////				
+////				lout << endl;
+////				lout << "excited[" << n << "].energy=" << setprecision(16) << excited[n].energy << endl;
+////				
+////				overlaps(0) = dot(g.state,excited[n].state);
+////				for (int m=0; m<n; ++m) overlaps(m+1) = dot(excited[m].state,excited[n].state);
+////				lout << "final overlap=" << overlaps.transpose() << endl;
+//			}
+//		}
 		//////////// excited states ////////////
 		////////////////////////////////////////
 	}
@@ -788,6 +803,37 @@ int main (int argc, char* argv[])
 	{
 		obs.scal["Ctot"] = avg(g.state, Field, g.state);
 		lout << termcolor::blue << "Ctot=" << obs.scal["Ctot"] << ", Ctot/L=" << obs.scal["Ctot"]/L << termcolor::reset << endl;
+		
+		//lout << "Computing F^2..." << endl;
+		//auto FieldSq = prod(Field,Field);
+		//lout << FieldSq.info() << endl;
+		//lout << "F^2 done! Begin Ctot^2..." << endl;
+		
+		//obs.scal["Ctotsq"] = avg(g.state, Field, Field, g.state, 1ul, DMRG::DIRECTION::RIGHT,VERB);
+		//obs.scal["Ctotsq"] = avg(g.state, FieldSq, g.state, 1ul, DMRG::DIRECTION::RIGHT,VERB);
+		
+		double Ctotsq = 0.;
+		Stopwatch<> CtotsqTimer;
+//		#pragma omp parallel for collapse(2) reduction(+:Ctotsq)
+//		for (int i=0; i<FieldTerms.size(); ++i)
+//		for (int j=0; j<FieldTerms.size(); ++j)
+//		{
+//			Ctotsq += avg(g.state, FieldTerms[i], FieldTerms[j], g.state);
+//		}
+
+		//#pragma omp parallel for reduction(+:Ctotsq)
+		for (int i=0; i<FieldTerms.size(); ++i)
+		{
+			Ctotsq += avg(g.state, FieldTerms[i], Field, g.state, MODEL::Symmetry::qvacuum(), 1ul, 1ul, true, VERB);
+		}
+		lout << CtotsqTimer.info("Ctotsq") << endl;
+		obs.scal["Ctotsq"] = Ctotsq;
+		
+		lout << termcolor::blue << "Ctot^2=" << obs.scal["Ctotsq"] << ", Ctot^2/L^2=" << obs.scal["Ctotsq"]/(L*L) << termcolor::reset << endl;
+		if (Mlimit <= 1000)
+		{
+			lout << "test=" << avg(g.state, Field, Field, g.state) << endl;
+		}
 	}
 	
 	if (CALC_VAR)

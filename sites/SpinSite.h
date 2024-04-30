@@ -17,9 +17,13 @@ class SpinSite
 	typedef double Scalar;
 	typedef Symmetry_ Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > OperatorType;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<complex<Scalar>,Eigen::Dynamic,Eigen::Dynamic> > ComplexOperatorType;
+	
 public:
+	
 	SpinSite() {};
-	SpinSite(std::size_t D_input);
+	SpinSite(std::size_t D_input, int mfactor_input=1);
+	// mfactor: 1 for physical sites, 0 for ancilla sites for thermodynamics
 	
 	OperatorType Id_1s() const {return Id_1s_;}
 	OperatorType Zero_1s() const {return Zero_1s_;}
@@ -41,13 +45,14 @@ public:
 	
 	OperatorType exp_i_pi_Sx() const {return exp_i_pi_Sx_1s_;}
 	OperatorType exp_i_pi_Sy() const {return exp_i_pi_Sy_1s_;}
-	OperatorType exp_i_pi_Sz() const {return exp_i_pi_Sz_1s_;}
+	ComplexOperatorType exp_i_pi_Sz() const {return exp_i_pi_Sz_1s_;}
 	
 	Qbasis<Symmetry> basis_1s() const {return basis_1s_;}
 	
 protected:
 	
 	std::size_t D;
+	int mfactor = 1;
 	
 	void fill_basis();
 	void fill_SiteOps();
@@ -77,13 +82,13 @@ protected:
 	
 	OperatorType exp_i_pi_Sx_1s_;
 	OperatorType exp_i_pi_Sy_1s_;
-	OperatorType exp_i_pi_Sz_1s_;
+	ComplexOperatorType exp_i_pi_Sz_1s_;
 };
 
 template<typename Symmetry_, size_t order>
 SpinSite<Symmetry_,order>::
-SpinSite(std::size_t D_input)
-:D(D_input)
+SpinSite(std::size_t D_input, int mfactor_input)
+:D(D_input), mfactor(mfactor_input)
 {
 	//create basis for one spin site
 	fill_basis();
@@ -108,13 +113,16 @@ fill_SiteOps()
 	Sp_1s_ = OperatorType(getQ(SP),basis_1s_);
 	Sm_1s_ = OperatorType(getQ(SM),basis_1s_);
 	
-	Qz_1s_ = OperatorType(getQ(SZ),basis_1s_);
-	Qp_1s_ = OperatorType(getQ(QP),basis_1s_);
-	Qm_1s_ = OperatorType(getQ(QM),basis_1s_);
-	Qpz_1s_ = OperatorType(getQ(SP),basis_1s_);
-	Qmz_1s_ = OperatorType(getQ(SM),basis_1s_);
+	if (D>2)
+	{
+		Qz_1s_ = OperatorType(getQ(SZ),basis_1s_);
+		Qp_1s_ = OperatorType(getQ(QP),basis_1s_);
+		Qm_1s_ = OperatorType(getQ(QM),basis_1s_);
+		Qpz_1s_ = OperatorType(getQ(SP),basis_1s_);
+		Qmz_1s_ = OperatorType(getQ(SM),basis_1s_);
+	}
 	
-	exp_i_pi_Sz_1s_ = OperatorType(getQ(SZ),basis_1s_);
+	exp_i_pi_Sz_1s_ = ComplexOperatorType(getQ(SZ),basis_1s_);
 	if constexpr (Symmetry::IS_TRIVIAL)
 	{
 		exp_i_pi_Sx_1s_ = OperatorType(getQ(SX),basis_1s_);
@@ -129,7 +137,7 @@ fill_SiteOps()
 	for (size_t i=0; i<D-1; ++i)
 	{
 		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
-		int Qplus1 = Q + 2; //note spacing of m is 2 because we deal with 2*m instead of m
+		int Qplus1 = Q+2; //note spacing of m is 2 because we deal with 2*m instead of m
 		
 		stringstream ssQ; ssQ << Q;
 		stringstream ssQplus1; ssQplus1 << Qplus1;
@@ -138,24 +146,25 @@ fill_SiteOps()
 		Sbase(ssQplus1.str(),ssQ.str()) = 0.5*sqrt(S*(S+1.)-m*(m+1.));
 	}
 	
-	F_1s_ = 0.5*Id_1s_-Sz_1s_;
-	
 	Sp_1s_ = 2.*Sbase;
 	Sm_1s_ = Sp_1s_.adjoint();
 	Sz_1s_ = 0.5 * (Sp_1s_*Sm_1s_ - Sm_1s_*Sp_1s_);
 	
+	F_1s_ = 0.5*Id_1s_-Sz_1s_;
+	
 //	cout << "SpinSite:" << endl;
-//	cout << "Id=" << endl << MatrixXd(Id_1s_.template plain<double>().data) << endl;
 //	cout << "Sbase=" << endl << MatrixXd(Sbase.template plain<double>().data) << endl;
 //	cout << "Sp=" << endl << MatrixXd(Sp_1s_.template plain<double>().data) << endl;
 //	cout << "Sm=" << endl << MatrixXd(Sm_1s_.template plain<double>().data) << endl;
-//	cout << "Sz=" << endl << MatrixXd(Sz_1s_.template plain<double>().data) << endl;
 	
-	Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
-	Qp_1s_ = Sp_1s_*Sp_1s_;
-	Qm_1s_ = Sm_1s_*Sm_1s_;
-	Qpz_1s_ = Sp_1s_*Sz_1s_+Sz_1s_*Sp_1s_;
-	Qmz_1s_ = Sm_1s_*Sz_1s_+Sz_1s_*Sm_1s_;
+	if (D>2)
+	{
+		Qz_1s_ = 1./sqrt(3.) * (3.*Sz_1s_*Sz_1s_-S*(S+1.)*Id_1s_);
+		Qp_1s_ = Sp_1s_*Sp_1s_;
+		Qm_1s_ = Sm_1s_*Sm_1s_;
+		Qpz_1s_ = Sp_1s_*Sz_1s_+Sz_1s_*Sp_1s_;
+		Qmz_1s_ = Sm_1s_*Sz_1s_+Sz_1s_*Sm_1s_;
+	}
 	
 	if constexpr (Symmetry::IS_TRIVIAL)
 	{
@@ -184,7 +193,8 @@ fill_SiteOps()
 		double m = -S + static_cast<double>(i);
 		int Q = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 		stringstream ssQ; ssQ << Q;
-		exp_i_pi_Sz_1s_(ssQ.str(),ssQ.str()) = pow(-1.,m);
+		//exp_i_pi_Sz_1s_(ssQ.str(),ssQ.str()) = pow(-1.,m);
+		exp_i_pi_Sz_1s_(ssQ.str(),ssQ.str()) = exp(1.i*M_PI*m);
 	}
 	
 	return;
@@ -194,10 +204,10 @@ template<typename Symmetry_, size_t order>
 void SpinSite<Symmetry_,order>::
 fill_basis()
 {
-	if constexpr (Symmetry::NO_SPIN_SYM()) //U0
+	if constexpr (Symmetry::NO_SPIN_SYM()) // U0
 	{
 		typename Symmetry::qType Q=Symmetry::qvacuum();
-		Eigen::Index inner_dim=D;
+		Eigen::Index inner_dim = D;
 		std::vector<std::string> ident;
 		
 		assert(D >= 1);
@@ -213,7 +223,7 @@ fill_basis()
 		}
 		basis_1s_.push_back(Q,inner_dim,ident);
 	}
-	else if constexpr (Symmetry::IS_SPIN_U1()) //spin U1
+	else if constexpr (Symmetry::IS_SPIN_U1()) // spin U1
 	{
 		typename Symmetry::qType Q;
 		Eigen::Index inner_dim;
@@ -229,16 +239,42 @@ fill_basis()
 			int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
 			if constexpr (Symmetry::Nq>1)
 			{
-				for (size_t q=0; q<Symmetry::Nq; q++)
+				if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::M) // two U(1) symmetries: system-bath canonical
 				{
-					Q[q] = (Symmetry::kind()[q] == Sym::KIND::M and q==order)? Qint:0;
+					for (size_t q=0; q<Symmetry::Nq; q++)
+					{
+						if (Symmetry::kind()[q] == Sym::KIND::M and q==0)
+						{
+							Q[q] = (mfactor==1)? Qint:0;
+						}
+						else if (Symmetry::kind()[q] == Sym::KIND::M and q==1)
+						{
+							Q[q] = (mfactor==1)? 0:Qint;
+						}
+						else
+						{
+							Q[q] = Qint;
+						}
+					}
+					//cout << "i=" << i << ", Q=" << Q << endl;
+				}
+				else if (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] != Sym::KIND::M)
+				{
+					Q[0] = Qint*mfactor;
+					Q[1] = Symmetry::S2::qvacuum()[0];
+				}
+				else if (Symmetry::kind()[0] != Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::M)
+				{
+					Q[0] = Symmetry::S1::qvacuum()[0];
+					Q[1] = Qint*mfactor;
 				}
 			}
 			else
 			{
-				Q[0] = Qint;
+				//cout << "i=" << i << ", Q=" << Qint*mfactor << endl;
+				Q[0] = Qint*mfactor;
 			}
-			inner_dim=1;
+			inner_dim = 1;
 			stringstream ss; ss << Qint;
 			ident.push_back(ss.str());
 			basis_1s_.push_back(Q, inner_dim, ident);
@@ -265,15 +301,15 @@ getQ (SPINOP_LABEL Sa) const
 			
 			typename Symmetry::qType out;
 			if      (Sa==SZ or Sa==QZ)  {out = {0};}
-			else if (Sa==SP or Sa==QPZ) {out = {+2};}
-			else if (Sa==SM or Sa==QMZ) {out = {-2};}
-			else if (Sa==QP)            {out = {+4};}
-			else if (Sa==QM)            {out = {-4};}
+			else if (Sa==SP or Sa==QPZ) {out = {+2*mfactor};}
+			else if (Sa==SM or Sa==QMZ) {out = {-2*mfactor};}
+			else if (Sa==QP)            {out = {+4*mfactor};}
+			else if (Sa==QM)            {out = {-4*mfactor};}
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
-	else if constexpr (Symmetry::Nq == 2)
+	else if constexpr (Symmetry::Nq == 2) // implicitly S=1/2 here (fermions or system-bath U1xU1), adjust if required
 	{
 		assert(Sa != SX and Sa != iSY and Sa != QP and Sa != QM);
 		
@@ -287,8 +323,14 @@ getQ (SPINOP_LABEL Sa) const
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
 		{
 			if      (Sa==SZ) {out = {0,0};}
-			else if (Sa==SP) {out = {+2,0};}
-			else if (Sa==SM) {out = {-2,0};}
+			else if (Sa==SP) {out = {+2*mfactor,0};}
+			else if (Sa==SM) {out = {-2*mfactor,0};}
+		}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::T)
+		{
+			if      (Sa==SZ) {out = {0,1};}
+			else if (Sa==SP) {out = {+2*mfactor,1};}
+			else if (Sa==SM) {out = {-2*mfactor,1};}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
@@ -304,7 +346,7 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::M)
 		{
-			if (order == 0ul)
+			if (mfactor == 1) // mfactor=1: system site, mfactor=0: bath site
 			{
 				if      (Sa==SZ) {out = {0,0};}
 				else if (Sa==SP) {out = {+2,0};}

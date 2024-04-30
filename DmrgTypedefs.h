@@ -344,6 +344,7 @@ struct DMRG
 			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = false;
+			constexpr static bool CALC_ERR_ON_EXIT = true;
 			constexpr static DMRG::DIRECTION::OPTION INITDIR = DMRG::DIRECTION::RIGHT;
 			constexpr static double falphamin = 0.1;
 			constexpr static double falphamax = 2.;
@@ -385,6 +386,7 @@ struct DMRG
 			std::string saveName            = std::string(CONTROL::DEFAULT::saveName);
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
+			bool CALC_ERR_ON_EXIT           = CONTROL::DEFAULT::CALC_ERR_ON_EXIT;
 			DMRG::DIRECTION::OPTION INITDIR = CONTROL::DEFAULT::INITDIR;
 			double falphamin                = CONTROL::DEFAULT::falphamin;
 			double falphamax                = CONTROL::DEFAULT::falphamax;

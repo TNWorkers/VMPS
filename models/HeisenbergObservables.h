@@ -41,6 +41,8 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type exp_ipiSz (size_t locx, size_t locy=0, double factor=1.) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type QcompQcomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
@@ -106,35 +108,37 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry,Scalar> >::type StringCorr (STRING STR, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
-	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const
-	{
-		if (Symmetry::IS_TRIVIAL) {return Symmetry::qvacuum();}
-		typename Symmetry::qType out;
-		if ((Sa1 == SZ and Sa2 == SZ) or 
-		    (Sa1 == SP and Sa2 == SM) or 
-		    (Sa1 == SM and Sa2 == SP) or 
-		    (Sa1 == SX and Sa1 == iSY) or 
-		    (Sa1 == QZ and Sa2 == QZ) or 
-		    (Sa1 == QP and Sa2 == QM) or 
-		    (Sa1 == QM and Sa2 == QP) or 
-		    (Sa1 == QPZ and Sa2 == QMZ) or 
-		    (Sa1 == QMZ and Sa2 == QPZ)
-		   )
-		{
-			out = Symmetry::qvacuum();
-		}
-		else
-		{
-			lout << "Sa1=" << Sa1 << ", Sa2=" << Sa2 << endl;
-			assert(false and "Quantum number for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");
-		}
-		return out;
-	}
+/*	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const*/
+/*	{*/
+/*		if (Symmetry::IS_TRIVIAL) {return Symmetry::qvacuum();}*/
+/*		typename Symmetry::qType out;*/
+/*		if ((Sa1 == SZ and Sa2 == SZ) or */
+/*		    (Sa1 == SP and Sa2 == SM) or */
+/*		    (Sa1 == SM and Sa2 == SP) or */
+/*		    (Sa1 == SX and Sa1 == iSY) or */
+/*		    (Sa1 == QZ and Sa2 == QZ) or */
+/*		    (Sa1 == QP and Sa2 == QM) or */
+/*		    (Sa1 == QM and Sa2 == QP) or */
+/*		    (Sa1 == QPZ and Sa2 == QMZ) or */
+/*		    (Sa1 == QMZ and Sa2 == QPZ)*/
+/*		   )*/
+/*		{*/
+/*			out = Symmetry::qvacuum();*/
+/*		}*/
+/*		else*/
+/*		{*/
+/*			lout << "Sa1=" << Sa1 << ", Sa2=" << Sa2 << endl;*/
+/*			assert(false and "Quantum number for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");*/
+/*		}*/
+/*		return out;*/
+/*	}*/
 	
     std::vector<Mpo<Symmetry,Scalar>> make_spinPermutation (const Permutation& permutations) const;
 
     
     MpoTerms<Symmetry,double> spin_swap_operator_D2 (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1=0ul, const std::size_t locy2=0ul) const;
+    
+    MpoTerms<Symmetry,double> Psinglet (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1=0ul, const std::size_t locy2=0ul) const;
 
     MpoTerms<Symmetry,double> spin_swap_operator_D3 (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1=0ul, const std::size_t locy2=0ul) const;
 
@@ -172,7 +176,7 @@ HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::
 	
 	for (size_t l=0; l<L; ++l)
 	{
-		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), P.get<int>("mfactor",l%Lcell));
 	}
 }
 
@@ -193,11 +197,11 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	{
 		Mout.setLocal(locx, (factor * Op).template cast<Scalar>(). template plain<Scalar>());
 	}
-	else
-	{
-		Mout.setLocal(locx, (factor * Op).template cast<Scalar>(). template plain<Scalar>(), 
-		              B[0].bead(STR).template cast<Scalar>(). template plain<Scalar>());
-	}
+/*	else*/
+/*	{*/
+/*		Mout.setLocal(locx, (factor * Op).template cast<Scalar>(). template plain<Scalar>(), */
+/*		              B[0].bead(STR).template cast<Scalar>(). template plain<Scalar>());*/
+/*	}*/
 	
 	return Mout;
 }
@@ -274,12 +278,12 @@ make_corr (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 				                          Op2 .template cast<Scalar>().template plain<Scalar>()});
 			}
 		}
-		else
-		{
-			Mout.setLocal({locx1, locx2}, {(factor*Op1).template cast<Scalar>().template plain<Scalar>(), 
-			                                       Op2 .template cast<Scalar>().template plain<Scalar>()}, 
-			              B[0].bead(STR).template cast<Scalar>().template plain<Scalar>());
-		}
+/*		else*/
+/*		{*/
+/*			Mout.setLocal({locx1, locx2}, {(factor*Op1).template cast<Scalar>().template plain<Scalar>(), */
+/*			                                       Op2 .template cast<Scalar>().template plain<Scalar>()}, */
+/*			              B[0].bead(STR).template cast<Scalar>().template plain<Scalar>());*/
+/*		}*/
 	}
 	
 	return Mout;
@@ -372,7 +376,8 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 {
 	bool HERMITIAN = false;
 	if ((Sa1 == SZ and Sa2 == SZ) or (Sa1 == SX and Sa2 == SX)) HERMITIAN = true;
-	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Scomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Scomp(Sa2,locy2).template cast<Scalar>(), getQ_ScompScomp(Sa1,Sa2), fac, HERMITIAN);
+	auto Qtot = B[locx1].Scomp(Sa1,locy1).Q() + B[locx2].Scomp(Sa2,locy2).Q();
+	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Scomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Scomp(Sa2,locy2).template cast<Scalar>(), Qtot, fac, HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -382,7 +387,8 @@ QcompQcomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 {
 	bool HERMITIAN = false;
 	if (Sa1 == QZ and Sa2 == QZ) HERMITIAN = true;
-	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Qcomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Qcomp(Sa2,locy2).template cast<Scalar>(), getQ_ScompScomp(Sa1,Sa2), fac, HERMITIAN);
+	auto Qtot = B[locx1].Qcomp(Sa1,locy1).Q() + B[locx2].Qcomp(Sa2,locy2).Q();
+	return make_corr(locx1,locx2,locy1,locy2, B[locx1].Qcomp(Sa1,locy1).template cast<Scalar>(), B[locx2].Qcomp(Sa2,locy2).template cast<Scalar>(), Qtot, fac, HERMITIAN);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -423,6 +429,27 @@ typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,Scalar> >::type Heis
 Sz (size_t locx, size_t locy) const
 {
 	return Scomp(SZ,locx,locy);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type HeisenbergObservables<Symmetry,Scalar>::
+exp_ipiSz (size_t locx, size_t locy, double factor) const
+{
+	bool HERMITIAN = false;
+	
+	assert(locx<B.size() and locy<B[locx].dim());
+	stringstream ss;
+	ss << B[locx].exp_ipiSz(locy).label() << "(" << locx << "," << locy;
+	if (factor != 1.) ss << ",factor=" << factor;
+	ss << ")";
+	
+	Mpo<Symmetry,complex<double> > Mout(B.size(), B[locx].exp_ipiSz(locy).Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<B.size(); ++l) Mout.setLocBasis(B[l].get_basis().qloc(),l);
+	
+	Mout.setLocal(locx, (factor * B[locx].exp_ipiSz(locy)).template plain<complex<double> >().template cast<complex<double> >());
+	
+	return Mout;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -837,6 +864,75 @@ spin_swap_operator_D2 (const std::size_t locx1, const std::size_t locx2, const s
     Tout.finalize(true,1);
     std::stringstream ss;
     ss << "(" << locx1 << "<->" << locx2 << ")";
+    Tout.set_name(ss.str());
+    return Tout;
+}
+
+template<typename Symmetry, typename Scalar>
+MpoTerms<Symmetry,double> HeisenbergObservables<Symmetry,Scalar>::
+Psinglet (const std::size_t locx1, const std::size_t locx2, const std::size_t locy1, const std::size_t locy2) const
+{
+    MpoTerms<Symmetry,double> Tout(B.size());
+    for (size_t loc=0; loc<B.size(); ++loc)
+    {
+        Tout.setLocBasis(B[loc].get_basis().qloc(),loc);
+    }
+    if(locx1 == locx2)
+    {
+        SiteOperator<Symmetry,double> identity = B[locx1].Id().template plain<double>();
+        Tout.push(locx1,{identity},0.25);
+        if constexpr (Symmetry::IS_SPIN_SU2())
+        {
+            SiteOperator<Symmetry,double> SdagS = (OperatorType::prod(B[locx1].Sdag(locy1), B[locx1].S(locy2), {1})).template plain<double>();
+            Tout.push(locx1,{SdagS},-1.*std::sqrt(3.));
+        }
+        else
+        {
+            SiteOperator<Symmetry,double> SzSz = (OperatorType::prod(B[locx1].Sz(locy1), B[locx1].Sz(locy2), {0})).template plain<double>();
+            SiteOperator<Symmetry,double> SpSm = (OperatorType::prod(B[locx1].Sp(locy1), B[locx1].Sm(locy2), {0})).template plain<double>();
+            SiteOperator<Symmetry,double> SmSp = (OperatorType::prod(B[locx1].Sm(locy1), B[locx1].Sp(locy2), {0})).template plain<double>();
+            Tout.push(locx1,{SzSz},-1.);
+            Tout.push(locx1,{SpSm},-0.5);
+            Tout.push(locx1,{SmSp},-0.5);
+        }
+    }
+    else
+    {
+        std::vector<SiteOperator<Symmetry,double>> opList(locx2-locx1+1);
+        for(int j=0; j<-1+locx2-locx1; ++j)
+        {
+            opList[j+1] = (B[j].Id().template plain<double>());
+        }
+        SiteOperator<Symmetry,double> &first_op = opList[0];
+        SiteOperator<Symmetry,double> &last_op = opList[locx2-locx1];
+        first_op = B[locx1].Id().template plain<double>();
+        last_op = B[locx2].Id().template plain<double>();
+        Tout.push(locx1,opList,0.25);
+        
+        if constexpr (Symmetry::IS_SPIN_SU2())
+        {
+            first_op = (B[locx1].Sdag(locy1).template plain<double>());
+            last_op = (B[locx2].S(locy2).template plain<double>());
+            Tout.push(locx1,opList,-1.*std::sqrt(3));
+        }
+        else
+        {
+            first_op = (B[locx1].Sz(locy1).template plain<double>());
+            last_op = (B[locx2].Sz(locy2).template plain<double>());
+            Tout.push(locx1,opList,-1.);
+            
+            first_op = (B[locx1].Sp(locy1).template plain<double>());
+            last_op = (B[locx2].Sm(locy2).template plain<double>());
+            Tout.push(locx1,opList,-0.5);
+            
+            first_op = (B[locx1].Sm(locy1).template plain<double>());
+            last_op = (B[locx2].Sp(locy2).template plain<double>());
+            Tout.push(locx1,opList,-0.5);
+        }
+    }
+    Tout.finalize(true,1);
+    std::stringstream ss;
+    ss << "Psinglet(" << locx1 << "," << locx2 << ")";
     Tout.set_name(ss.str());
     return Tout;
 }

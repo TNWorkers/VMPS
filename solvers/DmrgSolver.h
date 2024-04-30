@@ -166,6 +166,10 @@ private:
 	
 	SweepStatus SweepStat;
 	
+	stringstream errorCalcInfo;
+	Mps<Symmetry,Scalar> Vref;
+	void calc_state_error (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, double &t_err);
+	
 	inline size_t loc1() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;};
 	inline size_t loc2() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;};
 	
@@ -706,6 +710,11 @@ prepare (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 		lout << GlobParam.CALC_S_ON_EXIT;
 		cout << termcolor::reset << endl;
 		
+		lout << "• calculate 2-site variance exit: " << boolalpha;
+		cout << termcolor::underline;
+		lout << GlobParam.CALC_ERR_ON_EXIT;
+		cout << termcolor::reset << endl;
+		
 		lout << "• bond dim. sequence: ";
 		size_t M = Vout.state.max_Nsv;
 		if (DynParam.Mincr_per(0) == 0)
@@ -743,7 +752,6 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	Stopwatch<> HalfsweepTimer;
 	
 	// save state for reference
-	Mps<Symmetry,Scalar> Vref;
 	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST)
 	{
 		Vref = Vout.state;
@@ -763,6 +771,8 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
+	
+	Eold = Vout.energy;
 	
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
@@ -792,272 +802,8 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 	}
 	++SweepStat.N_halfsweeps;
 	
-	// calculate state error
-	stringstream errorCalcInfo;
-	err_eigval_prev = err_eigval;
-	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
-	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
-	{
-		Stopwatch<> ErrTimer;
-		err_state = abs(1.-abs(dot(Vout.state,Vref)));
-		t_err += ErrTimer.time();
-	}
-	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_HSQ and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
-	{
-		Stopwatch<> HsqTimer;
-		DMRG::DIRECTION::OPTION DIR = (SweepStat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
-		
-		double avgHsq = 0.;
-		if (H.size() == 1)
-		{
-			avgHsq = (H[0].check_power(2ul) == true)? real(avg(Vout.state,H[0],Vout.state,2,DIR)) : avgHsq = real(avg(Vout.state,H[0],H[0],Vout.state));;
-		}
-		else
-		{
-			ArrayXXd avgTerms(H.size(),H.size());
-			avgTerms.setZero();
-			for (int t1=0; t1<H.size(); ++t1)
-			for (int t2=0; t2<H.size(); ++t2)
-			{
-				if (t1 == t2 and H[t1].check_power(2ul) == true)
-				{
-					avgTerms(t1,t1) = real(avg(Vout.state,H[t1],Vout.state,2,DIR));
-				}
-				else
-				{
-					avgTerms(t1,t2) = real(avg(Vout.state,H[t1],H[t2],Vout.state));
-				}
-			}
-			avgHsq = avgTerms.sum();
-		}
-		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
-		
-		t_err += HsqTimer.time();
-		if (CHOSEN_VERBOSITY>=2)
-		{
-			errorCalcInfo << HsqTimer.info("<H^2>") << endl;
-		}
-	}
-	#ifndef DMRG_SOLVER_MEMEFFICIENT_ENV
-	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_2SITE and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
-	{
-		Stopwatch<> HsqTimer;
-		double t_LR = 0;
-		double t_Nsp = 0;
-		double t_QR = 0;
-		double t_GRALF = 0;
-		
-		sweep_to_edge(H,Vout,true);
-		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
-		
-		err_state = 0.;
-		
-		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Nsaved(N_sites);
-		DMRG::DIRECTION::OPTION DIR_N = SweepStat.CURRENT_DIRECTION;
-		
-		// one-site variance
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			// calculate the nullspace tensor F/G
-			Stopwatch<> NspTimer;
-			Vout.state.calc_N(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, Nsaved[SweepStat.pivot]);
-			t_Nsp += NspTimer.time();
-			
-			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
-			Stopwatch<> GRALFtimer;
-//			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-//			contract_GRALF (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], H.W[SweepStat.pivot], 
-//			                Nsaved[SweepStat.pivot], Heff[SweepStat.pivot].R, 
-//			                H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), Err, SweepStat.CURRENT_DIRECTION);
-			
-			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Errt(H.size());
-			for (size_t t=0; t<H.size(); ++t)
-			{
-				#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
-				contract_GRALF (Heff_curr.Terms[t].L, Vout.state.A[SweepStat.pivot], H[t].W[SweepStat.pivot], 
-				                Nsaved[SweepStat.pivot], Heff_curr.Terms[t].R, 
-				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], SweepStat.CURRENT_DIRECTION);
-				#else
-				contract_GRALF (Heff[SweepStat.pivot].Terms[t].L, Vout.state.A[SweepStat.pivot], H[t].W[SweepStat.pivot], 
-				                Nsaved[SweepStat.pivot], Heff[SweepStat.pivot].Terms[t].R, 
-				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], SweepStat.CURRENT_DIRECTION);
-				#endif
-			}
-			
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err = Errt[0];
-			for (size_t t=1; t<H.size(); ++t) Err.addScale(1.,Errt[t]);
-			if (H.size() > 0) Err = Err.cleaned();
-			
-			err_state += Err.squaredNorm().sum();
-			
-			t_GRALF += GRALFtimer.time();
-			
-			// sweep to next site
-			if ((l<N_sites-1 and DIR_N == DMRG::DIRECTION::RIGHT) or
-			    (l>0         and DIR_N == DMRG::DIRECTION::LEFT))
-			{
-				Stopwatch<> QRtimer;
-				Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
-				t_QR += QRtimer.time();
-				Stopwatch<> LRtimer;
-				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
-				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
-				t_LR += LRtimer.time();
-			}
-		}
-		
-		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
-		
-		// two-site variance
-		for (size_t bond=0; bond<this->N_sites-1; ++bond)
-		{
-			size_t loc1 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;
-			size_t loc2 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;
-			// mem-efficient: load Heff[loc1] and Heff[loc2] from file
-			
-			// calculate the nullspace tensor F/G with QR_NULL
-			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
-			if (DIR_N == DMRG::DIRECTION::LEFT)
-			{
-				N = Nsaved[loc2];
-			}
-			else
-			{
-				Stopwatch<> NspTimer;
-				Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
-				t_Nsp += NspTimer.time();
-			}
-			
-			// pre-contract the right site
-			Stopwatch<> LRtimer1;
-//			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
-//			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], N, H.locBasis(loc2), H.opBasis(loc2), Y);
-			vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Yt(H.size());
-			for (size_t t=0; t<H.size(); ++t)
-			{
-				contract_R(Heff[loc2].Terms[t].R, Vout.state.A[loc2], H[t].W[loc2], N, H[t].locBasis(loc2), H[t].opBasis(loc2), Yt[t]);
-			}
-			t_LR += LRtimer1.time();
-			
-			// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
-			N.clear();
-			if (DIR_N == DMRG::DIRECTION::RIGHT)
-			{
-				N = Nsaved[loc1];
-			}
-			else
-			{
-				Stopwatch<> NspTimer;
-				Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
-				t_Nsp += NspTimer.time();
-			}
-			Stopwatch<> GRALFtimer;
-//			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2;
-//			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], H.W[loc1], N, Y, 
-//			                H.locBasis(loc1), H.opBasis(loc1), Err2, DMRG::DIRECTION::RIGHT);
-			
-			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Err2t(H.size());
-			for (size_t t=0; t<H.size(); ++t)
-			{
-				contract_GRALF (Heff[loc1].Terms[t].L, Vout.state.A[loc1], H[t].W[loc1], N, Yt[t], 
-				                H[t].locBasis(loc1), H[t].opBasis(loc1), Err2t[t], DMRG::DIRECTION::RIGHT);
-			}
-			
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2 = Err2t[0];
-			for (size_t t=1; t<H.size(); ++t) Err2.addScale(1.,Err2t[t]);
-			if (H.size() > 0) Err2 = Err2.cleaned();
-			
-			err_state += Err2.squaredNorm().sum();
-			
-			t_GRALF += GRALFtimer.time();
-			
-			// sweep to next site
-			Stopwatch<> QRtimer;
-			Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
-			t_QR += QRtimer.time();
-			Stopwatch<> LRtimer2;
-			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
-			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
-			t_LR += LRtimer2.time();
-		}
-		
-		// sweep back to the beginning (one site away from the edge)
-		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
-		Stopwatch<> QRtimer;
-		Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
-		t_QR += QRtimer.time();
-		Stopwatch<> LRtimer;
-		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
-		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
-		t_LR += LRtimer.time();
-		
-		err_state /= this->N_sites;
-		
-		if (CHOSEN_VERBOSITY>=2)
-		{
-			double t_tot = HsqTimer.time();
-			t_err += t_tot;
-			errorCalcInfo << HsqTimer.info("2-site variance") 
-						  << " ("
-						  << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
-						  << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
-						  << ", Nsp=" << round(t_Nsp/t_tot*100.,0) << "%" 
-						  << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
-						  << ")"
-						  << endl;
-		}
-		
-//		Mps<Symmetry,Scalar> HxPsi;
-//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
-//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
-//		ExPsi *= Vout.energy;
-//		cout << HxPsi.validate("HxPsi") << ", " << HxPsi.info() << endl;
-//		cout << ExPsi.validate("ExPsi") << ", " << ExPsi.info() << endl;
-//		HxPsi -= ExPsi;
-//		cout << HxPsi.validate("res") << ", " << HxPsi.info() << endl;
-//		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
-//		
-//		Stopwatch<> HsqTimer_;
-//		double PsixHxHxPsi = (H.check_power(2ul)==true)? isReal(avg(Vout.state,H,Vout.state,2)) : isReal(avg(Vout.state,H,H,Vout.state));
-//		double PsixPsi = dot(Vout.state,Vout.state);
-//		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
-//		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
-//		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
-//		
-//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact 
-//		<< ", " << err_exact_ 
-//		<< ", diff=" << abs(err_state-err_exact)
-//		<< ", ratio=" << err_state/err_exact
-//		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
-	}
-	#endif
-	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps) // full variance: for testing purposes only
-	{
-		assert(H.size() == 1 and "DMRG::CONVTEST::VAR_FULL is not implemented for several terms!");
-		Stopwatch<> HsqTimer;
-		
-		Mps<Symmetry,Scalar> HxPsi;
-		Mps<Symmetry,Scalar> Psi = Vout.state;
-		Psi.sweep(0,DMRG::BROOM::QR);
-		HxV(H[0], Psi, HxPsi, false);
-		
-		Mps<Symmetry,Scalar> ExPsi = Vout.state;
-		ExPsi *= Vout.energy;
-		HxPsi -= ExPsi;
-		
-		err_state = std::real(HxPsi.dot(HxPsi)) / this->N_sites;
-		double t_tot = HsqTimer.time();
-		
-		if (CHOSEN_VERBOSITY >= 2)
-		{
-			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖/L") << endl;
-		}
-		
-		t_err += t_tot;
-	}
+	calc_state_error(H,Vout,t_err);
 	
-	Eold = Vout.energy;
 	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST) Vref = Vout.state;
 	
 	// calculate stats
@@ -1124,6 +870,307 @@ halfsweep (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vo
 			if (obs_normalizations[o] != 1.) lout << ", normalized=" << res/obs_normalizations[o];
 			lout << endl;
 		}
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+calc_state_error (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, double &t_err)
+{
+	errorCalcInfo.clear();
+	errorCalcInfo.str("");
+	
+	err_eigval_prev = err_eigval;
+	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
+	
+	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
+	{
+		Stopwatch<> ErrTimer;
+		err_state = abs(1.-abs(dot(Vout.state,Vref)));
+		t_err += ErrTimer.time();
+	}
+	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_HSQ and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
+	{
+		Stopwatch<> HsqTimer;
+		DMRG::DIRECTION::OPTION DIR = (SweepStat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
+		
+		double avgHsq = 0.;
+		if (H.size() == 1)
+		{
+			avgHsq = (H[0].check_power(2ul) == true)? real(avg(Vout.state,H[0],Vout.state,2,DIR)) : avgHsq = real(avg(Vout.state,H[0],H[0],Vout.state));;
+		}
+		else
+		{
+			ArrayXXd avgTerms(H.size(),H.size());
+			avgTerms.setZero();
+			for (int t1=0; t1<H.size(); ++t1)
+			for (int t2=0; t2<H.size(); ++t2)
+			{
+				if (t1 == t2 and H[t1].check_power(2ul) == true)
+				{
+					avgTerms(t1,t1) = real(avg(Vout.state,H[t1],Vout.state,2,DIR));
+				}
+				else
+				{
+					avgTerms(t1,t2) = real(avg(Vout.state,H[t1],H[t2],Vout.state));
+				}
+			}
+			avgHsq = avgTerms.sum();
+		}
+		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
+		
+		t_err += HsqTimer.time();
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			errorCalcInfo << HsqTimer.info("<H^2>") << endl;
+		}
+	}
+	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_2SITE and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
+	{
+		Stopwatch<> HsqTimer;
+		double t_LR = 0;
+		double t_Nsp = 0;
+		double t_QR = 0;
+		double t_GRALF = 0;
+		
+		sweep_to_edge(H,Vout,true);
+		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
+		
+		err_state = 0.;
+		
+		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Nsaved(N_sites);
+		DMRG::DIRECTION::OPTION DIR_N = SweepStat.CURRENT_DIRECTION;
+		
+		// one-site variance
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			// calculate the nullspace tensor F/G
+			Stopwatch<> NspTimer;
+			Vout.state.calc_N(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, Nsaved[SweepStat.pivot]);
+			t_Nsp += NspTimer.time();
+			
+			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
+			Stopwatch<> GRALFtimer;
+			
+			#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+			load_pivot(H);
+			#endif
+			
+			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Errt(H.size());
+			for (size_t t=0; t<H.size(); ++t)
+			{
+				#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+				contract_GRALF (Heff_curr.Terms[t].L, Vout.state.A[SweepStat.pivot], H[t].W[SweepStat.pivot], 
+				                Nsaved[SweepStat.pivot], Heff_curr.Terms[t].R, 
+				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], 
+				                SweepStat.CURRENT_DIRECTION);
+				#else
+				contract_GRALF (Heff[SweepStat.pivot].Terms[t].L, Vout.state.A[SweepStat.pivot], 
+				                H[t].W[SweepStat.pivot], 
+				                Nsaved[SweepStat.pivot], Heff[SweepStat.pivot].Terms[t].R, 
+				                H[t].locBasis(SweepStat.pivot), H[t].opBasis(SweepStat.pivot), Errt[t], 
+				                SweepStat.CURRENT_DIRECTION);
+				#endif
+			}
+			
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err = Errt[0];
+			for (size_t t=1; t<H.size(); ++t) Err.addScale(1.,Errt[t]);
+			if (H.size() > 0) Err = Err.cleaned();
+			
+			err_state += Err.squaredNorm().sum();
+			
+			t_GRALF += GRALFtimer.time();
+			
+			// sweep to next site
+			if ((l<N_sites-1 and DIR_N == DMRG::DIRECTION::RIGHT) or
+			    (l>0         and DIR_N == DMRG::DIRECTION::LEFT))
+			{
+				Stopwatch<> QRtimer;
+				Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
+				t_QR += QRtimer.time();
+				
+				Stopwatch<> LRtimer;
+				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+				(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+				t_LR += LRtimer.time();
+			}
+		}
+		
+		//sweep_to_edge(H,Vout,true); // not necessary
+		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
+		
+		// two-site variance
+		for (size_t bond=0; bond<this->N_sites-1; ++bond)
+		{
+			{
+				size_t loc1 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;
+				size_t loc2 = (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;
+				
+				// mem-efficient: load Heff[loc1] and Heff[loc2] from file
+				#if defined(DMRG_SOLVER_MEMEFFICIENT_ENV)
+				PivotMatrix1<Symmetry,Scalar,Scalar> Heff_loc1;
+				PivotMatrix1<Symmetry,Scalar,Scalar> Heff_loc2;
+				Heff_loc1.Terms.resize(H.size());
+				Heff_loc2.Terms.resize(H.size());
+				for (size_t t=0; t<H.size(); ++t)
+				{
+					Heff_loc1.Terms[t].L.load(make_string(EnvSaveLabel,"_L_t=",t,"_l=",loc1));
+					Heff_loc1.Terms[t].R.load(make_string(EnvSaveLabel,"_R_t=",t,"_l=",loc1));
+					Heff_loc2.Terms[t].L.load(make_string(EnvSaveLabel,"_L_t=",t,"_l=",loc2));
+					Heff_loc2.Terms[t].R.load(make_string(EnvSaveLabel,"_R_t=",t,"_l=",loc2));
+				}
+				#endif
+				
+				// calculate the nullspace tensor F/G with QR_NULL
+				vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
+				if (DIR_N == DMRG::DIRECTION::LEFT)
+				{
+					N = Nsaved[loc2];
+				}
+				else
+				{
+					Stopwatch<> NspTimer;
+					Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
+					t_Nsp += NspTimer.time();
+				}
+				
+				// pre-contract the right site
+				Stopwatch<> LRtimer1;
+				vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Yt(H.size());
+				for (size_t t=0; t<H.size(); ++t)
+				{
+					#if defined(DMRG_SOLVER_MEMEFFICIENT_ENV)
+					contract_R(Heff_loc2.Terms[t].R, Vout.state.A[loc2], H[t].W[loc2], N, H[t].locBasis(loc2), H[t].opBasis(loc2), Yt[t]);
+					#else
+					contract_R(Heff[loc2].Terms[t].R, Vout.state.A[loc2], H[t].W[loc2], N, H[t].locBasis(loc2), H[t].opBasis(loc2), Yt[t]);
+					#endif
+				}
+				t_LR += LRtimer1.time();
+				
+				// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
+				N.clear();
+				if (DIR_N == DMRG::DIRECTION::RIGHT)
+				{
+					N = Nsaved[loc1];
+				}
+				else
+				{
+					Stopwatch<> NspTimer;
+					Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
+					t_Nsp += NspTimer.time();
+				}
+				Stopwatch<> GRALFtimer;
+				
+				vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Err2t(H.size());
+				for (size_t t=0; t<H.size(); ++t)
+				{
+					#if defined(DMRG_SOLVER_MEMEFFICIENT_ENV)
+					contract_GRALF (Heff_loc1.Terms[t].L, Vout.state.A[loc1], H[t].W[loc1], N, Yt[t], 
+						            H[t].locBasis(loc1), H[t].opBasis(loc1), Err2t[t], DMRG::DIRECTION::RIGHT);
+					#else
+					contract_GRALF (Heff[loc1].Terms[t].L, Vout.state.A[loc1], H[t].W[loc1], N, Yt[t], 
+						            H[t].locBasis(loc1), H[t].opBasis(loc1), Err2t[t], DMRG::DIRECTION::RIGHT);
+					#endif
+				}
+				
+				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2 = Err2t[0];
+				for (size_t t=1; t<H.size(); ++t) Err2.addScale(1.,Err2t[t]);
+				if (H.size() > 0) Err2 = Err2.cleaned();
+				
+				err_state += Err2.squaredNorm().sum();
+				
+				t_GRALF += GRALFtimer.time();
+			}
+			
+			// sweep to next site
+			Stopwatch<> QRtimer;
+			Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
+			t_QR += QRtimer.time();
+			
+			// A bit ugly: Must reload for correct save
+			#ifdef DMRG_SOLVER_MEMEFFICIENT_ENV
+			load_pivot(H);
+			#endif
+			
+			Stopwatch<> LRtimer2;
+			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+			(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+			t_LR += LRtimer2.time();
+		}
+		
+		// sweep back to the beginning (one site away from the edge)
+		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
+		Stopwatch<> QRtimer;
+		Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);
+		t_QR += QRtimer.time();
+		Stopwatch<> LRtimer;
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+		t_LR += LRtimer.time();
+		
+		err_state /= this->N_sites;
+		
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			double t_tot = HsqTimer.time();
+			t_err += t_tot;
+			errorCalcInfo << HsqTimer.info("2-site variance") 
+						  << " ("
+						  << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
+						  << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
+						  << ", Nsp=" << round(t_Nsp/t_tot*100.,0) << "%" 
+						  << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
+						  << ")"
+						  << endl;
+		}
+		
+//		Mps<Symmetry,Scalar> HxPsi;
+//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
+//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
+//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+//		ExPsi *= Vout.energy;
+//		cout << HxPsi.validate("HxPsi") << ", " << HxPsi.info() << endl;
+//		cout << ExPsi.validate("ExPsi") << ", " << ExPsi.info() << endl;
+//		HxPsi -= ExPsi;
+//		cout << HxPsi.validate("res") << ", " << HxPsi.info() << endl;
+//		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
+//		
+//		Stopwatch<> HsqTimer_;
+//		double PsixHxHxPsi = (H.check_power(2ul)==true)? isReal(avg(Vout.state,H,Vout.state,2)) : isReal(avg(Vout.state,H,H,Vout.state));
+//		double PsixPsi = dot(Vout.state,Vout.state);
+//		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
+//		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
+//		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
+//		
+//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact 
+//		<< ", " << err_exact_ 
+//		<< ", diff=" << abs(err_state-err_exact)
+//		<< ", ratio=" << err_state/err_exact
+//		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
+	}
+	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps) // full variance: for testing purposes only
+	{
+		assert(H.size() == 1 and "DMRG::CONVTEST::VAR_FULL is not implemented for several terms!");
+		Stopwatch<> HsqTimer;
+		
+		Mps<Symmetry,Scalar> HxPsi;
+		Mps<Symmetry,Scalar> Psi = Vout.state;
+		Psi.sweep(0,DMRG::BROOM::QR);
+		HxV(H[0], Psi, HxPsi, false);
+		
+		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+		ExPsi *= Vout.energy;
+		HxPsi -= ExPsi;
+		
+		err_state = std::real(HxPsi.dot(HxPsi)) / this->N_sites;
+		double t_tot = HsqTimer.time();
+		
+		if (CHOSEN_VERBOSITY >= 2)
+		{
+			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖/L") << endl;
+		}
+		
+		t_err += t_tot;
 	}
 }
 
@@ -1518,6 +1565,19 @@ cleanup (const vector<MpHamiltonian> &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout
 	if (GlobParam.CALC_S_ON_EXIT)
 	{
 		Vout.state.skim(DMRG::BROOM::SVD,NULL);
+	}
+	
+	if (GlobParam.CALC_ERR_ON_EXIT)
+	{
+		double t_err = 0.;
+		SweepStat.N_halfsweeps += GlobParam.min_halfsweeps+1; // set to this value to force error calculation
+		Stopwatch<> Timer;
+		calc_state_error(H,Vout,t_err);
+		SweepStat.N_halfsweeps = GlobParam.min_halfsweeps; // reset back
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << Timer.info("final err computation") << ", err_state=" << err_state << endl;
+		}
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)

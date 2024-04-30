@@ -3,6 +3,12 @@
 #pragma message("LapackManager")
 #endif
 
+#if defined(DMRG_SOLVER_MEMEFFICIENT_ENV)
+#pragma message("Exporting environments to hard drive")
+#else
+#pragma message("Keeping environments in RAM")
+#endif
+
 //#define USE_OLD_COMPRESSION
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP

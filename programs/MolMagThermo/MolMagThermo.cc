@@ -555,16 +555,23 @@ int main (int argc, char* argv[])
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
-	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
+	size_t Mincr_per = args.get<size_t>("Mincr_per",2ul);
 	DynParam.Mincr_per = [Mincr_per,LOAD] (size_t i) {return (i==0 and LOAD!="")? 0:Mincr_per;}; // if LOAD, resize before first step
 	
-	size_t Mincr_abs = args.get<size_t>("Mincr_abs",300ul);
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",10000ul);
 	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
-	size_t end_2site = args.get<size_t>("end_2site",0ul);
-	int period_2site = args.get<int>("period_2site",2ul);
-	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	size_t end_2site = args.get<size_t>("end_2site",6ul);
+	int period_2site = args.get<int>("period_2site",1ul);
+	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i)
+	{
+		if (end_2site==0) {return DMRG::ITERATION::ONE_SITE;}
+		else
+		{
+			return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;
+		}
+	};
 	
 //	double eps_svd = args.get<double>("eps_svd",1e-10);
 //	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
@@ -572,10 +579,10 @@ int main (int argc, char* argv[])
 	// glob. params
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.Mlimit = args.get<size_t>("Mlimit",Mlimit_default); // for groundstate
-	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",Mincr_per*GlobParam.Mlimit/(Mincr_abs)+Mincr_per);
-	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",GlobParam.min_halfsweeps);
-	GlobParam.Minit = args.get<size_t>("Minit",2ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",16);
+	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",16);
+	GlobParam.Minit = args.get<size_t>("Minit",20ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",20ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
 	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
@@ -584,7 +591,7 @@ int main (int argc, char* argv[])
 	
 	// alpha
 	size_t start_alpha = args.get<size_t>("start_alpha",0);
-	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-Mincr_per+1ul);
+	size_t end_alpha = args.get<size_t>("end_alpha",GlobParam.max_halfsweeps-4);
 	double alpha = args.get<double>("alpha",100.);
 	//double alpha_min = args.get<double>("alpha_min",1e-8);
 	DynParam.max_alpha_rsvd = [start_alpha, end_alpha, alpha] (size_t i) {return (i>=start_alpha and i<end_alpha)? alpha:0.;};

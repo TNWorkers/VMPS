@@ -54,9 +54,10 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	
+	size_t D = args.get<size_t>("D",2ul); // 3ul
 	int L = args.get<int>("L",100);
 	
-	int Slimit = args.get<int>("Slimit",L/2);
+	int Slimit = args.get<int>("Slimit",L*(D-1)/2);
 	#if defined(USING_SU2)
 	lout << "initializing CGC tables for Slimit=" << Slimit << "..." << endl;
 	Sym::initialize(Slimit);
@@ -86,7 +87,6 @@ int main (int argc, char* argv[])
 	double Bzstag = args.get<double>("Bzstag",0.);
 	double Kz = args.get<double>("Kz",0.);
 	double Bx = args.get<double>("Bx",0.);
-	size_t D = args.get<size_t>("D",2ul); // 3ul
 	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	bool PBC = args.get<bool>("PBC",true);
 	bool SOFT_EDGE = args.get<bool>("SOFT_EDGE",false);
@@ -166,7 +166,7 @@ int main (int argc, char* argv[])
 	
 	size_t start_2site = args.get<size_t>("start_2site",0ul);
 	size_t end_2site = args.get<size_t>("end_2site",0); //GlobParam.max_halfsweeps-3
-	size_t period_2site = args.get<size_t>("period_2site",2ul);
+	size_t period_2site = args.get<size_t>("period_2site",1ul);
 	DynParam.iteration = [start_2site,end_2site,period_2site] (size_t i) {return (i>=start_2site and i<=end_2site and i%period_2site==0)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 	
 	// alpha
@@ -566,6 +566,7 @@ int main (int argc, char* argv[])
 				data.var_excited(i-1) = abs(avg(spectrum[i].state,H,spectrum[i].state,2)-pow(spectrum[i].energy,2))/L;
 				lout << "varE=" << data.var_excited(i-1) << endl;
 			}
+			#if defined(USING_U1)
 			if (CALC_STOT)
 			{
 				double Stot_pm = avg(spectrum[i].state, H.Scomptot(SP), H.Scomptot(SM), spectrum[i].state);
@@ -575,6 +576,7 @@ int main (int argc, char* argv[])
 				data.SdagStot_excited(i-1) = 0.5*(Stot_pm+Stot_mp)+Stot_zz;
 				lout << termcolor::blue << "i=" << i << ", SdagStot=" << data.SdagStot_excited(i-1) << " => Stot=" << -0.5+sqrt(0.25+data.SdagStot_excited(i-1)) << termcolor::reset << endl;
 			}
+			#endif
 		}
 		lout << endl;
 	}
