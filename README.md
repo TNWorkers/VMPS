@@ -19,26 +19,21 @@ This is a library for dealing with many-body Hamiltonians using algorithms based
 
 ## Contributing
 
-A project by Roman Rausch, Matthias Peschke, Cassian Plorin
+Roman Rausch, Matthias Peschke, Cassian Plorin
 
 ## Showcases
 
-<p>
-• Spin-spin correlations of the Heisenberg model on the C60 fullerene geometry [https://scipost.org/SciPostPhys.10.4.087]:
-<div style="text-align: center"><img src="http://sindanoorie.net/vmps/C60correlations.png" width=50% height=50%></div>
-</p>
+- Spin-spin correlations of the Heisenberg model on the C60 fullerene geometry
+https://scipost.org/SciPostPhys.10.4.087:
+<img src="http://sindanoorie.net/vmps/C60correlations.png" width=50% height=50%>
 
-<p>
-• Incommensurate spin-spin correlations in the FM-AFM sawtooth chain [https://scipost.org/SciPostPhys.14.3.052]:
+- Incommensurate correlations in the FM-AFM sawtooth chain
+https://scipost.org/SciPostPhys.14.3.052:
 <img src="http://sindanoorie.net/vmps/Sawtooth.png" width=60% height=60%>
-</p>
 
-<p>
-• Even-odd mass differences in Pb isotopes [https://onlinelibrary.wiley.com/doi/full/10.1002/andp.202300436]
+- Even-odd mass differences in Pb isotopes
+https://onlinelibrary.wiley.com/doi/full/10.1002/andp.202300436
 <img src="http://sindanoorie.net/vmps/Sawtooth.png" width=70% height=70%>
-</p>
 
-<p>
-• Four-electron bound state ("quadruplon") in the two-hole spectral function of the Hubbard model [https://iopscience.iop.org/article/10.1088/1367-2630/18/2/023033/meta]:
+- Four-electron bound state ("quadruplon") in the two-hole spectral function of the Hubbard model https://iopscience.iop.org/article/10.1088/1367-2630/18/2/023033/meta:
 <img src="http://sindanoorie.net/vmps/Multiplon.png" width=70% height=70%>
-</p>
