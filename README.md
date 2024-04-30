@@ -21,7 +21,7 @@ This is a library for dealing with many-body Hamiltonians using algorithms based
 
 Roman Rausch, Matthias Peschke, Cassian Plorin
 
-## Showcases
+## Showcases from open-access publications
 
 - Spin-spin correlations of the Heisenberg model on the C60 fullerene geometry
 https://scipost.org/SciPostPhys.10.4.087:
@@ -33,7 +33,7 @@ https://scipost.org/SciPostPhys.14.3.052:
 
 - Even-odd mass differences in Pb isotopes
 https://onlinelibrary.wiley.com/doi/full/10.1002/andp.202300436
-<img src="http://sindanoorie.net/vmps/Sawtooth.png" width=70% height=70%>
+<img src="http://sindanoorie.net/vmps/Pb.png" width=70% height=70%>
 
 - Four-electron bound state ("quadruplon") in the two-hole spectral function of the Hubbard model https://iopscience.iop.org/article/10.1088/1367-2630/18/2/023033/meta:
 <img src="http://sindanoorie.net/vmps/Multiplon.png" width=70% height=70%>
