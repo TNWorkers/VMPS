@@ -29,7 +29,7 @@ https://scipost.org/SciPostPhys.10.4.087:
 
 - Incommensurate correlations in the FM-AFM sawtooth chain
 https://scipost.org/SciPostPhys.14.3.052:
-<img src="http://sindanoorie.net/vmps/Sawtooth.png" width=60% height=60%>
+<img src="http://sindanoorie.net/vmps/Sawtooth.png" width=70% height=70%>
 
 - Even-odd mass differences in Pb isotopes
 https://onlinelibrary.wiley.com/doi/full/10.1002/andp.202300436
