@@ -1,9 +1,9 @@
 <map id="KondoObservables.h" name="KondoObservables.h">
-<area shape="rect" id="node1" title=" " alt="" coords="301,5,455,32"/>
-<area shape="rect" id="node2" href="$KondoSU2xSU2_8h.html" title=" " alt="" coords="5,80,140,107"/>
-<area shape="rect" id="node3" href="$KondoSU2xU1_8h.html" title=" " alt="" coords="164,80,291,107"/>
-<area shape="rect" id="node4" href="$KondoU0xSU2_8h.html" title=" " alt="" coords="315,80,441,107"/>
-<area shape="rect" id="node5" href="$KondoU1xSU2_8h.html" title=" " alt="" coords="465,80,592,107"/>
-<area shape="rect" id="node6" href="$KondoU1xU1_8h.html" title=" " alt="" coords="616,80,735,107"/>
-<area shape="rect" id="node7" href="$KondoU1_8h.html" title=" " alt="" coords="629,155,721,181"/>
+<area shape="rect" id="node1" title=" " alt="" coords="301,5,455,31"/>
+<area shape="rect" id="node2" href="$KondoSU2xSU2_8h.html" title=" " alt="" coords="5,79,140,104"/>
+<area shape="rect" id="node3" href="$KondoSU2xU1_8h.html" title=" " alt="" coords="164,79,291,104"/>
+<area shape="rect" id="node4" href="$KondoU0xSU2_8h.html" title=" " alt="" coords="315,79,441,104"/>
+<area shape="rect" id="node5" href="$KondoU1xSU2_8h.html" title=" " alt="" coords="465,79,592,104"/>
+<area shape="rect" id="node6" href="$KondoU1xU1_8h.html" title=" " alt="" coords="616,79,735,104"/>
+<area shape="rect" id="node7" href="$KondoU1_8h.html" title=" " alt="" coords="629,152,721,177"/>
 </map>

@@ -3,7 +3,7 @@ var classBlocker =
     [ "MatrixType", "classBlocker.html#a7e7b18b62d247ef9b55797c5ad8ecc14", null ],
     [ "Blocker", "classBlocker.html#a227f9d277872d509245d4d6bb0616417", null ],
     [ "Blocker", "classBlocker.html#aa631d7e1813abb4a95f43b915f74bc9a", null ],
-    [ "Aclump", "classBlocker.html#a685509e38df74a6ebdb776b94ec6cc02", null ],
+    [ "Aclump", "classBlocker.html#a2efc4355a46bd34810508321b5b30f0d", null ],
     [ "block", "classBlocker.html#a24abd9a8b273b334f56c8ec0c59d3400", null ],
     [ "block_left", "classBlocker.html#aab2a2deab6092c147c36eca11b98bae4", null ],
     [ "block_right", "classBlocker.html#a20fa142e370237147223e3226cd64215", null ],

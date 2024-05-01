@@ -6,7 +6,7 @@ var classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01
     [ "Symmetry", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#a1de25b69b65eb8852b583d5501fb2b2f", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#ae97722bfcb8ca3a7e8ee8a4bc30f44c2", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#af82b214fb54f28c834740b5109aeb582", null ],
-    [ "basis_1s", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#ae80a74be661258de119a1281f16f99b8", null ],
+    [ "basis_1s", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#a0239ab6fda9ed11e0cd25ad1a9118b47", null ],
     [ "c_1s", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#aa85764ac465bb47e100dac5ac27415a5", null ],
     [ "cdag_1s", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#a944e66ffc4d9f1ad70731d2ee8c3456c", null ],
     [ "exp_ipiSz_1s", "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1U1_3_01Sym_1_1SpinU1_01_4_00_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4_01_4.html#a29f4ca900c875f04d304a255cff2c041", null ],

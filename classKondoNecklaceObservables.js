@@ -8,9 +8,9 @@ var classKondoNecklaceObservables =
     [ "make_corr", "classKondoNecklaceObservables.html#a63403eeeed98c35b970e6b78f9d979b8", null ],
     [ "make_FourierYSum", "classKondoNecklaceObservables.html#a025943d19b32467b6ae3ca3724d2d92c", null ],
     [ "make_local", "classKondoNecklaceObservables.html#a8e35f6ee9e58152c408c8510fef5a38f", null ],
-    [ "S", "classKondoNecklaceObservables.html#abac4a7c53dc389ad876d40a9da4d07d4", null ],
-    [ "Scomp", "classKondoNecklaceObservables.html#a848408c293e0e1e426dd3bcd24e988ec", null ],
-    [ "SdagS", "classKondoNecklaceObservables.html#afa2784c227feacc7d1c4586e009887f4", null ],
+    [ "S", "classKondoNecklaceObservables.html#a2e446f0033b97f73fb92c756f5577c13", null ],
+    [ "Scomp", "classKondoNecklaceObservables.html#a2536b6e7e5d4a3923d0c85c7758c134b", null ],
+    [ "SdagS", "classKondoNecklaceObservables.html#acecf67d8ba483304e65c3f3b9729db34", null ],
     [ "Simp", "classKondoNecklaceObservables.html#aa3f1bfebb6c7c22e609b7b97179bb438", null ],
     [ "Simp", "classKondoNecklaceObservables.html#a676fe6eb83ca1e1298b095dd92484c0a", null ],
     [ "Simp_ky", "classKondoNecklaceObservables.html#a14338ac6a59bbf1a07d11778e8abcaba", null ],
@@ -25,7 +25,7 @@ var classKondoNecklaceObservables =
     [ "Ssubdag", "classKondoNecklaceObservables.html#ac8f3e2701399fe646fb54af37d1699be", null ],
     [ "SsubdagSsub", "classKondoNecklaceObservables.html#a1fa8978aa55db8eae37e1f04162dfc6c", null ],
     [ "SsubSsub", "classKondoNecklaceObservables.html#a0dffafac79f6663deed86a7b8456eab0", null ],
-    [ "Sz", "classKondoNecklaceObservables.html#a471d0c06176f4140e04fac89bd15ec84", null ],
+    [ "Sz", "classKondoNecklaceObservables.html#a395f26aa5043dd291bc59793bf59d86c", null ],
     [ "Bimp", "classKondoNecklaceObservables.html#aad73a9e644ffbb3e4988eeae7d3cac77", null ],
     [ "Bsub", "classKondoNecklaceObservables.html#a76c431952bcb44e7f4a3f34652428b67", null ]
 ];

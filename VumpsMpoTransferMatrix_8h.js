@@ -9,10 +9,10 @@ var VumpsMpoTransferMatrix_8h =
     [ "HxV", "VumpsMpoTransferMatrix_8h.html#aed7783b38e3385ca5b77c7ab5b71cbd1", null ],
     [ "norm", "VumpsMpoTransferMatrix_8h.html#aa7aae9b977245eac87003c6d407156fb", null ],
     [ "normalize", "VumpsMpoTransferMatrix_8h.html#acf1f8fa76208ea649e4ad776ef0e0eca", null ],
-    [ "operator*", "VumpsMpoTransferMatrix_8h.html#aa7fddabf4721a156573ab723304ba4b2", null ],
-    [ "operator+", "VumpsMpoTransferMatrix_8h.html#a164ebcbfc8264acae386b785cf51dd80", null ],
-    [ "operator-", "VumpsMpoTransferMatrix_8h.html#a681d4aef256f7a40834977c9583f8757", null ],
-    [ "operator/", "VumpsMpoTransferMatrix_8h.html#a9fc1ffe2e9070f382532a72a5d780151", null ],
+    [ "operator*", "VumpsMpoTransferMatrix_8h.html#a3061756c721f9c0ce33997aea44e800a", null ],
+    [ "operator+", "VumpsMpoTransferMatrix_8h.html#ab877097af1f0e45bed53c0a9570b84e1", null ],
+    [ "operator-", "VumpsMpoTransferMatrix_8h.html#af9cf1fa3428f7661f05da320f6510955", null ],
+    [ "operator/", "VumpsMpoTransferMatrix_8h.html#a99cbd52ddbeebd3fb44c5ca81bd20e37", null ],
     [ "setZero", "VumpsMpoTransferMatrix_8h.html#aeb338c6c80f871cc049e9cabdf08ff31", null ],
     [ "squaredNorm", "VumpsMpoTransferMatrix_8h.html#a7cc5604625de9f0cfa3c6b8ba9a4bd66", null ]
 ];

@@ -7,8 +7,8 @@ var classVMPS_1_1KondoU1xSU2 =
     [ "Symmetry", "classVMPS_1_1KondoU1xSU2.html#af244311a1312767c2672021f7a53c3c0", null ],
     [ "KondoU1xSU2", "classVMPS_1_1KondoU1xSU2.html#a32e3a17260ff89a0051900e981001712", null ],
     [ "KondoU1xSU2", "classVMPS_1_1KondoU1xSU2.html#aa7b54de9c261a85bce179e912bf7a888", null ],
-    [ "set_operators", "classVMPS_1_1KondoU1xSU2.html#a5ec6a39758e4231e0e752faa35254c09", null ],
-    [ "singlet", "classVMPS_1_1KondoU1xSU2.html#a70a6c1f5679e16e14b93174362dd639d", null ],
+    [ "set_operators", "classVMPS_1_1KondoU1xSU2.html#a8a30526119b7ac61ef4c3b81d79cf9d9", null ],
+    [ "singlet", "classVMPS_1_1KondoU1xSU2.html#a95d90e2dba02e2c2ff031c6cc2e3e31a", null ],
     [ "defaults", "classVMPS_1_1KondoU1xSU2.html#a24a76ea5bcfe083ef0ae3c11edc51aa9", null ],
     [ "FAMILY", "classVMPS_1_1KondoU1xSU2.html#abde211804c68bc79370c26f8b6243758", null ],
     [ "sweep_defaults", "classVMPS_1_1KondoU1xSU2.html#acdf6c57849200e463d82a67efd408624", null ]

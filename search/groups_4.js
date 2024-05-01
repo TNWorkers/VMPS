@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['solvers_4135',['Solvers',['../group__Solvers.html',1,'']]],
-  ['symmetry_4136',['Symmetry',['../group__Symmetry.html',1,'']]]
+  ['solvers_0',['Solvers',['../group__Solvers.html',1,'']]],
+  ['symmetry_1',['Symmetry',['../group__Symmetry.html',1,'']]]
 ];

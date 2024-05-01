@@ -6,7 +6,7 @@ var classSpinSite =
     [ "Symmetry", "classSpinSite.html#a597a091749cde5769a65c37c57269722", null ],
     [ "SpinSite", "classSpinSite.html#ab640fd75f24f1b606e97b41aee2dea8f", null ],
     [ "SpinSite", "classSpinSite.html#a9addca4861ffa205de83a1ff1c2e8f55", null ],
-    [ "basis_1s", "classSpinSite.html#a1d2f992e3173d95d7339d69448537e13", null ],
+    [ "basis_1s", "classSpinSite.html#ad20e2b47fc399e71d696fb0f9fbc32d9", null ],
     [ "exp_i_pi_Sx", "classSpinSite.html#a238ed964ac1001c19d4602d0de56e1a1", null ],
     [ "exp_i_pi_Sy", "classSpinSite.html#afb3903a2ece054238f5b0d5853583902", null ],
     [ "exp_i_pi_Sz", "classSpinSite.html#ac385925835c3568ef955ac729def17cb", null ],

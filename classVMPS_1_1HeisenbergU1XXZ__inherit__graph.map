@@ -1,8 +1,8 @@
 <map id="VMPS::HeisenbergU1XXZ" name="VMPS::HeisenbergU1XXZ">
-<area shape="rect" id="node1" title="Heisenberg Model with XXZ&#45;coupling." alt="" coords="704,78,891,105"/>
-<area shape="rect" id="node2" href="$classVMPS_1_1HeisenbergU1.html" title="Heisenberg Model." alt="" coords="497,78,656,105"/>
-<area shape="rect" id="node3" href="$classMpo.html" title=" " alt="" coords="253,5,425,47"/>
-<area shape="rect" id="node4" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,47"/>
-<area shape="rect" id="node5" href="$classHeisenbergObservables.html" title=" " alt="" coords="229,71,449,112"/>
-<area shape="rect" id="node6" href="$classParamReturner.html" title=" " alt="" coords="280,137,399,163"/>
+<area shape="rect" id="node1" title="Heisenberg Model with XXZ&#45;coupling." alt="" coords="704,77,891,102"/>
+<area shape="rect" id="node2" href="$classVMPS_1_1HeisenbergU1.html" title="Heisenberg Model." alt="" coords="497,77,656,102"/>
+<area shape="rect" id="node3" href="$classMpo.html" title=" " alt="" coords="253,5,425,45"/>
+<area shape="rect" id="node4" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,45"/>
+<area shape="rect" id="node5" href="$classHeisenbergObservables.html" title=" " alt="" coords="229,69,449,109"/>
+<area shape="rect" id="node6" href="$classParamReturner.html" title=" " alt="" coords="280,134,399,159"/>
 </map>

@@ -1,7 +1,7 @@
 <map id="VMPS::HeisenbergXXZ" name="VMPS::HeisenbergXXZ">
-<area shape="rect" id="node1" title=" " alt="" coords="221,184,389,211"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="5,102,192,129"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="11,5,187,47"/>
-<area shape="rect" id="node4" href="$classHeisenbergObservables.html" title=" " alt="" coords="217,95,394,136"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="418,102,537,129"/>
+<area shape="rect" id="node1" title=" " alt="" coords="221,181,389,207"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="5,101,192,126"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="11,5,187,45"/>
+<area shape="rect" id="node4" href="$classHeisenbergObservables.html" title=" " alt="" coords="217,93,394,133"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="418,101,537,126"/>
 </map>

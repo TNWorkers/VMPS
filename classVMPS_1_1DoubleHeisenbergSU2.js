@@ -7,8 +7,8 @@ var classVMPS_1_1DoubleHeisenbergSU2 =
     [ "Symmetry", "classVMPS_1_1DoubleHeisenbergSU2.html#ab72d2c18121d410b9e076641f28d74ea", null ],
     [ "DoubleHeisenbergSU2", "classVMPS_1_1DoubleHeisenbergSU2.html#a5250ecfcb3cc4e748ed1ee5b44036796", null ],
     [ "DoubleHeisenbergSU2", "classVMPS_1_1DoubleHeisenbergSU2.html#a5ca7bec49c401b4caf9459db985c37e7", null ],
-    [ "set_operators", "classVMPS_1_1DoubleHeisenbergSU2.html#a6c4e005d662e25a13408e615212ac2a8", null ],
-    [ "singlet", "classVMPS_1_1DoubleHeisenbergSU2.html#a5157b44c6503bac9eceb1fd5efce7fd9", null ],
+    [ "set_operators", "classVMPS_1_1DoubleHeisenbergSU2.html#a1b09dec706381fd0d5ed4c785995a7a6", null ],
+    [ "singlet", "classVMPS_1_1DoubleHeisenbergSU2.html#a586a3a659056ef8a9a3c072921103b13", null ],
     [ "defaults", "classVMPS_1_1DoubleHeisenbergSU2.html#aed71301287fbe96301b4164ca6330771", null ],
     [ "FAMILY", "classVMPS_1_1DoubleHeisenbergSU2.html#ae09c239737f863ba91262e2cbb9b9c8d", null ],
     [ "sweep_defaults", "classVMPS_1_1DoubleHeisenbergSU2.html#af234e3cbb7ca93eb4e9012fc65187e28", null ]

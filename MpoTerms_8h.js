@@ -1,7 +1,7 @@
 var MpoTerms_8h =
 [
-    [ "MpoTerms", "classMpoTerms.html", "classMpoTerms" ],
-    [ "reversedData", "structMpoTerms_1_1reversedData.html", "structMpoTerms_1_1reversedData" ],
+    [ "MpoTerms< Symmetry, Scalar >", "classMpoTerms.html", "classMpoTerms" ],
+    [ "MpoTerms< Symmetry, Scalar >::reversedData", "structMpoTerms_1_1reversedData.html", "structMpoTerms_1_1reversedData" ],
     [ "DEBUG_VERBOSITY", "MpoTerms_8h.html#a2756127335810471fc2ea8b84538f693", null ],
     [ "EIGEN_DONT_VECTORIZE", "MpoTerms_8h.html#a4962bceade5775b0464f7b604f886cd4", null ],
     [ "MAX_SUMPROD_STRINGLENGTH", "MpoTerms_8h.html#a5b138ca20fd685462fbb27038ee41fd2", null ],

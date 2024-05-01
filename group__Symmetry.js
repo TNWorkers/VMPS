@@ -1,6 +1,6 @@
 var group__Symmetry =
 [
-    [ "S1xS2", "classSym_1_1S1xS2.html", [
+    [ "Sym::S1xS2< S1_, S2_ >", "classSym_1_1S1xS2.html", [
       [ "qType", "classSym_1_1S1xS2.html#a425be6ea7b54dad5c9dc0d8355d72032", null ],
       [ "S1", "classSym_1_1S1xS2.html#afa75c9d6ea2bd60549ad937b6982f74c", null ],
       [ "S2", "classSym_1_1S1xS2.html#a23e95244ac07a6ef1c92c36871e9e302", null ],
@@ -38,9 +38,9 @@ var group__Symmetry =
       [ "IS_CHARGE_SU2", "classSym_1_1S1xS2.html#a758a0b203fe90d5729b37175d444b380", null ],
       [ "IS_SPIN_SU2", "classSym_1_1S1xS2.html#af14a821ccb5bc7b0ef91d8b960db8db5", null ],
       [ "IS_SPIN_U1", "classSym_1_1S1xS2.html#a1f708dda45e2a2f864b8c85b88c5cf7c", null ],
-      [ "kind", "classSym_1_1S1xS2.html#a5afe15e97ede9d8b1e3d0e43a77007f0", null ],
-      [ "lowest_qs", "classSym_1_1S1xS2.html#a63935e34c57df8b61a2dc102139ff136", null ],
-      [ "mod", "classSym_1_1S1xS2.html#a2f9567dc808500dc68ce3bffd892870a", null ],
+      [ "kind", "classSym_1_1S1xS2.html#a01c155accc5baaa822ca22c689beaafd", null ],
+      [ "lowest_qs", "classSym_1_1S1xS2.html#a1f3a7adb856ca06fac9d83e2ec5b280c", null ],
+      [ "mod", "classSym_1_1S1xS2.html#a1a2f94b66d1366794d448520a160ca66", null ],
       [ "name", "classSym_1_1S1xS2.html#af571b300203a2145ec154716cc10d60b", null ],
       [ "NO_CHARGE_SYM", "classSym_1_1S1xS2.html#abae6d3c08d0b4157aeb4392d8fe9f572", null ],
       [ "NO_SPIN_SYM", "classSym_1_1S1xS2.html#ac0be5af313e173104e6855d1b6ee8ea5", null ],
@@ -64,7 +64,7 @@ var group__Symmetry =
       [ "NON_ABELIAN", "classSym_1_1S1xS2.html#a3e354073fa19e3e6740ccd7cb700c70c", null ],
       [ "Nq", "classSym_1_1S1xS2.html#a106fba5034d4346d272961a6e3e57ecd", null ]
     ] ],
-    [ "SU2", "classSym_1_1SU2.html", [
+    [ "Sym::SU2< Kind, Scalar >", "classSym_1_1SU2.html", [
       [ "qType", "classSym_1_1SU2.html#a1f24d40520f770c9f11d27dd34c99b2d", null ],
       [ "Scalar_", "classSym_1_1SU2.html#afe432fb79b30f6d41c4b8fe8be55f2da", null ],
       [ "SU2", "classSym_1_1SU2.html#ad3757f96c9491980627385eb2e334661", null ],
@@ -99,9 +99,9 @@ var group__Symmetry =
       [ "IS_CHARGE_SU2", "classSym_1_1SU2.html#aa35f9b23cc2e29df081b2b1b94d73913", null ],
       [ "IS_SPIN_SU2", "classSym_1_1SU2.html#a7ee6e6130995dc0c8ec2d8316b8e38ca", null ],
       [ "IS_SPIN_U1", "classSym_1_1SU2.html#ac016f0dea374ed51caecc1fc6c8288a1", null ],
-      [ "kind", "classSym_1_1SU2.html#ab15798f2db4c780377117ffcd169460f", null ],
-      [ "lowest_qs", "classSym_1_1SU2.html#a07374b78ee5b80fcfdcfc3315b4e4ed8", null ],
-      [ "mod", "classSym_1_1SU2.html#a6b137161c395da2f5f99033bdd26d36f", null ],
+      [ "kind", "classSym_1_1SU2.html#ad97c9ee62417b0bcc636cedd6fa33472", null ],
+      [ "lowest_qs", "classSym_1_1SU2.html#a2d81f873669601ec1aa51b2b4dcaae09", null ],
+      [ "mod", "classSym_1_1SU2.html#a7f6f96c64fc215f485c3ea29a34fde94", null ],
       [ "name", "classSym_1_1SU2.html#ad17ebd00f388d844e228fd084b9d606d", null ],
       [ "NO_CHARGE_SYM", "classSym_1_1SU2.html#a9862c5fbf83e1f78693c0a4873d98db5", null ],
       [ "NO_SPIN_SYM", "classSym_1_1SU2.html#a9a978e061f86d3c419d5136c03f4a688", null ],
@@ -125,7 +125,7 @@ var group__Symmetry =
       [ "NON_ABELIAN", "classSym_1_1SU2.html#a99990fb006a93dc0c478dd1a8a0f86b9", null ],
       [ "Nq", "classSym_1_1SU2.html#ae30832c0eca3c43d6f65f0727cef4415", null ]
     ] ],
-    [ "SUN", "classSym_1_1SUN.html", [
+    [ "Sym::SUN< N, Scalar >", "classSym_1_1SUN.html", [
       [ "Index", "classSym_1_1SUN.html#a3a70c3e1335f82de80a6815a9486bf85", null ],
       [ "qType", "classSym_1_1SUN.html#a76dac6862f693b9740800fdc5130c46f", null ],
       [ "TensorType", "classSym_1_1SUN.html#a8ca659c2ef7820195d2b08fa755f84fc", null ],
@@ -149,7 +149,7 @@ var group__Symmetry =
       [ "Nq", "classSym_1_1SUN.html#abff00af3d77c894050e181a4a40fc8ef", null ],
       [ "SPECIAL", "classSym_1_1SUN.html#a4e6f73f817d9e9465e723d38f9cd421f", null ]
     ] ],
-    [ "U0", "classSym_1_1U0.html", [
+    [ "Sym::U0", "classSym_1_1U0.html", [
       [ "qType", "classSym_1_1U0.html#ab4787324cd616f71e8db38c577ea10e5", null ],
       [ "U0", "classSym_1_1U0.html#ac4d988d2bea360d845a617d8aff9b125", null ],
       [ "coeff_6j", "classSym_1_1U0.html#a3e44c31784e18a4fc6bcc613652b22ad", null ],
@@ -179,20 +179,20 @@ var group__Symmetry =
       [ "IS_CHARGE_SU2", "classSym_1_1U0.html#a56046ca73098cb373c4cd787363132ce", null ],
       [ "IS_SPIN_SU2", "classSym_1_1U0.html#aeb7ded2146aca36fd572b62307b342d2", null ],
       [ "IS_SPIN_U1", "classSym_1_1U0.html#a12662e8872e326bb8ec9e1703be3bcf5", null ],
-      [ "kind", "classSym_1_1U0.html#a3b09e60294e6233095020ad4ec51f75d", null ],
-      [ "lowest_qs", "classSym_1_1U0.html#a16e066a463f2d2e2dcbd84d55ebb00ff", null ],
-      [ "mod", "classSym_1_1U0.html#aa0208a8087748597259cd3009826c042", null ],
+      [ "kind", "classSym_1_1U0.html#a1b04ecdc9c223d8b279ff0667db04361", null ],
+      [ "lowest_qs", "classSym_1_1U0.html#aedc363399de9f266e403f2758162e81b", null ],
+      [ "mod", "classSym_1_1U0.html#a2cc41e5a18d1d32529da7c026fba5317", null ],
       [ "name", "classSym_1_1U0.html#a07fe3723f9ee0994ce8c7e580820a399", null ],
       [ "NO_CHARGE_SYM", "classSym_1_1U0.html#a59cc445e1f8fea18efa5192e1d3e0048", null ],
       [ "NO_SPIN_SYM", "classSym_1_1U0.html#aeff2b6ba603df1e674e3c01da91c942f", null ],
       [ "pair", "classSym_1_1U0.html#a09884836966ace75470f2290f90ef364", null ],
       [ "qvacuum", "classSym_1_1U0.html#a69a6e1ed3e382abd51ca07be4f986e05", null ],
-      [ "reduceSilent", "classSym_1_1U0.html#a246a2834b859794c928c1658170cb173", null ],
-      [ "reduceSilent", "classSym_1_1U0.html#aaef70922381812bbd588ff28f19da34f", null ],
-      [ "reduceSilent", "classSym_1_1U0.html#a75f67dabbae9939e1c0e9104d13bad23", null ],
-      [ "reduceSilent", "classSym_1_1U0.html#ae2836afc299f087f1309343211d23207", null ],
+      [ "reduceSilent", "classSym_1_1U0.html#a404cbfac222cbea929fcf6617521ac1f", null ],
+      [ "reduceSilent", "classSym_1_1U0.html#ac1d039aee47a2c243cef54603ed9bcff", null ],
+      [ "reduceSilent", "classSym_1_1U0.html#ae680f1c162fc1bada0bac74fdb470c90", null ],
+      [ "reduceSilent", "classSym_1_1U0.html#a372a3bf7b8775fbf5795cd3d39784ffb", null ],
       [ "spinorFactor", "classSym_1_1U0.html#aad98ec40a624fb3cba5b2a1bb2a0ea62", null ],
-      [ "tensorProd", "classSym_1_1U0.html#a48d382ec57fd672a08e9a905ef022cd4", null ],
+      [ "tensorProd", "classSym_1_1U0.html#a28f50bba921ae431c4c970434f9e43c5", null ],
       [ "triangle", "classSym_1_1U0.html#a4b305831826b7e0babcdb0ac874c9ff0", null ],
       [ "validate", "classSym_1_1U0.html#a8aa05cbb4ba0b90aecb042a0c766ff3e", null ],
       [ "ABELIAN", "classSym_1_1U0.html#ad9aec8baacab994c1d719a083d4d5f40", null ],
@@ -203,7 +203,7 @@ var group__Symmetry =
       [ "NON_ABELIAN", "classSym_1_1U0.html#adf2b225d0a6913093f61a7c174a8283f", null ],
       [ "Nq", "classSym_1_1U0.html#aac27680ad61244854edbd70d2e9b3c48", null ]
     ] ],
-    [ "U1", "classSym_1_1U1.html", [
+    [ "Sym::U1< Kind, Scalar >", "classSym_1_1U1.html", [
       [ "qType", "classSym_1_1U1.html#af85e3570609a6f337dd5e8dd6dd82255", null ],
       [ "Scalar_", "classSym_1_1U1.html#a364478bd68c957d74c76ba82daf14f30", null ],
       [ "U1", "classSym_1_1U1.html#ad194be4a9d4d258050e054b9be7c6bf7", null ],
@@ -238,9 +238,9 @@ var group__Symmetry =
       [ "IS_CHARGE_SU2", "classSym_1_1U1.html#a89579dcc874532af2d923443d9d71634", null ],
       [ "IS_SPIN_SU2", "classSym_1_1U1.html#aba6e326dfdef4534a8b38e099bab2c8e", null ],
       [ "IS_SPIN_U1", "classSym_1_1U1.html#ada913f1effc8706d11e9c32975ec8f7c", null ],
-      [ "kind", "classSym_1_1U1.html#a77d9485a01d7a5e47a497618a255af33", null ],
-      [ "lowest_qs", "classSym_1_1U1.html#a3061b9b5e3979b2915147849795d37cb", null ],
-      [ "mod", "classSym_1_1U1.html#a41b312846c599ef1f9e9ec65e3b11b55", null ],
+      [ "kind", "classSym_1_1U1.html#a9a1d22d2513e9ee1e3620ce41c48ae08", null ],
+      [ "lowest_qs", "classSym_1_1U1.html#a48bf98683835f08187bf8c82d7ec4400", null ],
+      [ "mod", "classSym_1_1U1.html#a016305f4fb148867d76941f48cac9525", null ],
       [ "name", "classSym_1_1U1.html#a1ba1c8c4ebca07867ec71c3a950fed63", null ],
       [ "NO_CHARGE_SYM", "classSym_1_1U1.html#a1835daba56c78323c9e08305b2325351", null ],
       [ "NO_SPIN_SYM", "classSym_1_1U1.html#a214c49766eb4a1f16547bca6c0fdf777", null ],
@@ -264,7 +264,7 @@ var group__Symmetry =
       [ "NON_ABELIAN", "classSym_1_1U1.html#a4a4c1fe8cc28e83cd91820306e766418", null ],
       [ "Nq", "classSym_1_1U1.html#a69cc644482e416e2b3fa05d942baf6d1", null ]
     ] ],
-    [ "ZN", "classSym_1_1ZN.html", [
+    [ "Sym::ZN< Kind, N, Scalar >", "classSym_1_1ZN.html", [
       [ "qType", "classSym_1_1ZN.html#a8b970d034e22db57c03bc8c1afcb67c1", null ],
       [ "Scalar_", "classSym_1_1ZN.html#a007b5f697572088f3787e63dd3065a48", null ],
       [ "ZN", "classSym_1_1ZN.html#aa395db991d3c0685d0e115f3a102f777", null ],
@@ -302,9 +302,9 @@ var group__Symmetry =
       [ "IS_CHARGE_SU2", "classSym_1_1ZN.html#a4b430cbe315f2d9df8ae52bf838092c9", null ],
       [ "IS_SPIN_SU2", "classSym_1_1ZN.html#a7ef0062b82e68939079167190e54c723", null ],
       [ "IS_SPIN_U1", "classSym_1_1ZN.html#aa0716fa11021481edc2b583b86ee2fac", null ],
-      [ "kind", "classSym_1_1ZN.html#a420ac8f32b266226aa8a99793a73c0d4", null ],
-      [ "lowest_qs", "classSym_1_1ZN.html#a3cb59f30a07ab81f2b24e280212e6df1", null ],
-      [ "mod", "classSym_1_1ZN.html#a86d925be876157cf5fcef37b3b56920c", null ],
+      [ "kind", "classSym_1_1ZN.html#a20ca4cba98b123741dd0c9fe84c008af", null ],
+      [ "lowest_qs", "classSym_1_1ZN.html#a086e025af1e3df4d27a3101d3f5fc818", null ],
+      [ "mod", "classSym_1_1ZN.html#a84782436ea5361a8254cc9427da96424", null ],
       [ "name", "classSym_1_1ZN.html#ac6aee5d3c64389f679cb83210900d1a1", null ],
       [ "NO_CHARGE_SYM", "classSym_1_1ZN.html#a678e0916203c73c164328f05a0070809", null ],
       [ "NO_SPIN_SYM", "classSym_1_1ZN.html#a8d3a8ee0d09125c28d6d2a19bd380e8f", null ],

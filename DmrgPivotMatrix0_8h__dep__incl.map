@@ -1,9 +1,9 @@
 <map id="DmrgPivotMatrix0.h" name="DmrgPivotMatrix0.h">
-<area shape="rect" id="node1" title=" " alt="" coords="164,5,317,32"/>
-<area shape="rect" id="node2" href="$DmrgSolver_8h.html" title=" " alt="" coords="28,80,139,107"/>
-<area shape="rect" id="node4" href="$TDVPPropagator_8h.html" title=" " alt="" coords="171,80,310,107"/>
-<area shape="rect" id="node7" href="$VumpsSolver_8h.html" title=" " alt="" coords="336,155,455,181"/>
-<area shape="rect" id="node3" href="$NuclearManager_8h.html" title=" " alt="" coords="5,155,145,181"/>
-<area shape="rect" id="node5" href="$GreenPropagator_8h.html" title=" " alt="" coords="169,155,312,181"/>
-<area shape="rect" id="node6" href="$SpectralManager_8h.html" title=" " alt="" coords="247,229,389,256"/>
+<area shape="rect" id="node1" title=" " alt="" coords="164,5,317,31"/>
+<area shape="rect" id="node2" href="$DmrgSolver_8h.html" title=" " alt="" coords="28,79,139,104"/>
+<area shape="rect" id="node4" href="$TDVPPropagator_8h.html" title=" " alt="" coords="171,79,310,104"/>
+<area shape="rect" id="node7" href="$VumpsSolver_8h.html" title=" " alt="" coords="336,152,455,177"/>
+<area shape="rect" id="node3" href="$NuclearManager_8h.html" title=" " alt="" coords="5,152,145,177"/>
+<area shape="rect" id="node5" href="$GreenPropagator_8h.html" title=" " alt="" coords="169,152,312,177"/>
+<area shape="rect" id="node6" href="$SpectralManager_8h.html" title=" " alt="" coords="247,225,389,251"/>
 </map>

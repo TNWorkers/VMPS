@@ -6,7 +6,7 @@ var classFermionSite =
     [ "Symmetry", "classFermionSite.html#a7515b3a10ed911e821cc6b9bf2c1fb7d", null ],
     [ "FermionSite", "classFermionSite.html#a4a42c63079abef3f4886acc8fbdcddc1", null ],
     [ "FermionSite", "classFermionSite.html#a5e3b562ccac26c8d780c59e7a0e9c3e9", null ],
-    [ "basis_1s", "classFermionSite.html#a68bf53e76daf8288a718a5fc1b58ea7d", null ],
+    [ "basis_1s", "classFermionSite.html#adfa6108283296dcaf6a1a08267b1e2a2", null ],
     [ "c_1s", "classFermionSite.html#acd37efcb737bd1ef835a4c967b779807", null ],
     [ "cc_1s", "classFermionSite.html#a75ef17258b0143405ec35f890292065f", null ],
     [ "cdag_1s", "classFermionSite.html#a15cfb24914cc6668eaf93709e68b8d66", null ],

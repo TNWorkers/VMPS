@@ -1,7 +1,7 @@
 <map id="VMPS::SpinlessFermionsZ2" name="VMPS::SpinlessFermionsZ2">
-<area shape="rect" id="node1" title="SpinlessFermionsZ2 Model." alt="" coords="532,78,731,105"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="270,5,443,47"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,47"/>
-<area shape="rect" id="node4" href="$classSpinlessFermionsObservables.html" title=" " alt="" coords="229,71,484,112"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="297,137,416,163"/>
+<area shape="rect" id="node1" title="SpinlessFermionsZ2 Model." alt="" coords="532,77,731,102"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="270,5,443,45"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,45"/>
+<area shape="rect" id="node4" href="$classSpinlessFermionsObservables.html" title=" " alt="" coords="229,69,484,109"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="297,134,416,159"/>
 </map>

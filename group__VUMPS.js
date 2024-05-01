@@ -1,17 +1,17 @@
 var group__VUMPS =
 [
-    [ "Umps", "classUmps.html", [
+    [ "Umps< Symmetry, Scalar >", "classUmps.html", [
       [ "MatrixType", "classUmps.html#af8d0dc587b7466e205a8733feda3dafc", null ],
       [ "Umps", "classUmps.html#a1ac163f1e798ac5b2efd91a6f53a7046", null ],
       [ "Umps", "classUmps.html#aaca621a25c62a2b5c39a0442eaad53e1", null ],
       [ "Umps", "classUmps.html#a4c2e167dac674578300ebd29ae593bcc", null ],
       [ "Umps", "classUmps.html#a40af8b553939db4092637e420139b64e", null ],
-      [ "A_at", "classUmps.html#a9be5fa301d0cdac6351346ec43a6ac32", null ],
+      [ "A_at", "classUmps.html#a19d22e2ce6927c8656c64282c1a17ab8", null ],
       [ "adjustQN", "classUmps.html#a7d09fec1c7184d7e5be44a22174aad80", null ],
       [ "calc_Dmax", "classUmps.html#ac1b1bef6212e659a01d10d4aec00f49a", null ],
       [ "calc_dominant", "classUmps.html#ac38dfb8f549217bb4f5fd84a2ca8b258", null ],
-      [ "calc_dominant_1symm", "classUmps.html#a56346f4243e3e9eeb3997ff58a29aed7", null ],
-      [ "calc_dominant_2symm", "classUmps.html#ad990851ae3bab010b12f5b31f4fef8b3", null ],
+      [ "calc_dominant_1symm", "classUmps.html#aff38eef74cd5ecaf416c75d8bff9999d", null ],
+      [ "calc_dominant_2symm", "classUmps.html#ade56fa306ded714d0e4c011f26cb9885", null ],
       [ "calc_dominant_Q", "classUmps.html#a89f5f979b9dbb6acabf957ef048e11cc", null ],
       [ "calc_entropy", "classUmps.html#a2fc7e5482faacacb755666f61287778e", null ],
       [ "calc_entropy", "classUmps.html#a73d72420516bff4dcf09414348d68cbc", null ],
@@ -23,30 +23,30 @@ var group__VUMPS =
       [ "cast", "classUmps.html#a1326c2a5fdd368d954449dc2d73f129d", null ],
       [ "dot", "classUmps.html#a0b2ebc6d9a9b173f3e218d479edd9387", null ],
       [ "enrich", "classUmps.html#a7cb75cbd3c60eca555b63a0a922d5586", null ],
-      [ "entanglementSpectrum", "classUmps.html#a6dc142969736c811d17f6c8e17946004", null ],
+      [ "entanglementSpectrum", "classUmps.html#a2dee06aa41cf74a9582659776ae92abc", null ],
       [ "entanglementSpectrumLoc", "classUmps.html#ad7d8508eddcfe8b9acc7dd0ebfd8be9f", null ],
       [ "entropy", "classUmps.html#ad7ef47c370b491e40d9c9591ad955d7f", null ],
       [ "get_frst_rows", "classUmps.html#a28449db1007b66e1260e500e133f8c19", null ],
       [ "get_last_cols", "classUmps.html#a83ee4f19fb219af218a2149842e11f18", null ],
       [ "graph", "classUmps.html#a1bbe529bcce7f87b957fef4827d8b0d0", null ],
-      [ "inBasis", "classUmps.html#a3983655b25b289717e6a378f836ff3ab", null ],
-      [ "inBasis", "classUmps.html#af7f77286a04c0af9743ee1a9f2f4b9f0", null ],
+      [ "inBasis", "classUmps.html#ad1845d44f68179cc5509a0d751eb2f75", null ],
+      [ "inBasis", "classUmps.html#a370337e400a5311574d2a2e060f0d6f7", null ],
       [ "info", "classUmps.html#af77090930c6cadcb8445ae2fc9cd0220", null ],
       [ "intercellSF", "classUmps.html#a3d9dfa53408d5364ce5cc18789625d73", null ],
       [ "intercellSFpoint", "classUmps.html#ab5ffe35ab684db36d3ac18b574d6b114", null ],
       [ "length", "classUmps.html#a2cb4d3e166c385d6fe0c2e31cb67ba9e", null ],
-      [ "locBasis", "classUmps.html#a11e93c214464049705de2de04f737711", null ],
-      [ "locBasis", "classUmps.html#ad29ce762c83678337dd2f9d4e1481c6b", null ],
+      [ "locBasis", "classUmps.html#ae0d89a3eaea770c62d3c4f20c11f3409", null ],
+      [ "locBasis", "classUmps.html#a13d8ee9fe77d1cafb48cc1160d9b9a82", null ],
       [ "memory", "classUmps.html#a5e444b835e9c80373c60622fbdcb4d7b", null ],
       [ "minus1modL", "classUmps.html#a9118d971ff8776320a5451cf3de3b88a", null ],
       [ "normalize_C", "classUmps.html#ad0358aa0b241b8431305e3ddd62372ae", null ],
       [ "orthogonalize_left", "classUmps.html#af1f1d79cb99f9cef6e08518c7195138d", null ],
       [ "orthogonalize_right", "classUmps.html#aa44ae3370ee27ae9debb57f8d74fa1cf", null ],
-      [ "outBasis", "classUmps.html#ae06cc9f82199a0073c46abde8335dd6d", null ],
-      [ "outBasis", "classUmps.html#a9f661543a267c21b30c2fff56a3f6e09", null ],
+      [ "outBasis", "classUmps.html#a4d1bdff2b63194163579f5f6a77ecc57", null ],
+      [ "outBasis", "classUmps.html#a77e767c1fd30310d5413f39154fd16e4", null ],
       [ "polarDecompose", "classUmps.html#a4d4facc979c6e555b605c234eaece814", null ],
       [ "Qbot", "classUmps.html#a08f85952b0fefdb888cc5f541f06d96f", null ],
-      [ "Qtarget", "classUmps.html#af33af3d955e36df98c2801bf8f62ed53", null ],
+      [ "Qtarget", "classUmps.html#a73f4213d39afa49bcc72c4318321637e", null ],
       [ "Qtop", "classUmps.html#a01509f0ad595978255594a64c547711b", null ],
       [ "real", "classUmps.html#a35bbac2608f2fa3d9e4b8b81f5148f90", null ],
       [ "resize", "classUmps.html#a49ae445e31048367b215f0b865101e01", null ],
@@ -86,7 +86,7 @@ var group__VUMPS =
       [ "SVspec", "classUmps.html#a7a9eac5966c6c42c4caa3f276878ffb1", null ],
       [ "truncWeight", "classUmps.html#a91f9c63998c410599478f7e135166194", null ]
     ] ],
-    [ "MpoTransferMatrix", "structMpoTransferMatrix.html", [
+    [ "MpoTransferMatrix< Symmetry, Scalar >", "structMpoTransferMatrix.html", [
       [ "MpoTransferMatrix", "structMpoTransferMatrix.html#ac853fc23c4014d459e0a10913a3cafa4", null ],
       [ "MpoTransferMatrix", "structMpoTransferMatrix.html#a2d731fddf4e052068ce7f4f5c2c3cb5b", null ],
       [ "ab", "structMpoTransferMatrix.html#a7dc78ec1a68c54476e2b03e2f6d2e369", null ],
@@ -100,7 +100,7 @@ var group__VUMPS =
       [ "qOp", "structMpoTransferMatrix.html#a170202c9ecf307120420d6cc665890fa", null ],
       [ "W", "structMpoTransferMatrix.html#a0fad8a9373bac2f2e0eb5c6ecbe06589", null ]
     ] ],
-    [ "MpoTransferVector", "structMpoTransferVector.html", [
+    [ "MpoTransferVector< Symmetry, Scalar_ >", "structMpoTransferVector.html", [
       [ "Scalar", "structMpoTransferVector.html#af20ac829fcadbd6422e9b1078a6b7919", null ],
       [ "MpoTransferVector", "structMpoTransferVector.html#a11daf9d2176738cc35017d8702fc6d60", null ],
       [ "MpoTransferVector", "structMpoTransferVector.html#af477054ca053a293196d2ecd6ba6b1e0", null ],
@@ -111,7 +111,7 @@ var group__VUMPS =
       [ "ab", "structMpoTransferVector.html#aa2adb328c6d620cd83b77822b5ae480b", null ],
       [ "data", "structMpoTransferVector.html#a5787232c1972c6dfd388258a83648870", null ]
     ] ],
-    [ "PivumpsMatrix1", "structPivumpsMatrix1.html", [
+    [ "PivumpsMatrix1< Symmetry, Scalar, MpoScalar >", "structPivumpsMatrix1.html", [
       [ "PivumpsMatrix1", "structPivumpsMatrix1.html#a119342b3bd7e836c2e972c31d6309e1b", null ],
       [ "AL", "structPivumpsMatrix1.html#a58e1bd1dfc04a18a0aea09926c2ea4af", null ],
       [ "AR", "structPivumpsMatrix1.html#a030df247736cd78ae7a10de9916105f4", null ],
@@ -120,7 +120,7 @@ var group__VUMPS =
       [ "qloc", "structPivumpsMatrix1.html#acc4a6569de94579337ebc33760193c46", null ],
       [ "R", "structPivumpsMatrix1.html#a28af8bca221d32c53b57c4fba693a9f7", null ]
     ] ],
-    [ "PivumpsMatrix0", "structPivumpsMatrix0.html", [
+    [ "PivumpsMatrix0< Symmetry, Scalar, MpoScalar >", "structPivumpsMatrix0.html", [
       [ "PivumpsMatrix0", "structPivumpsMatrix0.html#a6d431c97d3b0d2069716e3ef6c85605f", null ],
       [ "PivumpsMatrix0", "structPivumpsMatrix0.html#a36cd2e77dda1c09326cbb1600b258be2", null ],
       [ "AL", "structPivumpsMatrix0.html#a2bb5cc7815d29252d69080fe0db4a865", null ],
@@ -130,7 +130,7 @@ var group__VUMPS =
       [ "qloc", "structPivumpsMatrix0.html#a3a1bd2dbe0f9517bafbe49e256c6bbde", null ],
       [ "R", "structPivumpsMatrix0.html#a7658d2b9021a0a9cd4dd403264a60a6e", null ]
     ] ],
-    [ "VumpsSolver", "classVumpsSolver.html", [
+    [ "VumpsSolver< Symmetry, MpHamiltonian, Scalar >", "classVumpsSolver.html", [
       [ "ComplexMatrixType", "classVumpsSolver.html#af5af0769f3d72454e3b17295c3fcc2d1", null ],
       [ "MatrixType", "classVumpsSolver.html#a0139699ad7a4439139407cef6de7877f", null ],
       [ "TwoSiteHamiltonian", "classVumpsSolver.html#ad4733fa2fcbd822cfbb9649f558b529c", null ],
@@ -146,13 +146,13 @@ var group__VUMPS =
       [ "calc_errors", "classVumpsSolver.html#a81143633489ee5291c6df9adf0cec4da", null ],
       [ "cleanup", "classVumpsSolver.html#ade8619c954d4624cf0ac21690d03388e", null ],
       [ "create_Mps", "classVumpsSolver.html#a557005ba5a0d0e8a63d04bae89b05d78", null ],
-      [ "create_Mps", "classVumpsSolver.html#ab94f94c6980be67d3778309cdd42188e", null ],
+      [ "create_Mps", "classVumpsSolver.html#ab4b4cf7aa322ac0a371ecd138bca68e3", null ],
       [ "create_Mps", "classVumpsSolver.html#a23c9888a116540ce9491d49c23dbbfaf", null ],
       [ "edgeState", "classVumpsSolver.html#a3af40154622dd22925a489cebc78ac50", null ],
       [ "eigeninfo", "classVumpsSolver.html#a71ce929a32aa6774cf1f9d65d16dd87e", null ],
-      [ "errEigval", "classVumpsSolver.html#a817c6f8dec7fc650d6f6c1f5d13fa710", null ],
-      [ "errState", "classVumpsSolver.html#a543a3fddaf49381eee9779531c3c4944", null ],
-      [ "errVar", "classVumpsSolver.html#aaec26d352606cd95f15a2e48b67deb73", null ],
+      [ "errEigval", "classVumpsSolver.html#acc88104a3ab6c4dd9c3d7b6cabaaa16e", null ],
+      [ "errState", "classVumpsSolver.html#a9add8322072d72084dd66b71b1d7c945", null ],
+      [ "errVar", "classVumpsSolver.html#ae828f290aa9cb6d62d052235f2aeb672", null ],
       [ "expand_basis", "classVumpsSolver.html#a6a2b53c326fd10ecd3064fb44a05977d", null ],
       [ "expand_basis", "classVumpsSolver.html#adceaf515256c7d912c083c09e906b15c", null ],
       [ "expand_basis2", "classVumpsSolver.html#a3036441276788ea24cb600a3bd120561", null ],
@@ -227,7 +227,7 @@ var group__VUMPS =
       [ "YLlast", "classVumpsSolver.html#a8a8c29835eda0094a1bc411213cd62a3", null ],
       [ "YRfrst", "classVumpsSolver.html#aa536741ba3dc1c00fb53ff0ca75f099d", null ]
     ] ],
-    [ "TransferMatrix", "structTransferMatrix.html", [
+    [ "TransferMatrix< Symmetry, Scalar >", "structTransferMatrix.html", [
       [ "TransferMatrix", "structTransferMatrix.html#a5cc34f5424e0d232b766a1c6a67050fa", null ],
       [ "TransferMatrix", "structTransferMatrix.html#a26d7b354b0503f935ee0df54fcceeb4a", null ],
       [ "TransferMatrix", "structTransferMatrix.html#a926e94fed91b5449a4fbe5e6b98dabfb", null ],

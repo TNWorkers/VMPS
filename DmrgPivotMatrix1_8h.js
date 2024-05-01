@@ -1,7 +1,7 @@
 var DmrgPivotMatrix1_8h =
 [
-    [ "PivotMatrix1Terms", "structPivotMatrix1Terms.html", "structPivotMatrix1Terms" ],
-    [ "PivotMatrix1", "structPivotMatrix1.html", "structPivotMatrix1" ],
+    [ "PivotMatrix1Terms< Symmetry, Scalar, MpoScalar >", "structPivotMatrix1Terms.html", "structPivotMatrix1Terms" ],
+    [ "PivotMatrix1< Symmetry, Scalar, MpoScalar >", "structPivotMatrix1.html", "structPivotMatrix1" ],
     [ "dim", "DmrgPivotMatrix1_8h.html#a7bfd1ce2d74214823e8cfa8ce53da897", null ],
     [ "HxV", "DmrgPivotMatrix1_8h.html#ad8d9fd458580f4d3af421ea57ac5a5d0", null ],
     [ "HxV", "DmrgPivotMatrix1_8h.html#a714bdb4e6429fb193c1eef019baa7b67", null ],

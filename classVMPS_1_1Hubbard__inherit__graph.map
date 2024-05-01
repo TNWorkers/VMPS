@@ -1,7 +1,7 @@
 <map id="VMPS::Hubbard" name="VMPS::Hubbard">
-<area shape="rect" id="node1" title="Hubbard model without any symmetries. MPO representation of the Hubbard model corresponding to Hubbar..." alt="" coords="235,184,357,211"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="5,102,192,129"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="11,5,187,47"/>
-<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="217,95,375,136"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="399,102,518,129"/>
+<area shape="rect" id="node1" title="Hubbard model without any symmetries. MPO representation of the Hubbard model corresponding to Hubbar..." alt="" coords="235,181,357,207"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="5,101,192,126"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="11,5,187,45"/>
+<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="217,93,375,133"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="399,101,518,126"/>
 </map>

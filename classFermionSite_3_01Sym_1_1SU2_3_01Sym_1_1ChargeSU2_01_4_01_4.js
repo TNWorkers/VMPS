@@ -6,7 +6,7 @@ var classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4 =
     [ "Symmetry", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#afa4c9f794433daf533fd61c8b6eebd23", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#a64eab2b3aebdef4d5353e8d74a1edb09", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#ab5cf7e55641c2e6712e7aa9356ee7e10", null ],
-    [ "basis_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#ad45a7d54b7652bdec295fd149f7b76fe", null ],
+    [ "basis_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#a00dc472159e82ea5d042d304acaf80de", null ],
     [ "c_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#a6bfd15e78482d039a8506f18647b7df6", null ],
     [ "cdag_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#aac4a511cf50f172343ed5e6177952738", null ],
     [ "exp_ipiSz_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1ChargeSU2_01_4_01_4.html#a50f62c9883477a4b63db10a4de31f0a0", null ],

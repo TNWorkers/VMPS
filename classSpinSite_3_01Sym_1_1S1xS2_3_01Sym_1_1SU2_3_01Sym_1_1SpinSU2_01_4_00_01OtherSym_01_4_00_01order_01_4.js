@@ -5,7 +5,7 @@ var classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01O
     [ "Symmetry", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#aaaa60f0573fc6a7e599c900a95c7fc67", null ],
     [ "SpinSite", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a8fc806582b40babe728d54a3478ca7fb", null ],
     [ "SpinSite", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a1531ebb7dd41ff296fcf1384074fa03b", null ],
-    [ "basis_1s", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a3543f6132083f41fe984e189c3aa2ec8", null ],
+    [ "basis_1s", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#adaa4c86b3c27cfe9a811543d08ee914a", null ],
     [ "Id_1s", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a8047cad762e9eb7baaf6b0b289fa52a8", null ],
     [ "Q_1s", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a3ed785dc4bcdae8474e995c5f98c6b49", null ],
     [ "S_1s", "classSpinSite_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01OtherSym_01_4_00_01order_01_4.html#a60394a415aae1a30d8856eb9790d5ef1", null ],

@@ -1,7 +1,7 @@
 <map id="VMPS::PeierlsHubbardU1xZN" name="VMPS::PeierlsHubbardU1xZN">
-<area shape="rect" id="node1" title=" " alt="" coords="552,144,763,171"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="258,5,475,91"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,27,181,69"/>
-<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,115,504,200"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="307,224,426,251"/>
+<area shape="rect" id="node1" title=" " alt="" coords="552,91,763,117"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="269,13,465,38"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,45"/>
+<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,62,504,146"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="307,170,426,195"/>
 </map>

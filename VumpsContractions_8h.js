@@ -1,9 +1,9 @@
 var VumpsContractions_8h =
 [
-    [ "calc_LReigen", "VumpsContractions_8h.html#a7682967d4017d7d841ed76c6c28f061d", null ],
+    [ "calc_LReigen", "VumpsContractions_8h.html#aa0ad91ab22d4e74085b3d478fe96b385", null ],
     [ "contract_WW", "VumpsContractions_8h.html#a0f1b29421ba6dccab03ca81ca40dd863", null ],
-    [ "make_hL", "VumpsContractions_8h.html#af0821f2d36346d8cfd3b782eef1399a1", null ],
-    [ "make_hR", "VumpsContractions_8h.html#a9d85442723fa4a8b4600bf2a6834e359", null ],
-    [ "make_YL", "VumpsContractions_8h.html#a70b49197b2efbf911b6ab3fa2cb2b859", null ],
-    [ "make_YR", "VumpsContractions_8h.html#a32a99eb3abec4c63444a03784985709a", null ]
+    [ "make_hL", "VumpsContractions_8h.html#af714534c4d189d6cc9a5a7e1927ac0f9", null ],
+    [ "make_hR", "VumpsContractions_8h.html#a3a1157fcb51a7022f86a687fc5f29e09", null ],
+    [ "make_YL", "VumpsContractions_8h.html#a2d034715034fd267a337c887466c9226", null ],
+    [ "make_YR", "VumpsContractions_8h.html#a359641de35d5d32a53b7b8bb849b33cf", null ]
 ];

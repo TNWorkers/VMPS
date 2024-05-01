@@ -1,7 +1,7 @@
 <map id="VMPS::HubbardSU2xU1" name="VMPS::HubbardSU2xU1">
-<area shape="rect" id="node1" title="Hubbard Model." alt="" coords="487,122,661,149"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="233,5,435,76"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,20,181,61"/>
-<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,100,439,171"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="275,195,393,222"/>
+<area shape="rect" id="node1" title="Hubbard Model." alt="" coords="487,85,661,110"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="236,13,432,38"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,45"/>
+<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,63,439,132"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="275,157,393,182"/>
 </map>

@@ -1,5 +1,5 @@
 var Basis_8h =
 [
-    [ "fuseData", "structBasis_1_1fuseData.html", "structBasis_1_1fuseData" ],
-    [ "operator<<", "Basis_8h.html#aa825ad360ac1019a58186e98535ea997", null ]
+    [ "Basis::fuseData", "structBasis_1_1fuseData.html", "structBasis_1_1fuseData" ],
+    [ "operator<<", "Basis_8h.html#ab4f7826145bd93105614e96a453f01f9", null ]
 ];

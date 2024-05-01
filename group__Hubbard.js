@@ -1,18 +1,18 @@
 var group__Hubbard =
 [
-    [ "Hubbard", "classVMPS_1_1Hubbard.html", [
+    [ "VMPS::Hubbard", "classVMPS_1_1Hubbard.html", [
       [ "Symmetry", "classVMPS_1_1Hubbard.html#a05b8a4cd61485709cea826b8c0c26b6f", null ],
       [ "Hubbard", "classVMPS_1_1Hubbard.html#abad01dfbb6d39448abc18df577cf5988", null ],
       [ "Hubbard", "classVMPS_1_1Hubbard.html#aab0bfeabf352845a4933f6f5f75d05dd", null ],
       [ "Hubbard", "classVMPS_1_1Hubbard.html#a11efd944976158f74ae94de7e1f4d245", null ],
-      [ "add_operators", "classVMPS_1_1Hubbard.html#a579941e9f989ba5a415cd71026885ccc", null ],
+      [ "add_operators", "classVMPS_1_1Hubbard.html#a32fb333ddcd7b03e38b77ee7921a5713", null ],
       [ "ref", "classVMPS_1_1Hubbard.html#a4a3ad744afa9a2226256f1f0d7f1d255", null ],
-      [ "singlet", "classVMPS_1_1Hubbard.html#a82b289576749290c479694fb58e044cc", null ],
+      [ "singlet", "classVMPS_1_1Hubbard.html#a2549aedb90e8f6824b5f7d661404ba1c", null ],
       [ "defaults", "classVMPS_1_1Hubbard.html#a7086f848856c42baeddae07aad40b682", null ],
       [ "FAMILY", "classVMPS_1_1Hubbard.html#a53f5a2f7d42018df9dc538a7b7ece419", null ],
       [ "spinfac", "classVMPS_1_1Hubbard.html#a7cdf47b241f378dae407486bce2ac6ac", null ]
     ] ],
-    [ "HubbardSU2", "classVMPS_1_1HubbardSU2.html", [
+    [ "VMPS::HubbardSU2", "classVMPS_1_1HubbardSU2.html", [
       [ "Index", "classVMPS_1_1HubbardSU2.html#a3640b56cead6e3606c595665536eb0b5", null ],
       [ "MatrixType", "classVMPS_1_1HubbardSU2.html#a7ee7f4c593ad57608e68ae707f6d0ee2", null ],
       [ "OperatorType", "classVMPS_1_1HubbardSU2.html#a725c9ba5f51b27b0b038d5a7382c7170", null ],
@@ -21,14 +21,14 @@ var group__Hubbard =
       [ "HubbardSU2", "classVMPS_1_1HubbardSU2.html#abace071ada73c141e06f92caf45580e0", null ],
       [ "HubbardSU2", "classVMPS_1_1HubbardSU2.html#aa626ef251c0dcb00d1077b6e47df45a5", null ],
       [ "HubbardSU2", "classVMPS_1_1HubbardSU2.html#a6463fd47e2aa81155fca81dcec63fa52", null ],
-      [ "add_operators", "classVMPS_1_1HubbardSU2.html#a5992286f2025ecf09c44f11ce56f9736", null ],
-      [ "singlet", "classVMPS_1_1HubbardSU2.html#a92d4ce9eefe3661abf1a4a79b85a665e", null ],
+      [ "add_operators", "classVMPS_1_1HubbardSU2.html#a0f5f6937b3b2dbba2d40056c0f2bcca6", null ],
+      [ "singlet", "classVMPS_1_1HubbardSU2.html#a93917fcaaa4643e4908cfba893add0cd", null ],
       [ "defaults", "classVMPS_1_1HubbardSU2.html#a96c1c41c143388d4e8826c338dea2229", null ],
       [ "FAMILY", "classVMPS_1_1HubbardSU2.html#ab0b6dd694c09bd9ca443ba45d43f8903", null ],
       [ "spinfac", "classVMPS_1_1HubbardSU2.html#af1e162b8332bed4c7539b482b5a65996", null ],
       [ "sweep_defaults", "classVMPS_1_1HubbardSU2.html#ae585ba2f1bc4bfba8cd697ca31de0fe7", null ]
     ] ],
-    [ "HubbardSU2xSU2", "classVMPS_1_1HubbardSU2xSU2.html", [
+    [ "VMPS::HubbardSU2xSU2", "classVMPS_1_1HubbardSU2xSU2.html", [
       [ "Index", "classVMPS_1_1HubbardSU2xSU2.html#a8ba9c4722d3e9ca0274804948180b9ca", null ],
       [ "MatrixType", "classVMPS_1_1HubbardSU2xSU2.html#af5f6853e22f5ff347426de4ca892b6f7", null ],
       [ "OperatorType", "classVMPS_1_1HubbardSU2xSU2.html#a87992203bd866306c86e92c09b560cb3", null ],
@@ -37,16 +37,16 @@ var group__Hubbard =
       [ "HubbardSU2xSU2", "classVMPS_1_1HubbardSU2xSU2.html#a18b07ba1687fb99c73d4d4d7bc58ecd3", null ],
       [ "HubbardSU2xSU2", "classVMPS_1_1HubbardSU2xSU2.html#a69798bd37611dd98efb7ef1220c3a8cf", null ],
       [ "HubbardSU2xSU2", "classVMPS_1_1HubbardSU2xSU2.html#a091a7f63e0cfd12da2b3f05117a8e5a9", null ],
-      [ "B", "classVMPS_1_1HubbardSU2xSU2.html#a5e4cfda5d721de4b7cb5f709bb8eda42", null ],
+      [ "B", "classVMPS_1_1HubbardSU2xSU2.html#ab8c52542ab22f666220879ed67dd85bd", null ],
       [ "C", "classVMPS_1_1HubbardSU2xSU2.html#a23b3a884cabf46c1476d0954e28183c4", null ],
-      [ "set_operators", "classVMPS_1_1HubbardSU2xSU2.html#acfd7d975c0a00b20019290c4353b43e9", null ],
-      [ "singlet", "classVMPS_1_1HubbardSU2xSU2.html#a1039e5c630ebcec7d10f19115502bcc4", null ],
+      [ "set_operators", "classVMPS_1_1HubbardSU2xSU2.html#adb15c9553ed11b28e9478ed232277029", null ],
+      [ "singlet", "classVMPS_1_1HubbardSU2xSU2.html#a56a30449267a54a99fa8555e96f74d5e", null ],
       [ "defaults", "classVMPS_1_1HubbardSU2xSU2.html#a07bbf0428d5c2c9541c895143b46f82e", null ],
       [ "FAMILY", "classVMPS_1_1HubbardSU2xSU2.html#aab52af7a948f1b8c9503dc20f80e281b", null ],
       [ "spinfac", "classVMPS_1_1HubbardSU2xSU2.html#a173b247832d6e529269b8eb0e58600f3", null ],
       [ "sweep_defaults", "classVMPS_1_1HubbardSU2xSU2.html#a65c44bf2898bf1e5c1dc73fc9aa206f9", null ]
     ] ],
-    [ "HubbardSU2xU1", "classVMPS_1_1HubbardSU2xU1.html", [
+    [ "VMPS::HubbardSU2xU1", "classVMPS_1_1HubbardSU2xU1.html", [
       [ "Index", "classVMPS_1_1HubbardSU2xU1.html#abef4a8394d666ab75b87d59bb193960c", null ],
       [ "MatrixType", "classVMPS_1_1HubbardSU2xU1.html#a0201bf285d87a58d0c816c485b3a7a0d", null ],
       [ "OperatorType", "classVMPS_1_1HubbardSU2xU1.html#af9c10fb422818b9bf943ac17a3632180", null ],
@@ -55,20 +55,20 @@ var group__Hubbard =
       [ "HubbardSU2xU1", "classVMPS_1_1HubbardSU2xU1.html#ae86ec98062b44eb134cca15503c377a7", null ],
       [ "HubbardSU2xU1", "classVMPS_1_1HubbardSU2xU1.html#a2726c5f0f224a75b4b1d29a0cd209098", null ],
       [ "HubbardSU2xU1", "classVMPS_1_1HubbardSU2xU1.html#a6314656f74e4be598b805e37fc27993d", null ],
-      [ "set_operators", "classVMPS_1_1HubbardSU2xU1.html#aa6118eebc57e71cc55da01957348532c", null ],
-      [ "singlet", "classVMPS_1_1HubbardSU2xU1.html#a2b6e59f4183325bf3d0c823c69394bb9", null ],
+      [ "set_operators", "classVMPS_1_1HubbardSU2xU1.html#ac4cdb410709aa6afe957deb140b20110", null ],
+      [ "singlet", "classVMPS_1_1HubbardSU2xU1.html#a8117ef1279b38f0417306c7dfba99245", null ],
       [ "defaults", "classVMPS_1_1HubbardSU2xU1.html#a6423c916d69c8061cd053bd2bd636277", null ],
       [ "FAMILY", "classVMPS_1_1HubbardSU2xU1.html#ad28814236c8368c06b16a4568029a1e1", null ],
       [ "spinfac", "classVMPS_1_1HubbardSU2xU1.html#a4b2cc0421619032e2a8d7937024c9ca3", null ],
       [ "sweep_defaults", "classVMPS_1_1HubbardSU2xU1.html#a653d053387ae511bfbb2293cc1e95a0e", null ]
     ] ],
-    [ "HubbardU1xU1", "classVMPS_1_1HubbardU1xU1.html", [
+    [ "VMPS::HubbardU1xU1", "classVMPS_1_1HubbardU1xU1.html", [
       [ "Symmetry", "classVMPS_1_1HubbardU1xU1.html#a74286790730bf062691cac5053064b39", null ],
       [ "HubbardU1xU1", "classVMPS_1_1HubbardU1xU1.html#afae04e5477e8339017d8f0260d61b29e", null ],
       [ "HubbardU1xU1", "classVMPS_1_1HubbardU1xU1.html#a2214b20f0b0e1e9325b97ff071ed00a5", null ],
       [ "HubbardU1xU1", "classVMPS_1_1HubbardU1xU1.html#adf68d54f8ddb30042a27a693db222308", null ],
-      [ "set_operators", "classVMPS_1_1HubbardU1xU1.html#a3899141ae13d8bebd4ab78f18fbb07fc", null ],
-      [ "singlet", "classVMPS_1_1HubbardU1xU1.html#afe5b6753b373fa081c4bcf95ddb629df", null ],
+      [ "set_operators", "classVMPS_1_1HubbardU1xU1.html#a3166c3737758a121c4842dd5ccda3928", null ],
+      [ "singlet", "classVMPS_1_1HubbardU1xU1.html#ae7840951e386b9c3e60ac2777fdc4a5c", null ],
       [ "defaults", "classVMPS_1_1HubbardU1xU1.html#a78e0fa63e75f2fc616bd9609d2fc7b1a", null ],
       [ "FAMILY", "classVMPS_1_1HubbardU1xU1.html#a9752d490528056f8d52c3bea7d680234", null ],
       [ "spinfac", "classVMPS_1_1HubbardU1xU1.html#a623745ec2874015b35e39b5b0cd7471a", null ]

@@ -7,7 +7,7 @@ var classVMPS_1_1KondoNecklaceSU2 =
     [ "Symmetry", "classVMPS_1_1KondoNecklaceSU2.html#afe64defd3370c04e0dc9e4d16c8472b1", null ],
     [ "KondoNecklaceSU2", "classVMPS_1_1KondoNecklaceSU2.html#ae766a867a60257523ba36cf7577a3186", null ],
     [ "KondoNecklaceSU2", "classVMPS_1_1KondoNecklaceSU2.html#a06510abe7244d22d31fd0cea309f44dc", null ],
-    [ "set_operators", "classVMPS_1_1KondoNecklaceSU2.html#a849108e92ba0759f0f4ddbc2d4b73223", null ],
+    [ "set_operators", "classVMPS_1_1KondoNecklaceSU2.html#a3a0e27fb40855bf768cb13a7933edb0c", null ],
     [ "validate", "classVMPS_1_1KondoNecklaceSU2.html#a121bbdba6c6467d73c88b7d7cfdc6dcf", null ],
     [ "defaults", "classVMPS_1_1KondoNecklaceSU2.html#a3e98603ebbf7379383d1bf1b2a71a772", null ],
     [ "FAMILY", "classVMPS_1_1KondoNecklaceSU2.html#afb1b71da65cc52c303c85f29c9acf31a", null ],

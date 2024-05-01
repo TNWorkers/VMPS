@@ -1,8 +1,8 @@
 <map id="HeisenbergU1.h" name="HeisenbergU1.h">
-<area shape="rect" id="node1" title=" " alt="" coords="173,5,300,32"/>
-<area shape="rect" id="node2" href="$HeisenbergU1XXZ_8h.html" title=" " alt="" coords="5,80,159,107"/>
-<area shape="rect" id="node3" href="$Heisenberg_8h.html" title=" " alt="" coords="183,80,291,107"/>
-<area shape="rect" id="node6" href="$HeisenbergU1Complex_8h.html" title=" " alt="" coords="315,80,499,107"/>
-<area shape="rect" id="node4" href="$HeisenbergXXZ_8h.html" title=" " alt="" coords="89,155,224,181"/>
-<area shape="rect" id="node5" href="$HeisenbergXYZ_8h.html" title=" " alt="" coords="248,155,383,181"/>
+<area shape="rect" id="node1" title=" " alt="" coords="259,5,385,31"/>
+<area shape="rect" id="node2" href="$Heisenberg_8h.html" title=" " alt="" coords="97,79,205,104"/>
+<area shape="rect" id="node5" href="$HeisenbergU1Complex_8h.html" title=" " alt="" coords="230,79,414,104"/>
+<area shape="rect" id="node6" href="$HeisenbergU1XXZ_8h.html" title=" " alt="" coords="439,79,592,104"/>
+<area shape="rect" id="node3" href="$HeisenbergXXZ_8h.html" title=" " alt="" coords="5,152,140,177"/>
+<area shape="rect" id="node4" href="$HeisenbergXYZ_8h.html" title=" " alt="" coords="164,152,299,177"/>
 </map>

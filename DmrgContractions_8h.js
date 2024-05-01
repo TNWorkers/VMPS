@@ -25,7 +25,7 @@ var DmrgContractions_8h =
     [ "contract_R", "group__Tensors.html#ga509e12aabe3a1fa8e089cf5def34f9ca", null ],
     [ "contract_R", "group__Tensors.html#ga4575410a500bc6f4d14dee640af53128", null ],
     [ "contract_R", "group__Tensors.html#ga41283dd40d265ac7ddc524ee675923ff", null ],
-    [ "extend_A", "DmrgContractions_8h.html#aa82070492cdddb545aa777f9530a1473", null ],
+    [ "extend_A", "DmrgContractions_8h.html#a86af14b2266a487e52fe32bd7a1af1a5", null ],
     [ "extend_A", "DmrgContractions_8h.html#a1b41dcfcbb5588f9a1d74009251175b7", null ],
     [ "split_AA", "DmrgContractions_8h.html#aa9bcc31ec4b20ecadf0b73f6d7a564f8", null ],
     [ "split_AA", "DmrgContractions_8h.html#adbd0ba40b4253daf158020b7b967f183", null ],

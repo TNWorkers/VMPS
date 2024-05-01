@@ -1,7 +1,7 @@
 <map id="VMPS::KondoSU2xSU2" name="VMPS::KondoSU2xSU2">
-<area shape="rect" id="node1" title=" " alt="" coords="495,122,661,149"/>
-<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="229,5,447,76"/>
-<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,20,181,61"/>
-<area shape="rect" id="node4" href="$classKondoObservables.html" title=" " alt="" coords="242,100,434,171"/>
-<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="279,195,397,222"/>
+<area shape="rect" id="node1" title=" " alt="" coords="473,85,640,110"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="229,13,425,38"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,45"/>
+<area shape="rect" id="node4" href="$classKondoObservables.html" title=" " alt="" coords="231,63,423,132"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="268,157,387,182"/>
 </map>

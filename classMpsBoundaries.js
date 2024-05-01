@@ -3,7 +3,7 @@ var classMpsBoundaries =
     [ "MatrixType", "classMpsBoundaries.html#a0640d1f78d7b214d4c9c230c398f061a", null ],
     [ "MpsBoundaries", "classMpsBoundaries.html#a5dbc4640b98d4796fae61c0d6a4d18a9", null ],
     [ "MpsBoundaries", "classMpsBoundaries.html#a48bf032c2d34df6cdfe88eb760d28206", null ],
-    [ "cast", "classMpsBoundaries.html#aa8130cb27d11c587efba9a4270865dd1", null ],
+    [ "cast", "classMpsBoundaries.html#a078ceb9490b1a2eecf764405b47f2375", null ],
     [ "IS_TRIVIAL", "classMpsBoundaries.html#aec0cb1728a104700df82679f32b88d0d", null ],
     [ "length", "classMpsBoundaries.html#a274330b53a4fbd3d045ce73c8aa69b12", null ],
     [ "set_open_bc", "classMpsBoundaries.html#a7f01849112525647e6c9fd3f184a4703", null ],

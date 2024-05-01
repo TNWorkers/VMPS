@@ -1,24 +1,24 @@
 var annotated =
 [
-    [ "std", null, [
+    [ "std", "namespacestd.html", [
+      [ "hash< qarray< Nq > >", "structstd_1_1hash_3_01qarray_3_01Nq_01_4_01_4.html", "structstd_1_1hash_3_01qarray_3_01Nq_01_4_01_4" ],
       [ "hash< std::array< int, N > >", "structstd_1_1hash_3_01std_1_1array_3_01int_00_01N_01_4_01_4.html", "structstd_1_1hash_3_01std_1_1array_3_01int_00_01N_01_4_01_4" ],
       [ "hash< std::array< qarray< Nq >, Nlegs > >", "structstd_1_1hash_3_01std_1_1array_3_01qarray_3_01Nq_01_4_00_01Nlegs_01_4_01_4.html", "structstd_1_1hash_3_01std_1_1array_3_01qarray_3_01Nq_01_4_00_01Nlegs_01_4_01_4" ],
-      [ "hash< std::tuple< size_t, size_t, size_t, qarray< Nq >, qarray< Nq > > >", "structstd_1_1hash_3_01std_1_1tuple_3_01size__t_00_01size__t_00_01size__t_00_01qarray_3_01Nq_01_4c3b2075fee2e17e8b0f7d1a3920ed04a.html", "structstd_1_1hash_3_01std_1_1tuple_3_01size__t_00_01size__t_00_01size__t_00_01qarray_3_01Nq_01_4c3b2075fee2e17e8b0f7d1a3920ed04a" ],
-      [ "hash< std::pair< qarray< Nq >, size_t > >", "structstd_1_1hash_3_01std_1_1pair_3_01qarray_3_01Nq_01_4_00_01size__t_01_4_01_4.html", "structstd_1_1hash_3_01std_1_1pair_3_01qarray_3_01Nq_01_4_00_01size__t_01_4_01_4" ],
       [ "hash< std::array< size_t, 2 > >", "structstd_1_1hash_3_01std_1_1array_3_01size__t_00_012_01_4_01_4.html", "structstd_1_1hash_3_01std_1_1array_3_01size__t_00_012_01_4_01_4" ],
-      [ "hash< qarray< Nq > >", "structstd_1_1hash_3_01qarray_3_01Nq_01_4_01_4.html", "structstd_1_1hash_3_01qarray_3_01Nq_01_4_01_4" ]
+      [ "hash< std::pair< qarray< Nq >, size_t > >", "structstd_1_1hash_3_01std_1_1pair_3_01qarray_3_01Nq_01_4_00_01size__t_01_4_01_4.html", "structstd_1_1hash_3_01std_1_1pair_3_01qarray_3_01Nq_01_4_00_01size__t_01_4_01_4" ],
+      [ "hash< std::tuple< size_t, size_t, size_t, qarray< Nq >, qarray< Nq > > >", "structstd_1_1hash_3_01std_1_1tuple_3_01size__t_00_01size__t_00_01size__t_00_01qarray_3_01Nq_01_4c3b2075fee2e17e8b0f7d1a3920ed04a.html", "structstd_1_1hash_3_01std_1_1tuple_3_01size__t_00_01size__t_00_01size__t_00_01qarray_3_01Nq_01_4c3b2075fee2e17e8b0f7d1a3920ed04a" ]
     ] ],
     [ "Sym", "namespaceSym.html", [
-      [ "SpinSU2", "structSym_1_1SpinSU2.html", "structSym_1_1SpinSU2" ],
       [ "AltSpinSU2", "structSym_1_1AltSpinSU2.html", "structSym_1_1AltSpinSU2" ],
-      [ "SpinU1", "structSym_1_1SpinU1.html", "structSym_1_1SpinU1" ],
+      [ "ChargeDn", "structSym_1_1ChargeDn.html", "structSym_1_1ChargeDn" ],
       [ "ChargeSU2", "structSym_1_1ChargeSU2.html", "structSym_1_1ChargeSU2" ],
       [ "ChargeU1", "structSym_1_1ChargeU1.html", "structSym_1_1ChargeU1" ],
       [ "ChargeUp", "structSym_1_1ChargeUp.html", "structSym_1_1ChargeUp" ],
-      [ "ChargeDn", "structSym_1_1ChargeDn.html", "structSym_1_1ChargeDn" ],
       [ "ChargeZ2", "structSym_1_1ChargeZ2.html", "structSym_1_1ChargeZ2" ],
       [ "Momentum", "structSym_1_1Momentum.html", "structSym_1_1Momentum" ],
       [ "S1xS2", "classSym_1_1S1xS2.html", "classSym_1_1S1xS2" ],
+      [ "SpinSU2", "structSym_1_1SpinSU2.html", "structSym_1_1SpinSU2" ],
+      [ "SpinU1", "structSym_1_1SpinU1.html", "structSym_1_1SpinU1" ],
       [ "SU2", "classSym_1_1SU2.html", "classSym_1_1SU2" ],
       [ "SUN", "classSym_1_1SUN.html", "classSym_1_1SUN" ],
       [ "U0", "classSym_1_1U0.html", "classSym_1_1U0" ],
@@ -27,16 +27,13 @@ var annotated =
     ] ],
     [ "VMPS", "namespaceVMPS.html", [
       [ "DIRECTION", "structVMPS_1_1DIRECTION.html", "structVMPS_1_1DIRECTION" ],
-      [ "SpinlessFermions", "classVMPS_1_1SpinlessFermions.html", "classVMPS_1_1SpinlessFermions" ],
-      [ "SpinlessFermionsU1", "classVMPS_1_1SpinlessFermionsU1.html", "classVMPS_1_1SpinlessFermionsU1" ],
-      [ "SpinlessFermionsZ2", "classVMPS_1_1SpinlessFermionsZ2.html", "classVMPS_1_1SpinlessFermionsZ2" ],
-      [ "HeisenbergU1XXZ", "classVMPS_1_1HeisenbergU1XXZ.html", "classVMPS_1_1HeisenbergU1XXZ" ],
-      [ "HeisenbergXXZ", "classVMPS_1_1HeisenbergXXZ.html", "classVMPS_1_1HeisenbergXXZ" ],
       [ "DoubleHeisenbergSU2", "classVMPS_1_1DoubleHeisenbergSU2.html", "classVMPS_1_1DoubleHeisenbergSU2" ],
       [ "Heisenberg", "classVMPS_1_1Heisenberg.html", "classVMPS_1_1Heisenberg" ],
       [ "HeisenbergSU2", "classVMPS_1_1HeisenbergSU2.html", "classVMPS_1_1HeisenbergSU2" ],
       [ "HeisenbergU1", "classVMPS_1_1HeisenbergU1.html", "classVMPS_1_1HeisenbergU1" ],
       [ "HeisenbergU1Complex", "classVMPS_1_1HeisenbergU1Complex.html", "classVMPS_1_1HeisenbergU1Complex" ],
+      [ "HeisenbergU1XXZ", "classVMPS_1_1HeisenbergU1XXZ.html", "classVMPS_1_1HeisenbergU1XXZ" ],
+      [ "HeisenbergXXZ", "classVMPS_1_1HeisenbergXXZ.html", "classVMPS_1_1HeisenbergXXZ" ],
       [ "HeisenbergXYZ", "classVMPS_1_1HeisenbergXYZ.html", "classVMPS_1_1HeisenbergXYZ" ],
       [ "Hubbard", "classVMPS_1_1Hubbard.html", "classVMPS_1_1Hubbard" ],
       [ "HubbardComplex", "classVMPS_1_1HubbardComplex.html", "classVMPS_1_1HubbardComplex" ],
@@ -65,26 +62,15 @@ var annotated =
       [ "PeierlsHubbardU1", "classVMPS_1_1PeierlsHubbardU1.html", "classVMPS_1_1PeierlsHubbardU1" ],
       [ "PeierlsHubbardU1xSU2", "classVMPS_1_1PeierlsHubbardU1xSU2.html", "classVMPS_1_1PeierlsHubbardU1xSU2" ],
       [ "PeierlsHubbardU1xU1", "classVMPS_1_1PeierlsHubbardU1xU1.html", "classVMPS_1_1PeierlsHubbardU1xU1" ],
-      [ "PeierlsHubbardU1xZN", "classVMPS_1_1PeierlsHubbardU1xZN.html", "classVMPS_1_1PeierlsHubbardU1xZN" ]
+      [ "PeierlsHubbardU1xZN", "classVMPS_1_1PeierlsHubbardU1xZN.html", "classVMPS_1_1PeierlsHubbardU1xZN" ],
+      [ "SpinlessFermions", "classVMPS_1_1SpinlessFermions.html", "classVMPS_1_1SpinlessFermions" ],
+      [ "SpinlessFermionsU1", "classVMPS_1_1SpinlessFermionsU1.html", "classVMPS_1_1SpinlessFermionsU1" ],
+      [ "SpinlessFermionsZ2", "classVMPS_1_1SpinlessFermionsZ2.html", "classVMPS_1_1SpinlessFermionsZ2" ]
     ] ],
     [ "Basis", "classBasis.html", "classBasis" ],
     [ "Biped", "structBiped.html", "structBiped" ],
     [ "Blocker", "classBlocker.html", "classBlocker" ],
-    [ "DMRG", "structDMRG.html", [
-      [ "BROOM", "structDMRG_1_1BROOM.html", "structDMRG_1_1BROOM" ],
-      [ "COMPRESSION", "structDMRG_1_1COMPRESSION.html", "structDMRG_1_1COMPRESSION" ],
-      [ "CONTROL", "structDMRG_1_1CONTROL.html", [
-        [ "DEFAULT", "structDMRG_1_1CONTROL_1_1DEFAULT.html", "structDMRG_1_1CONTROL_1_1DEFAULT" ],
-        [ "DYN", "structDMRG_1_1CONTROL_1_1DYN.html", "structDMRG_1_1CONTROL_1_1DYN" ],
-        [ "GLOB", "structDMRG_1_1CONTROL_1_1GLOB.html", "structDMRG_1_1CONTROL_1_1GLOB" ],
-        [ "LOC", "structDMRG_1_1CONTROL_1_1LOC.html", "structDMRG_1_1CONTROL_1_1LOC" ]
-      ] ],
-      [ "CONVTEST", "structDMRG_1_1CONVTEST.html", "structDMRG_1_1CONVTEST" ],
-      [ "DIRECTION", "structDMRG_1_1DIRECTION.html", "structDMRG_1_1DIRECTION" ],
-      [ "ITERATION", "structDMRG_1_1ITERATION.html", "structDMRG_1_1ITERATION" ],
-      [ "RESIZE", "structDMRG_1_1RESIZE.html", "structDMRG_1_1RESIZE" ],
-      [ "VERBOSITY", "structDMRG_1_1VERBOSITY.html", "structDMRG_1_1VERBOSITY" ]
-    ] ],
+    [ "DMRG", "structDMRG.html", "structDMRG" ],
     [ "DmrgJanitor", "classDmrgJanitor.html", "classDmrgJanitor" ],
     [ "DmrgSolver", "classDmrgSolver.html", "classDmrgSolver" ],
     [ "DoubleHeisenbergObservables", "classDoubleHeisenbergObservables.html", "classDoubleHeisenbergObservables" ],
@@ -167,14 +153,6 @@ var annotated =
     [ "Umps", "classUmps.html", "classUmps" ],
     [ "UMPS_ALG", "structUMPS__ALG.html", "structUMPS__ALG" ],
     [ "UmpsCompressor", "classUmpsCompressor.html", "classUmpsCompressor" ],
-    [ "VUMPS", "structVUMPS.html", [
-      [ "CONTROL", "structVUMPS_1_1CONTROL.html", [
-        [ "DEFAULT", "structVUMPS_1_1CONTROL_1_1DEFAULT.html", "structVUMPS_1_1CONTROL_1_1DEFAULT" ],
-        [ "DYN", "structVUMPS_1_1CONTROL_1_1DYN.html", "structVUMPS_1_1CONTROL_1_1DYN" ],
-        [ "GLOB", "structVUMPS_1_1CONTROL_1_1GLOB.html", "structVUMPS_1_1CONTROL_1_1GLOB" ],
-        [ "LOC", "structVUMPS_1_1CONTROL_1_1LOC.html", "structVUMPS_1_1CONTROL_1_1LOC" ]
-      ] ],
-      [ "TWOSITE_A", "structVUMPS_1_1TWOSITE__A.html", "structVUMPS_1_1TWOSITE__A" ]
-    ] ],
+    [ "VUMPS", "structVUMPS.html", "structVUMPS" ],
     [ "VumpsSolver", "classVumpsSolver.html", "classVumpsSolver" ]
 ];

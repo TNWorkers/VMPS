@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['nuclearinfo_2160',['NuclearInfo',['../structNuclearInfo.html',1,'']]],
-  ['nuclearmanager_2161',['NuclearManager',['../classNuclearManager.html',1,'']]]
+  ['nuclearinfo_0',['NuclearInfo',['../structNuclearInfo.html',1,'']]],
+  ['nuclearmanager_1',['NuclearManager',['../classNuclearManager.html',1,'']]]
 ];

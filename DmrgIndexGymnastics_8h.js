@@ -5,7 +5,7 @@ var DmrgIndexGymnastics_8h =
     [ "AAWWAA", "DmrgIndexGymnastics_8h.html#aa12fad61c320311f3361611dcf15db2b", null ],
     [ "AWAR", "DmrgIndexGymnastics_8h.html#ae6b262f0a47be1e30dce7f4d410c27eb", null ],
     [ "AWWA", "DmrgIndexGymnastics_8h.html#a02c29719e7ee99387366eee2fe002255", null ],
-    [ "calc_qsplit", "DmrgIndexGymnastics_8h.html#ae7fc8d6cf67152cc833b91b62f081a1c", null ],
+    [ "calc_qsplit", "DmrgIndexGymnastics_8h.html#ac0a975ff1916178b4de899c617e5de3c", null ],
     [ "LAA", "DmrgIndexGymnastics_8h.html#abbbaa9f732acfcc017962413a8bf9cd9", null ],
     [ "LAWA", "DmrgIndexGymnastics_8h.html#ab4b607d06a9007a5397297431a4eb055", null ],
     [ "precalc_blockStructure", "DmrgIndexGymnastics_8h.html#ac2c724d0d38c14a94f84f842123924e0", null ],

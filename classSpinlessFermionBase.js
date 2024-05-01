@@ -10,7 +10,7 @@ var classSpinlessFermionBase =
     [ "c", "classSpinlessFermionBase.html#ae63c5929e3d3b5c83cd97b581de8a179", null ],
     [ "cdag", "classSpinlessFermionBase.html#a993b9ba128dd60d45515d4113d3a16b1", null ],
     [ "dim", "classSpinlessFermionBase.html#af12c4ebb16a677245477a2bca82aec57", null ],
-    [ "get_basis", "classSpinlessFermionBase.html#a9f223c23af9ae0705188c0ad37d13970", null ],
+    [ "get_basis", "classSpinlessFermionBase.html#ab86f6ebcc042df119ecf8197b62606de", null ],
     [ "Id", "classSpinlessFermionBase.html#a5e62805cea5747163ac2d9b7261f253d", null ],
     [ "make_operator", "classSpinlessFermionBase.html#a785cd7537dd7f5c92ddabeb2212b1fd5", null ],
     [ "n", "classSpinlessFermionBase.html#a02a5faf9f07a1041cf5baf1bb63100a7", null ],

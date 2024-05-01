@@ -4,7 +4,7 @@ var classSpinlessFermionSite =
     [ "Scalar", "classSpinlessFermionSite.html#a0dee27b5d8d51772636678f888693a36", null ],
     [ "Symmetry", "classSpinlessFermionSite.html#a389e4daf17fe8003613c1528439cabd9", null ],
     [ "SpinlessFermionSite", "classSpinlessFermionSite.html#a8ab1fee6c219291134459307b3a8a7c3", null ],
-    [ "basis_1s", "classSpinlessFermionSite.html#ac9705b16a7b5f907ddcc6935b14cae33", null ],
+    [ "basis_1s", "classSpinlessFermionSite.html#a7746a249ddd31f15c9d6b1991d2cbc98", null ],
     [ "c_1s", "classSpinlessFermionSite.html#abf2457934272c5ca827668268bf29056", null ],
     [ "cdag_1s", "classSpinlessFermionSite.html#a9f2878339bf849d7bd14c4229e0d8acb", null ],
     [ "F_1s", "classSpinlessFermionSite.html#afe6bdcfbbb2ff07c595559ed80d82b10", null ],

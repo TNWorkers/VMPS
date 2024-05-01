@@ -5,8 +5,8 @@ var classVMPS_1_1HeisenbergXYZ =
     [ "HeisenbergXYZ", "classVMPS_1_1HeisenbergXYZ.html#a83f60e924b562e1dca7876385237bbe1", null ],
     [ "HeisenbergXYZ", "classVMPS_1_1HeisenbergXYZ.html#af79984b8d74adb41cfb2d4ee0586c20f", null ],
     [ "HeisenbergXYZ", "classVMPS_1_1HeisenbergXYZ.html#a9219bfc7e687117cfdd2d542c045c79b", null ],
-    [ "add_operators", "classVMPS_1_1HeisenbergXYZ.html#a08e339b1e178327c9aedba106ee9382e", null ],
-    [ "singlet", "classVMPS_1_1HeisenbergXYZ.html#a4f7bd7dae9ecff730ed4a9589caa3095", null ],
+    [ "add_operators", "classVMPS_1_1HeisenbergXYZ.html#a4941cd22f5b6047c3b63a3834287d68a", null ],
+    [ "singlet", "classVMPS_1_1HeisenbergXYZ.html#a531fedbdb807af0e7990bc6db289ae30", null ],
     [ "defaults", "classVMPS_1_1HeisenbergXYZ.html#aa80375dedcce0f72a750f38209ba3e54", null ],
     [ "FAMILY", "classVMPS_1_1HeisenbergXYZ.html#aa1d85c699264e585a2654d7b63eab21a", null ]
 ];

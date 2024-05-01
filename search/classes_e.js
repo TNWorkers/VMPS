@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['orbinfo_2162',['orbinfo',['../structorbinfo.html',1,'']]],
-  ['orbital_2163',['orbital',['../structorbital.html',1,'']]]
+  ['orbinfo_0',['orbinfo',['../structorbinfo.html',1,'']]],
+  ['orbital_1',['orbital',['../structorbital.html',1,'']]]
 ];

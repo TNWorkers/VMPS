@@ -2,7 +2,7 @@ var GreenPropagator_8h =
 [
     [ "GreenPropagatorGlobal", "structGreenPropagatorGlobal.html", "structGreenPropagatorGlobal" ],
     [ "GreenPropagatorLog", "structGreenPropagatorLog.html", "structGreenPropagatorLog" ],
-    [ "GreenPropagator", "classGreenPropagator.html", "classGreenPropagator" ],
+    [ "GreenPropagator< Hamiltonian, Symmetry, MpoScalar, TimeScalar >", "classGreenPropagator.html", "classGreenPropagator" ],
     [ "GREEN_INTEGRATION", "GreenPropagator_8h.html#aaae41719762fbb6c1b044c0cfcdbd7b7", [
       [ "DIRECT", "GreenPropagator_8h.html#aaae41719762fbb6c1b044c0cfcdbd7b7a1ea328a644e627283a35716a54108248", null ],
       [ "INTERP", "GreenPropagator_8h.html#aaae41719762fbb6c1b044c0cfcdbd7b7a8284bdbdd3362f783d0a21ecd20a4f7d", null ],
@@ -13,5 +13,5 @@ var GreenPropagator_8h =
       [ "ZERO_2PI", "GreenPropagator_8h.html#a2bbd7fecb5c24d8fc307bc187bb9a88ca92c1f92f1717439bf7961e22c9fa6ee8", null ]
     ] ],
     [ "FT_interpol", "GreenPropagator_8h.html#a6b89ce0fa9c778b7b509ec4da32736a5", null ],
-    [ "operator<<", "GreenPropagator_8h.html#ac98b6bc80a7466fc1b4575bd0ee7829a", null ]
+    [ "operator<<", "GreenPropagator_8h.html#a8fd9fc74272d2668e23bf87bcbcda13c", null ]
 ];

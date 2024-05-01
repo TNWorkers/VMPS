@@ -52,23 +52,23 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "Basis_8h.html",
-"DmrgTypedefs_8h.html#ad2640c0802568ddb8141f313d8478654",
+"DmrgTypedefs_8h.html#ad9aaafe463ae259a41c6e2c930f929f4",
 "SU2Wrappers_8h.html#a9d1bc6f2e108b46e70ff81967b36981d",
 "classDmrgSolver.html#a4a6f0d07fc08c26bf2d25a610da1b03a",
-"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8af74ff9b551f24838ce49d0ece34ec9",
-"classGreenPropagator.html#a99cee9a396bf92c9eb3ffdb12b43301c",
+"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8dd6a6daefa1c9c74b2cd997863fa2fd",
+"classGreenPropagator.html#a9db5b08075489ce7ec5752067404963d",
 "classKondoNecklaceObservables.html#a1fa8978aa55db8eae37e1f04162dfc6c",
-"classMpoTerms.html#a8fb6d1b6202c928edf48a9c507334c68",
-"classNuclearManager.html#a42143e3951f11b88ac39d94fad940688",
-"classSpinBase.html#a4756d0f507c6ffa6f8faaac7281d3547",
+"classMpoTerms.html#a89d4a7d72e78c0e62b2c26fc154b91eb",
+"classNuclearManager.html#a425a60db7f7289ea4f3094b73886f723",
+"classSpinBase.html#a523598a98de7e57aa87fd01067090841",
 "classSym_1_1S1xS2.html#a6c1e29786e72ab151bd8d8da4dbbc6d0",
 "classSym_1_1ZN.html#a7bfd68f5c7cd3171be1444a9e640dbad",
-"classVMPS_1_1HeisenbergSU2.html#aa31ce72666650787b3e0921306f3bf70",
-"classVMPS_1_1KondoNecklaceU1.html#a899ac0587d8f3570dbfda8b68b265b34",
-"classVumpsSolver.html#a6ae9b19fc36c84d88aa9e54e1b45ab26",
-"structBiped.html#a8fdb7d529178c62b422523cf9fb2bada",
-"structMultipede.html#adb50ef0134179b742158188c0841dc70",
-"structVUMPS_1_1CONTROL_1_1DEFAULT.html#a7f3bbb12b47987aea7f4795e6d9971fc"
+"classVMPS_1_1HeisenbergSU2.html#a99073fd3b0c4a714bd5498e3952d3e6c",
+"classVMPS_1_1KondoNecklaceU1.html#a963c5f06b6b73e594ffb09a3e427dc42",
+"classVumpsSolver.html#a6e37d1a90bcf3eee0890effec5aab519",
+"structBiped.html#a6f3163f75ca162a1f48952498b1068d6",
+"structMultipede.html#ab072aaa9ad9821c064a9b9dd34bc70ac",
+"structVUMPS_1_1CONTROL_1_1DEFAULT.html#a381e77b148a7e97f47fe3fd229466549"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

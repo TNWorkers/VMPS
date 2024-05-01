@@ -2,6 +2,7 @@
 \usepackage{ifthen}
 \usepackage{epsfig}
 \usepackage[utf8]{inputenc}
+\usepackage{xcolor}
 \usepackage{newunicodechar}
   \newunicodechar{⁻}{${}^{-}$}% Superscript minus
   \newunicodechar{²}{${}^{2}$}% Superscript two
@@ -12,7 +13,12 @@
 $2^L$
 \pagebreak
 
-$c^{1/2} = \left( \begin{array}{c} -c_{\downarrow} \\ c_{\uparrow} \\ \end{array} \right)$
+$c^{1/2} = \left(
+\begin{array}{c}
+-c_{\downarrow} \\
+ c_{\uparrow} \\
+\end{array}
+\right)$
 \pagebreak
 
 $ m=+1/2$
@@ -24,7 +30,12 @@ $ m=-1/2$
 $ \left(c^{1/2}\right)^\dagger$
 \pagebreak
 
-$\left(c^{\dagger}\right)^{1/2} = \left( \begin{array}{c} c^\dagger_{\uparrow} \\ c^\dagger_{\downarrow} \\ \end{array} \right)$
+$\left(c^{\dagger}\right)^{1/2} = \left(
+\begin{array}{c}
+ c^\dagger_{\uparrow} \\
+ c^\dagger_{\downarrow} \\
+\end{array}
+\right)$
 \pagebreak
 
 $n_s=n-2d$
@@ -135,7 +146,8 @@ $\left|\Psi_{in}\right>$
 $\left|\Psi_{out}\right>$
 \pagebreak
 
-$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - B \left|\Psi_{in,2}\right>$
+$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - 
+B \left|\Psi_{in,2}\right>$
 \pagebreak
 
 $P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}$
@@ -174,7 +186,11 @@ $A_C$
 $C$
 \pagebreak
 
-\[ H = -t \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) +\Delta \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) -\mu \sum_i n_i \]
+\[
+H =  -t \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) 
+     +\Delta \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) 
+     -\mu \sum_i n_i
+\]
 \pagebreak
 
 $S^+=c$
@@ -189,7 +205,14 @@ $S^z=1/2-n$
 $F=2S^z$
 \pagebreak
 
-\[ H = J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J_z \sum_{<ij>} S^z_iS^z_j +J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J'_z \sum_{<<ij>>} S^z_iS^z_j -B_z \sum_i S^z_i +K_z \sum_i \left(S^z_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\[
+H =  J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J_z \sum_{<ij>} S^z_iS^z_j 
+    +J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J'_z \sum_{<<ij>>} S^z_iS^z_j 
+    -B_z \sum_i S^z_i
+    +K_z \sum_i \left(S^z_i\right)^2
+    -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+    -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+\]
 \pagebreak
 
 $S$
@@ -201,40 +224,87 @@ $S^z$
 $J>0$
 \pagebreak
 
-\[ H = J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) -B_z \sum_i S^z_i -B_x \sum_i S^x_i +K_z \sum_i \left(S^z_i\right)^2 +K_x \sum_i \left(S^x_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\[
+H =  J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+     J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+    -B_z \sum_i S^z_i
+    -B_x \sum_i S^x_i
+    +K_z \sum_i \left(S^z_i\right)^2
+    +K_x \sum_i \left(S^x_i\right)^2
+    -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+    -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+\]
 \pagebreak
 
 $J_x = J_y$
 \pagebreak
 
-\[ H = J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) +J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right) \]
+\[
+H =  J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+    +J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+\]
 \pagebreak
 
-\[ H = J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) -B_z \sum_i S^z_i +K_z \sum_i \left(S^z_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\[
+H =  J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+ +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+ -B_z \sum_i S^z_i
+ +K_z \sum_i \left(S^z_i\right)^2
+ -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+ -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+\]
 \pagebreak
 
-\[ H = \sum_{\alfa=x,y,z} \left( J_{\alfa} \sum_{<ij>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) +J'_{\alfa} \sum_{<<ij>>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) -B_{\alfa} \sum_i S^{\alfa}_i +K_{\alfa} \sum_i \left(S^{\alfa}_i\right)^2 \right) -\mathbf{D} \sum_{<ij>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) -\mathbf{D'} \sum_{<<ij>>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) \]
+\[
+H = \sum_{\alfa=x,y,z} \left(
+ J_{\alfa} \sum_{<ij>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) 
++J'_{\alfa} \sum_{<<ij>>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) 
+-B_{\alfa} \sum_i S^{\alfa}_i
++K_{\alfa} \sum_i \left(S^{\alfa}_i\right)^2
+\right)
+-\mathbf{D} \sum_{<ij>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) 
+-\mathbf{D'} \sum_{<<ij>>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) 
+\]
 \pagebreak
 
 $S_y$
 \pagebreak
 
-\[ -B_x \sum_{i} \sigma^x_i \]
+\[
+    -B_x \sum_{i} \sigma^x_i
+\]
 \pagebreak
 
-\[ \sigma^x_i = \frac{1}{2} \left(\sigma^+_i+\sigma^-_i\right) \]
+\[
+    \sigma^x_i = \frac{1}{2} \left(\sigma^+_i+\sigma^-_i\right)
+\]
 \pagebreak
 
-$ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow} + V \sum_{<ij>} n_{i} n_{j} - X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 +H_{tJ} $
+$
+H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+- t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
++ U \sum_i n_{i\uparrow} n_{i\downarrow}
++ V \sum_{<ij>} n_{i} n_{j}
+- X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
++H_{tJ}
+$
 \pagebreak
 
-\[ H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j) \]
+\[
+H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
+\]
 \pagebreak
 
 $n_i n_j$
 \pagebreak
 
-\[ H = -t \sum_{<ij>\sigma} (c^\dagger_{i\sigma}c_{j\sigma} + h.c.) +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) +\frac{1}{4}\right] +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j -X \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 \]
+\[
+H = -t \sum_{<ij>\sigma} (c^\dagger_{i\sigma}c_{j\sigma} + h.c.)
+    +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) +\frac{1}{4}\right]
+    +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j
+    +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j
+    -X \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
+\]
 \pagebreak
 
 $T^+_i = (-1)^i c^{\dagger}_{i\uparrow} c^{\dagger}_{i\downarrow}$
@@ -246,25 +316,48 @@ $Q^-_i = (T^+_i)^{\dagger}$
 $T^z_i = 0.5(n_{i}-1)$
 \pagebreak
 
-\[ H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right) -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right) +\sum_i \left(t_{0,i}-\mu\right) n_i +U \sum_i n_{i\uparrow} n_{i\downarrow} +V \sum_{<ij>} n_{i} n_{j} -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right) -X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 +H_{tJ} +H_{3-site} \]
+\[
+    H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right)
+        -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right)
+        +\sum_i \left(t_{0,i}-\mu\right) n_i
+        +U \sum_i n_{i\uparrow} n_{i\downarrow}
+        +V \sum_{<ij>} n_{i} n_{j}
+        -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
+     -X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
+        +H_{tJ}
+        +H_{3-site}
+\]
 \pagebreak
 
-\[ H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \ \]
+\[
+H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \
+\]
 \pagebreak
 
-\[ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i \]
+\[
+H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+- J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+\]
 \pagebreak
 
 $J<0$
 \pagebreak
 
-\[ H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^x S_i^x - \sum_{i \in I} B_i^z S_i^z \]
+\[
+H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right)
+- J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+- \sum_{i \in I} B_i^x S_i^x
+- \sum_{i \in I} B_i^z S_i^z
+\]
 \pagebreak
 
 $S_z$
 \pagebreak
 
-\[ H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right) - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z \]
+\[
+H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right)
+- J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
+\]
 \pagebreak
 
 $A$

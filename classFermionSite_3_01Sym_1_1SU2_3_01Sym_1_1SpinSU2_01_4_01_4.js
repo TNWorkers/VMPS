@@ -5,7 +5,7 @@ var classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4 =
     [ "Symmetry", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#ad6fc91acac4fada08f28e1ab78c44c0d", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#a548697afcf27d03763135dfe8d516db8", null ],
     [ "FermionSite", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#a14f56be3b673d47d5f851f5c3087b2c7", null ],
-    [ "basis_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#a29c2b4571622cb55b6a2eb5af3c1b48b", null ],
+    [ "basis_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#aa70cc0f743c4767659cafcd697d4f193", null ],
     [ "c_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#ab301daeb912c2ffee9236c76e927a131", null ],
     [ "cc_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#a513aa3bf3e6df1cf60682c420615642c", null ],
     [ "cdag_1s", "classFermionSite_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_01_4.html#a65af98f6ab2584054b3a005d7f22a3a0", null ],
