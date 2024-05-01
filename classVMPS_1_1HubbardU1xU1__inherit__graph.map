@@ -1,0 +1,7 @@
+<map id="VMPS::HubbardU1xU1" name="VMPS::HubbardU1xU1">
+<area shape="rect" id="node1" title="Hubbard model with U(1) symmetries. MPO representation of the Hubbard model." alt="" coords="479,122,645,149"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="231,5,429,76"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,20,181,61"/>
+<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,100,431,171"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="271,195,389,222"/>
+</map>

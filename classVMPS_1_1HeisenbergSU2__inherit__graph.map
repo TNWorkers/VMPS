@@ -1,0 +1,7 @@
+<map id="VMPS::HeisenbergSU2" name="VMPS::HeisenbergSU2">
+<area shape="rect" id="node1" title="Heisenberg Model." alt="" coords="513,78,680,105"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="261,5,433,47"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,47"/>
+<area shape="rect" id="node4" href="$classHeisenbergObservables.html" title=" " alt="" coords="229,71,465,112"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="288,137,407,163"/>
+</map>

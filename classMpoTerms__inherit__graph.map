@@ -1,0 +1,51 @@
+<map id="MpoTerms&lt; Symmetry, Scalar &gt;" name="MpoTerms&lt; Symmetry, Scalar &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="5,1054,181,1095"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="229,12,511,97"/>
+<area shape="rect" id="node4" href="$classMpo.html" title=" " alt="" coords="277,157,463,184"/>
+<area shape="rect" id="node9" href="$classMpo.html" title=" " alt="" coords="267,242,473,313"/>
+<area shape="rect" id="node11" href="$classMpo.html" title=" " alt="" coords="284,347,456,389"/>
+<area shape="rect" id="node15" href="$classMpo.html" title=" " alt="" coords="252,413,488,454"/>
+<area shape="rect" id="node17" href="$classMpo.html" title=" " alt="" coords="279,479,461,535"/>
+<area shape="rect" id="node19" href="$classMpo.html" title=" " alt="" coords="261,559,479,630"/>
+<area shape="rect" id="node21" href="$classMpo.html" title=" " alt="" coords="252,654,488,754"/>
+<area shape="rect" id="node23" href="$classMpo.html" title=" " alt="" coords="284,778,456,819"/>
+<area shape="rect" id="node27" href="$classMpo.html" title=" " alt="" coords="279,843,461,885"/>
+<area shape="rect" id="node29" href="$classMpo.html" title=" " alt="" coords="283,909,457,950"/>
+<area shape="rect" id="node31" href="$classMpo.html" title=" " alt="" coords="284,974,456,1015"/>
+<area shape="rect" id="node35" href="$classMpo.html" title=" " alt="" coords="269,1039,471,1110"/>
+<area shape="rect" id="node38" href="$classMpo.html" title=" " alt="" coords="267,1134,473,1205"/>
+<area shape="rect" id="node39" href="$classMpo.html" title=" " alt="" coords="278,1229,462,1270"/>
+<area shape="rect" id="node40" href="$classMpo.html" title=" " alt="" coords="303,1295,437,1321"/>
+<area shape="rect" id="node41" href="$classMpo.html" title=" " alt="" coords="261,1345,479,1431"/>
+<area shape="rect" id="node42" href="$classMpo.html" title=" " alt="" coords="284,1455,456,1511"/>
+<area shape="rect" id="node43" href="$classMpo.html" title=" " alt="" coords="281,1535,459,1561"/>
+<area shape="rect" id="node44" href="$classMpo.html" title=" " alt="" coords="271,1586,469,1657"/>
+<area shape="rect" id="node45" href="$classMpo.html" title=" " alt="" coords="263,1681,477,1751"/>
+<area shape="rect" id="node46" href="$classMpo.html" title=" " alt="" coords="261,1775,479,1846"/>
+<area shape="rect" id="node47" href="$classMpo.html" title=" " alt="" coords="278,1870,462,1911"/>
+<area shape="rect" id="node48" href="$classMpo.html" title=" " alt="" coords="263,1935,477,2006"/>
+<area shape="rect" id="node49" href="$classMpo.html" title=" " alt="" coords="272,2031,468,2057"/>
+<area shape="rect" id="node3" href="$classVMPS_1_1HubbardSU2xU1xZN.html" title=" " alt="" coords="576,5,777,32"/>
+<area shape="rect" id="node5" href="$classVMPS_1_1Heisenberg.html" title="Heisenberg Model." alt="" coords="606,56,747,83"/>
+<area shape="rect" id="node6" href="$classVMPS_1_1HeisenbergXXZ.html" title=" " alt="" coords="593,107,761,133"/>
+<area shape="rect" id="node7" href="$classVMPS_1_1Hubbard.html" title="Hubbard model without any symmetries. MPO representation of the Hubbard model corresponding to Hubbar..." alt="" coords="615,157,738,184"/>
+<area shape="rect" id="node8" href="$classVMPS_1_1KondoNecklace.html" title=" " alt="" coords="593,208,760,235"/>
+<area shape="rect" id="node10" href="$classVMPS_1_1PeierlsHubbardU1xU1.html" title=" " alt="" coords="571,259,782,285"/>
+<area shape="rect" id="node12" href="$classVMPS_1_1HeisenbergSU2.html" title="Heisenberg Model." alt="" coords="593,309,760,336"/>
+<area shape="rect" id="node13" href="$classVMPS_1_1HubbardSU2.html" title="Hubbard Model." alt="" coords="603,360,751,387"/>
+<area shape="rect" id="node14" href="$classVMPS_1_1KondoNecklaceSU2.html" title=" " alt="" coords="580,411,773,437"/>
+<area shape="rect" id="node16" href="$classVMPS_1_1HeisenbergU1Complex.html" title=" " alt="" coords="568,461,785,488"/>
+<area shape="rect" id="node18" href="$classVMPS_1_1PeierlsHubbardSU2charge.html" title=" " alt="" coords="559,512,795,539"/>
+<area shape="rect" id="node20" href="$classVMPS_1_1DoubleHeisenbergSU2.html" title=" " alt="" coords="570,581,783,608"/>
+<area shape="rect" id="node22" href="$classVMPS_1_1PeierlsHubbardSU2xU1xZN.html" title=" " alt="" coords="577,633,777,674"/>
+<area shape="rect" id="node24" href="$classVMPS_1_1HeisenbergU1.html" title="Heisenberg Model." alt="" coords="597,699,756,725"/>
+<area shape="rect" id="node25" href="$classVMPS_1_1HubbardU1spin.html" title=" " alt="" coords="593,749,760,776"/>
+<area shape="rect" id="node26" href="$classVMPS_1_1KondoNecklaceU1.html" title=" " alt="" coords="584,800,769,827"/>
+<area shape="rect" id="node28" href="$classVMPS_1_1HubbardZ2.html" title=" " alt="" coords="607,851,746,877"/>
+<area shape="rect" id="node30" href="$classVMPS_1_1SpinlessFermionsZ2.html" title="SpinlessFermionsZ2 Model." alt="" coords="577,901,776,928"/>
+<area shape="rect" id="node32" href="$classVMPS_1_1HubbardU1.html" title=" " alt="" coords="607,952,747,979"/>
+<area shape="rect" id="node33" href="$classVMPS_1_1KondoU1.html" title="Kondo Model." alt="" coords="614,1003,739,1029"/>
+<area shape="rect" id="node34" href="$classVMPS_1_1SpinlessFermionsU1.html" title=" " alt="" coords="577,1053,776,1080"/>
+<area shape="rect" id="node36" href="$classVMPS_1_1HubbardSU2xU1.html" title="Hubbard Model." alt="" coords="589,1104,764,1131"/>
+<area shape="rect" id="node37" href="$classVMPS_1_1KondoSU2xU1.html" title="Kondo Model." alt="" coords="597,1155,756,1181"/>
+</map>

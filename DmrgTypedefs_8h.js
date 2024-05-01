@@ -1,0 +1,147 @@
+var DmrgTypedefs_8h =
+[
+    [ "PushType", "structPushType.html", "structPushType" ],
+    [ "DIRECTION", "structVMPS_1_1DIRECTION.html", "structVMPS_1_1DIRECTION" ],
+    [ "DMRG", "structDMRG.html", [
+      [ "BROOM", "structDMRG_1_1BROOM.html", "structDMRG_1_1BROOM" ],
+      [ "COMPRESSION", "structDMRG_1_1COMPRESSION.html", "structDMRG_1_1COMPRESSION" ],
+      [ "CONTROL", "structDMRG_1_1CONTROL.html", [
+        [ "DEFAULT", "structDMRG_1_1CONTROL_1_1DEFAULT.html", "structDMRG_1_1CONTROL_1_1DEFAULT" ],
+        [ "DYN", "structDMRG_1_1CONTROL_1_1DYN.html", "structDMRG_1_1CONTROL_1_1DYN" ],
+        [ "GLOB", "structDMRG_1_1CONTROL_1_1GLOB.html", "structDMRG_1_1CONTROL_1_1GLOB" ],
+        [ "LOC", "structDMRG_1_1CONTROL_1_1LOC.html", "structDMRG_1_1CONTROL_1_1LOC" ]
+      ] ],
+      [ "CONVTEST", "structDMRG_1_1CONVTEST.html", "structDMRG_1_1CONVTEST" ],
+      [ "DIRECTION", "structDMRG_1_1DIRECTION.html", "structDMRG_1_1DIRECTION" ],
+      [ "ITERATION", "structDMRG_1_1ITERATION.html", "structDMRG_1_1ITERATION" ],
+      [ "RESIZE", "structDMRG_1_1RESIZE.html", "structDMRG_1_1RESIZE" ],
+      [ "VERBOSITY", "structDMRG_1_1VERBOSITY.html", "structDMRG_1_1VERBOSITY" ]
+    ] ],
+    [ "DIRECTION", "structDMRG_1_1DIRECTION.html", "structDMRG_1_1DIRECTION" ],
+    [ "BROOM", "structDMRG_1_1BROOM.html", "structDMRG_1_1BROOM" ],
+    [ "VERBOSITY", "structDMRG_1_1VERBOSITY.html", "structDMRG_1_1VERBOSITY" ],
+    [ "COMPRESSION", "structDMRG_1_1COMPRESSION.html", "structDMRG_1_1COMPRESSION" ],
+    [ "RESIZE", "structDMRG_1_1RESIZE.html", "structDMRG_1_1RESIZE" ],
+    [ "CONVTEST", "structDMRG_1_1CONVTEST.html", "structDMRG_1_1CONVTEST" ],
+    [ "ITERATION", "structDMRG_1_1ITERATION.html", "structDMRG_1_1ITERATION" ],
+    [ "CONTROL", "structDMRG_1_1CONTROL.html", [
+      [ "DEFAULT", "structDMRG_1_1CONTROL_1_1DEFAULT.html", "structDMRG_1_1CONTROL_1_1DEFAULT" ],
+      [ "DYN", "structDMRG_1_1CONTROL_1_1DYN.html", "structDMRG_1_1CONTROL_1_1DYN" ],
+      [ "GLOB", "structDMRG_1_1CONTROL_1_1GLOB.html", "structDMRG_1_1CONTROL_1_1GLOB" ],
+      [ "LOC", "structDMRG_1_1CONTROL_1_1LOC.html", "structDMRG_1_1CONTROL_1_1LOC" ]
+    ] ],
+    [ "DEFAULT", "structDMRG_1_1CONTROL_1_1DEFAULT.html", "structDMRG_1_1CONTROL_1_1DEFAULT" ],
+    [ "GLOB", "structDMRG_1_1CONTROL_1_1GLOB.html", "structDMRG_1_1CONTROL_1_1GLOB" ],
+    [ "DYN", "structDMRG_1_1CONTROL_1_1DYN.html", "structDMRG_1_1CONTROL_1_1DYN" ],
+    [ "LOC", "structDMRG_1_1CONTROL_1_1LOC.html", "structDMRG_1_1CONTROL_1_1LOC" ],
+    [ "refEnergy", "structrefEnergy.html", "structrefEnergy" ],
+    [ "TwoSiteData", "structTwoSiteData.html", "structTwoSiteData" ],
+    [ "CONJ_IF_COMPLEX", "DmrgTypedefs_8h.html#ac13397571f9ce83cced86637c9c94487", null ],
+    [ "DMRG_CONTROL_DEFAULT_MIN_NSV", "DmrgTypedefs_8h.html#a401363f5102588a7f699d82df2b5151f", null ],
+    [ "EIGEN_DEFAULT_SPARSE_INDEX_TYPE", "DmrgTypedefs_8h.html#afea429f57ebb21be36411c6c3268cfa4", null ],
+    [ "EIGEN_INITIALIZE_MATRICES_BY_ZERO", "DmrgTypedefs_8h.html#add32a3101843e4b782d8f5d2d92b97ab", null ],
+    [ "IS_REAL_FUNCTION", "DmrgTypedefs_8h.html#a3645e9728062b8867a5c646dc8cb66f5", null ],
+    [ "KIND_ENUM", "DmrgTypedefs_8h.html#a18488a109be42a1b19294aeb44a5d3d6", null ],
+    [ "SPIN_INDEX_ENUM", "DmrgTypedefs_8h.html#a9d1e9bff2cd1c627ea8fd8d208686a86", null ],
+    [ "SparseMatrixXcd", "DmrgTypedefs_8h.html#a817c9d01aa883a532a538cda4e394bf6", null ],
+    [ "SparseMatrixXd", "DmrgTypedefs_8h.html#ab4eccae69eafda005ffedc41c643af30", null ],
+    [ "BC", "DmrgTypedefs_8h.html#a6e1412fca31cbd35d0f50f12fcc70b0f", [
+      [ "OPEN", "DmrgTypedefs_8h.html#a6e1412fca31cbd35d0f50f12fcc70b0fa0e0143636c29971736eab47415868eae", null ],
+      [ "INFINITE", "DmrgTypedefs_8h.html#a6e1412fca31cbd35d0f50f12fcc70b0fa6a1459101774b7f68e084098fa8bacbb", null ]
+    ] ],
+    [ "KIND", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963", [
+      [ "S", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a1e979858f0a754fa28202934a5e6787d", null ],
+      [ "Salt", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963af550082aee60bab4393d47c40edc45c5", null ],
+      [ "T", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a711a78bef49adbb12d22ff554c97ab79", null ],
+      [ "N", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a423d435bfd2693ca0cb7b1c3b9b319f1", null ],
+      [ "M", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963acb7f822688e3955c1a1fee1427b062ce", null ],
+      [ "Nup", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963aa261feb3573625577f6ddef89624c112", null ],
+      [ "Ndn", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a7791c18728235ca65fc37c6532eb7f17", null ],
+      [ "Nparity", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a93f380a785f17b0abb4d1c0535ed8b26", null ],
+      [ "K", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a2677ad2326905a47bcb13fdcafdc89e4", null ],
+      [ "S", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a1e979858f0a754fa28202934a5e6787d", null ],
+      [ "Salt", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963af550082aee60bab4393d47c40edc45c5", null ],
+      [ "T", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a711a78bef49adbb12d22ff554c97ab79", null ],
+      [ "N", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a423d435bfd2693ca0cb7b1c3b9b319f1", null ],
+      [ "M", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963acb7f822688e3955c1a1fee1427b062ce", null ],
+      [ "Nup", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963aa261feb3573625577f6ddef89624c112", null ],
+      [ "Ndn", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a7791c18728235ca65fc37c6532eb7f17", null ],
+      [ "Nparity", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a93f380a785f17b0abb4d1c0535ed8b26", null ],
+      [ "K", "DmrgTypedefs_8h.html#a359c8465d27b791d515bfbc2554ec963a2677ad2326905a47bcb13fdcafdc89e4", null ]
+    ] ],
+    [ "KONDO_SUBSYSTEM", "DmrgTypedefs_8h.html#a8c01c036d9cfd2b8398f7b78c411e77c", [
+      [ "IMP", "DmrgTypedefs_8h.html#a8c01c036d9cfd2b8398f7b78c411e77ca8054fa474b4ee38123cfeed70397e6f4", null ],
+      [ "SUB", "DmrgTypedefs_8h.html#a8c01c036d9cfd2b8398f7b78c411e77ca12b733d4941495e86811fe6ceeeff9da", null ],
+      [ "IMPSUB", "DmrgTypedefs_8h.html#a8c01c036d9cfd2b8398f7b78c411e77cad4976ed6c72f40afce6cbbf29aca0378", null ]
+    ] ],
+    [ "MODEL_FAMILY", "DmrgTypedefs_8h.html#a1c534e0b5f8c1e917cd8d88679f9c3aa", [
+      [ "HEISENBERG", "DmrgTypedefs_8h.html#a1c534e0b5f8c1e917cd8d88679f9c3aaa92d9d21aa05936cede05000be4bbb9d3", null ],
+      [ "HUBBARD", "DmrgTypedefs_8h.html#a1c534e0b5f8c1e917cd8d88679f9c3aaa6a0d9a9ce760b73d9a2b54668fc0d70f", null ],
+      [ "KONDO", "DmrgTypedefs_8h.html#a1c534e0b5f8c1e917cd8d88679f9c3aaa0e2a30427e8253072b177f9f51b6d8e1", null ],
+      [ "SPINLESS", "DmrgTypedefs_8h.html#a1c534e0b5f8c1e917cd8d88679f9c3aaa6e29e510387bcbb07362c5186dc2cd88", null ]
+    ] ],
+    [ "PARITY", "DmrgTypedefs_8h.html#a3085b56de939b902715c17e9b8b97551", [
+      [ "EVEN", "DmrgTypedefs_8h.html#a3085b56de939b902715c17e9b8b97551a8487756fbc720579906f0ae1738f0fcc", null ],
+      [ "ODD", "DmrgTypedefs_8h.html#a3085b56de939b902715c17e9b8b97551aa29cedab858353a26006af9db7cd1ed8", null ]
+    ] ],
+    [ "SPIN_INDEX", "DmrgTypedefs_8h.html#a0ea7a25c69c5a12a9cf6d7057b89c66c", [
+      [ "UP", "DmrgTypedefs_8h.html#a0ea7a25c69c5a12a9cf6d7057b89c66caba595d8bca8bc5e67c37c0a9d89becfa", null ],
+      [ "DN", "DmrgTypedefs_8h.html#a0ea7a25c69c5a12a9cf6d7057b89c66ca0460bf4f0e06ef40a761de63a27ceca3", null ],
+      [ "NOSPIN", "DmrgTypedefs_8h.html#a0ea7a25c69c5a12a9cf6d7057b89c66cab9a757cdd2d2f1c6deb48884646dfdf4", null ],
+      [ "UPDN", "DmrgTypedefs_8h.html#a0ea7a25c69c5a12a9cf6d7057b89c66cade5df621183d6f0d241fd4d9c3d0d526", null ]
+    ] ],
+    [ "SPINOP_LABEL", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947", [
+      [ "SX", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a898fd7abd6aae10a03fc8f61543e1ab6", null ],
+      [ "SY", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947abfd235ff5f3cea49a680f1db0d663a9f", null ],
+      [ "iSY", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a1efd46d27303fc299f56fa06d44461a5", null ],
+      [ "SZ", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a46465976db45af5948dbda17fc207f0a", null ],
+      [ "SP", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a77c32937cb56776e7d96ed4b5e43e06b", null ],
+      [ "SM", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947aa65db4fc8f5048ed5dc1711cc9904dfa", null ],
+      [ "QZ", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a06f14ca6d5944a2cab4bf9d6e1009bcc", null ],
+      [ "QP", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a33ef829596c23d8903e911375b0ae8a8", null ],
+      [ "QM", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947a32b55c7d7aa98a34506a3e6d73bf2ed3", null ],
+      [ "QPZ", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947aa07a44087d0f4732632aea08f1ba2e00", null ],
+      [ "QMZ", "DmrgTypedefs_8h.html#a679a5d951464e67f70dd881568969947ad6a7fcf8827da5a4a2c52f6750f51f6f", null ]
+    ] ],
+    [ "STRING", "DmrgTypedefs_8h.html#ae158940723622f094459a31491a87336", [
+      [ "NOSTRING", "DmrgTypedefs_8h.html#ae158940723622f094459a31491a87336ad8927d24a21a866b7572cd0d9651de1c", null ],
+      [ "STRINGX", "DmrgTypedefs_8h.html#ae158940723622f094459a31491a87336a0cd58d4250800b8b2c62968aea025c1b", null ],
+      [ "STRINGY", "DmrgTypedefs_8h.html#ae158940723622f094459a31491a87336a707eb9f3c4e569311f7478e8f9e26e23", null ],
+      [ "STRINGZ", "DmrgTypedefs_8h.html#ae158940723622f094459a31491a87336a9c392f5023528e755cfc23a9c4f67159", null ]
+    ] ],
+    [ "SUB_LATTICE", "DmrgTypedefs_8h.html#acff1e684c35c92c39b3326dfee4211fc", [
+      [ "A", "DmrgTypedefs_8h.html#acff1e684c35c92c39b3326dfee4211fca42a4ade1acd55a49164099104990e09f", null ],
+      [ "B", "DmrgTypedefs_8h.html#acff1e684c35c92c39b3326dfee4211fca3f2a77ecd272aa6d6b5902faa5e5fc68", null ]
+    ] ],
+    [ "conjIfcomplex", "DmrgTypedefs_8h.html#a643452cce0a41e215a3c59f688a4a9f9", null ],
+    [ "conjIfcomplex", "DmrgTypedefs_8h.html#a2b3cd2b3fc7b3768549b0cb098ee1e1f", null ],
+    [ "flip_sublattice", "DmrgTypedefs_8h.html#adb68a91240210ae3f03e44452e74f08f", null ],
+    [ "isReal", "DmrgTypedefs_8h.html#a6ee2f21a97818d40872784563b176106", null ],
+    [ "isReal", "DmrgTypedefs_8h.html#ada16b4daad2ec604f6b2219e39647ee5", null ],
+    [ "operator!", "DmrgTypedefs_8h.html#a782b9c49aa41e9bbebcd7faa506fad9c", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#ad128fa607472613a581640f197b2bcbd", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a14dc235babbc151c989cf11ddba8c882", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a2e29b0a9d8d277c9c92241392964e81b", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a9c1589e9f5c0b7f73686a95ff1f02653", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#af7151f4075c5e07b9a91b073ddc1c2e7", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#adf7eca0192e78926223d21c62c405c91", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a3ca750f6c9674f6f1625f7f93d3ce52b", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#ab5bada3a3eda32b49ccb3ab089404e92", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a3f0618a5eeb50b59a194f900df8cbd2b", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a58b90f82d16f28b70b0f78215f4c8d30", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#ab31109756356c9a2ff92311e3b9962d8", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#acbbf81b7bba79ed749c7dcd3945df80c", null ],
+    [ "operator<<", "DmrgTypedefs_8h.html#a78a7544a98e65c511b93f54c236269f3", null ],
+    [ "operator>>", "DmrgTypedefs_8h.html#aeea7a209666346bc1744afcb47298db5", null ],
+    [ "STRING_TO_SPINOP", "DmrgTypedefs_8h.html#adcba6c0924d31d307fe252eb2268e94c", null ],
+    [ "sublattice_check", "DmrgTypedefs_8h.html#a388a87f77d73567e1b8037c7d6e2b0eb", null ],
+    [ "BOSONIC", "DmrgTypedefs_8h.html#af05a3bc5ec6fb7a723164899a9a36ba8", null ],
+    [ "COMPRESS", "DmrgTypedefs_8h.html#a0b137b212cc14cfd6de6339c67ff4df6", null ],
+    [ "DONT_COMPRESS", "DmrgTypedefs_8h.html#af850607aa92d03e8ee5b98c9e9f17433", null ],
+    [ "FERMIONIC", "DmrgTypedefs_8h.html#a86ca8c77006b13562b1c3a07ed10b58a", null ],
+    [ "HERMITIAN", "DmrgTypedefs_8h.html#adbfb520bea579b9d608f39b4e84869ff", null ],
+    [ "NON_FERMIONIC", "DmrgTypedefs_8h.html#a8ad3a7bbeaa1977d8eab8cc7c254d76e", null ],
+    [ "NON_HERMITIAN", "DmrgTypedefs_8h.html#ad2640c0802568ddb8141f313d8478654", null ],
+    [ "NON_UNITARY", "DmrgTypedefs_8h.html#a1082c97d2f9b98a3e685a3f174124913", null ],
+    [ "UNITARY", "DmrgTypedefs_8h.html#ad9aaafe463ae259a41c6e2c930f929f4", null ]
+];

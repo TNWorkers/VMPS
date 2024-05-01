@@ -1,0 +1,30 @@
+<map id="Blocker.h" name="Blocker.h">
+<area shape="rect" id="node1" title=" " alt="" coords="1021,5,1102,32"/>
+<area shape="rect" id="node2" href="$Mps_8h.html" title=" " alt="" coords="997,80,1059,107"/>
+<area shape="rect" id="node27" href="$Umps_8h.html" title=" " alt="" coords="1096,155,1168,181"/>
+<area shape="rect" id="node3" href="$DmrgLinearAlgebra_8h.html" title="External functions to manipulate Mps and Mpo objects." alt="" coords="912,155,1072,181"/>
+<area shape="rect" id="node24" href="$DmrgSolver_8h.html" title=" " alt="" coords="746,229,857,256"/>
+<area shape="rect" id="node4" href="$HubbardObservables_8h.html" title=" " alt="" coords="932,229,1103,256"/>
+<area shape="rect" id="node25" href="$NuclearManager_8h.html" title=" " alt="" coords="273,304,413,331"/>
+<area shape="rect" id="node26" href="$SpectralManager_8h.html" title=" " alt="" coords="1965,304,2107,331"/>
+<area shape="rect" id="node5" href="$HubbardComplex_8h.html" title=" " alt="" coords="1281,304,1428,331"/>
+<area shape="rect" id="node6" href="$HubbardSU2_8h.html" title=" " alt="" coords="443,379,557,405"/>
+<area shape="rect" id="node7" href="$HubbardSU2charge_8h.html" title=" " alt="" coords="582,379,741,405"/>
+<area shape="rect" id="node8" href="$HubbardSU2xSU2_8h.html" title=" " alt="" coords="589,304,739,331"/>
+<area shape="rect" id="node9" href="$HubbardSU2xU1_8h.html" title=" " alt="" coords="763,304,904,331"/>
+<area shape="rect" id="node10" href="$HubbardSU2xU1xZN_8h.html" title=" " alt="" coords="765,379,933,405"/>
+<area shape="rect" id="node11" href="$HubbardU1xSU2_8h.html" title=" " alt="" coords="957,379,1099,405"/>
+<area shape="rect" id="node12" href="$PeierlsHubbardSU2charge_8h.html" title=" " alt="" coords="5,379,208,405"/>
+<area shape="rect" id="node13" href="$PeierlsHubbardU1xSU2_8h.html" title=" " alt="" coords="233,379,418,405"/>
+<area shape="rect" id="node14" href="$HubbardU1xU1_8h.html" title=" " alt="" coords="1124,304,1257,331"/>
+<area shape="rect" id="node18" href="$HubbardZ2_8h.html" title=" " alt="" coords="1527,379,1633,405"/>
+<area shape="rect" id="node19" href="$PeierlsHubbardSU2xU1_8h.html" title=" " alt="" coords="1554,304,1739,331"/>
+<area shape="rect" id="node20" href="$PeierlsHubbardSU2xU1xZN_8h.html" title=" " alt="" coords="1658,379,1870,405"/>
+<area shape="rect" id="node21" href="$PeierlsHubbardU1xU1_8h.html" title=" " alt="" coords="1763,304,1941,331"/>
+<area shape="rect" id="node15" href="$Hubbard_8h.html" title=" " alt="" coords="1282,379,1371,405"/>
+<area shape="rect" id="node16" href="$HubbardU1_8h.html" title=" " alt="" coords="1396,379,1503,405"/>
+<area shape="rect" id="node17" href="$HubbardU1spin_8h.html" title=" " alt="" coords="1123,379,1258,405"/>
+<area shape="rect" id="node22" href="$PeierlsHubbardU1_8h.html" title=" " alt="" coords="2098,379,2249,405"/>
+<area shape="rect" id="node23" href="$PeierlsHubbardU1xZN_8h.html" title=" " alt="" coords="1895,379,2073,405"/>
+<area shape="rect" id="node28" href="$VumpsSolver_8h.html" title=" " alt="" coords="1806,229,1925,256"/>
+</map>

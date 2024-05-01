@@ -1,0 +1,7 @@
+<map id="VMPS::HeisenbergXYZ" name="VMPS::HeisenbergXYZ">
+<area shape="rect" id="node1" title="Heisenberg Model with general XYZ coupling." alt="" coords="219,184,386,211"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="5,95,189,136"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="9,5,185,47"/>
+<area shape="rect" id="node4" href="$classHeisenbergObservables.html" title=" " alt="" coords="214,95,391,136"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="415,102,534,129"/>
+</map>

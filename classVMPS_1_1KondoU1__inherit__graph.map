@@ -1,0 +1,7 @@
+<map id="VMPS::KondoU1" name="VMPS::KondoU1">
+<area shape="rect" id="node1" title="Kondo Model." alt="" coords="472,78,597,105"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="241,5,413,47"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,47"/>
+<area shape="rect" id="node4" href="$classKondoObservables.html" title=" " alt="" coords="229,71,424,112"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="267,137,386,163"/>
+</map>

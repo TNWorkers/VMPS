@@ -1,0 +1,7 @@
+<map id="VMPS::HubbardSU2charge" name="VMPS::HubbardSU2charge">
+<area shape="rect" id="node1" title=" " alt="" coords="532,78,724,105"/>
+<area shape="rect" id="node2" href="$classMpo.html" title=" " alt="" coords="265,5,449,47"/>
+<area shape="rect" id="node3" href="$classMpoTerms.html" title=" " alt="" coords="5,5,181,47"/>
+<area shape="rect" id="node4" href="$classHubbardObservables.html" title=" " alt="" coords="229,71,484,112"/>
+<area shape="rect" id="node5" href="$classParamReturner.html" title=" " alt="" coords="297,137,416,163"/>
+</map>

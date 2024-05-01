@@ -1,0 +1,483 @@
+\documentclass{article}
+\usepackage{ifthen}
+\usepackage{epsfig}
+\usepackage[utf8]{inputenc}
+\usepackage{newunicodechar}
+  \newunicodechar{⁻}{${}^{-}$}% Superscript minus
+  \newunicodechar{²}{${}^{2}$}% Superscript two
+  \newunicodechar{³}{${}^{3}$}% Superscript three
+
+\pagestyle{empty}
+\begin{document}
+$2^L$
+\pagebreak
+
+$c^{1/2} = \left( \begin{array}{c} -c_{\downarrow} \\ c_{\uparrow} \\ \end{array} \right)$
+\pagebreak
+
+$ m=+1/2$
+\pagebreak
+
+$ m=-1/2$
+\pagebreak
+
+$ \left(c^{1/2}\right)^\dagger$
+\pagebreak
+
+$\left(c^{\dagger}\right)^{1/2} = \left( \begin{array}{c} c^\dagger_{\uparrow} \\ c^\dagger_{\downarrow} \\ \end{array} \right)$
+\pagebreak
+
+$n_s=n-2d$
+\pagebreak
+
+$n_h=2d-n-1=1-n_s$
+\pagebreak
+
+$U$
+\pagebreak
+
+$(n_{\uparrow}-1/2)(n_{\downarrow}-1/2)+1/4$
+\pagebreak
+
+$\varepsilon$
+\pagebreak
+
+$t$
+\pagebreak
+
+$V$
+\pagebreak
+
+$V_z$
+\pagebreak
+
+$V_{xy}$
+\pagebreak
+
+$J$
+\pagebreak
+
+$D=2S+1$
+\pagebreak
+
+$J^{xy}$
+\pagebreak
+
+$J^{z}$
+\pagebreak
+
+$B^{z}_i$
+\pagebreak
+
+$B^{x}_i$
+\pagebreak
+
+$\mu$
+\pagebreak
+
+$K^{z}_i$
+\pagebreak
+
+$K^{x}_i$
+\pagebreak
+
+$D^{y}$
+\pagebreak
+
+$J^{\alpha}$
+\pagebreak
+
+$\alpha \in \{x,y,z\} $
+\pagebreak
+
+$B^{\alpha}_i$
+\pagebreak
+
+$K^{\alpha}_i$
+\pagebreak
+
+$D^{\alpha}$
+\pagebreak
+
+$(3n)j$
+\pagebreak
+
+$\left<\Psi_{bra}|\Psi_{ket}\right>$
+\pagebreak
+
+$\left<\Psi_{bra}\right|$
+\pagebreak
+
+$\left|\Psi_{ket}\right>$
+\pagebreak
+
+$\left<\Psi_{bra}|O|\Psi_{ket}\right>$
+\pagebreak
+
+$\left<\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right>$
+\pagebreak
+
+$O_1\cdot O_2$
+\pagebreak
+
+$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>$
+\pagebreak
+
+$\left|\Psi_{in}\right>$
+\pagebreak
+
+$\left|\Psi_{out}\right>$
+\pagebreak
+
+$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - B \left|\Psi_{in,2}\right>$
+\pagebreak
+
+$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}$
+\pagebreak
+
+$\left|T_{n-1}\right>$
+\pagebreak
+
+$\left|T_{n-2}\right>$
+\pagebreak
+
+$\left|T_{n}\right>$
+\pagebreak
+
+$tol_compr < 1$
+\pagebreak
+
+$\langle H^2\rangle-\langle H\rangle^2$
+\pagebreak
+
+$\left\Vert H |\Psi\rangle - E |\Psi\rangle \right\Vert $
+\pagebreak
+
+$Z_n$
+\pagebreak
+
+$A_L$
+\pagebreak
+
+$A_R$
+\pagebreak
+
+$A_C$
+\pagebreak
+
+$C$
+\pagebreak
+
+\[ H = -t \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) +\Delta \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) -\mu \sum_i n_i \]
+\pagebreak
+
+$S^+=c$
+\pagebreak
+
+$S^-=c^{\dagger}$
+\pagebreak
+
+$S^z=1/2-n$
+\pagebreak
+
+$F=2S^z$
+\pagebreak
+
+\[ H = J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J_z \sum_{<ij>} S^z_iS^z_j +J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J'_z \sum_{<<ij>>} S^z_iS^z_j -B_z \sum_i S^z_i +K_z \sum_i \left(S^z_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\pagebreak
+
+$S$
+\pagebreak
+
+$S^z$
+\pagebreak
+
+$J>0$
+\pagebreak
+
+\[ H = J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) -B_z \sum_i S^z_i -B_x \sum_i S^x_i +K_z \sum_i \left(S^z_i\right)^2 +K_x \sum_i \left(S^x_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\pagebreak
+
+$J_x = J_y$
+\pagebreak
+
+\[ H = J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) +J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right) \]
+\pagebreak
+
+\[ H = J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) -B_z \sum_i S^z_i +K_z \sum_i \left(S^z_i\right)^2 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y \]
+\pagebreak
+
+\[ H = \sum_{\alfa=x,y,z} \left( J_{\alfa} \sum_{<ij>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) +J'_{\alfa} \sum_{<<ij>>} \left(S^{\alfa}_i \cdot S^{\alfa}_j\right) -B_{\alfa} \sum_i S^{\alfa}_i +K_{\alfa} \sum_i \left(S^{\alfa}_i\right)^2 \right) -\mathbf{D} \sum_{<ij>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) -\mathbf{D'} \sum_{<<ij>>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) \]
+\pagebreak
+
+$S_y$
+\pagebreak
+
+\[ -B_x \sum_{i} \sigma^x_i \]
+\pagebreak
+
+\[ \sigma^x_i = \frac{1}{2} \left(\sigma^+_i+\sigma^-_i\right) \]
+\pagebreak
+
+$ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow} + V \sum_{<ij>} n_{i} n_{j} - X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 +H_{tJ} $
+\pagebreak
+
+\[ H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j) \]
+\pagebreak
+
+$n_i n_j$
+\pagebreak
+
+\[ H = -t \sum_{<ij>\sigma} (c^\dagger_{i\sigma}c_{j\sigma} + h.c.) +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) +\frac{1}{4}\right] +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j -X \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 \]
+\pagebreak
+
+$T^+_i = (-1)^i c^{\dagger}_{i\uparrow} c^{\dagger}_{i\downarrow}$
+\pagebreak
+
+$Q^-_i = (T^+_i)^{\dagger}$
+\pagebreak
+
+$T^z_i = 0.5(n_{i}-1)$
+\pagebreak
+
+\[ H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right) -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right) +\sum_i \left(t_{0,i}-\mu\right) n_i +U \sum_i n_{i\uparrow} n_{i\downarrow} +V \sum_{<ij>} n_{i} n_{j} -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right) -X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2 +H_{tJ} +H_{3-site} \]
+\pagebreak
+
+\[ H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \ \]
+\pagebreak
+
+\[ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i \]
+\pagebreak
+
+$J<0$
+\pagebreak
+
+\[ H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^x S_i^x - \sum_{i \in I} B_i^z S_i^z \]
+\pagebreak
+
+$S_z$
+\pagebreak
+
+\[ H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right) - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z \]
+\pagebreak
+
+$A$
+\pagebreak
+
+$i$
+\pagebreak
+
+$\sigma$
+\pagebreak
+
+$j$
+\pagebreak
+
+$i+\sigma=j $
+\pagebreak
+
+$C^{i,\sigma\rightarrow j}_{m_i,m_\sigma\rightarrow m_j}$
+\pagebreak
+
+$\sum_s {A^s}^\dag A^s=I$
+\pagebreak
+
+$\sum_s B^s {B^s}^\dag=I$
+\pagebreak
+
+$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol$
+\pagebreak
+
+$ \mathrel{+}= \alpha \cdot V_{in}$
+\pagebreak
+
+$ \mathrel{*}= \alpha$
+\pagebreak
+
+$ \mathrel{/}= \alpha$
+\pagebreak
+
+$\sum_{i \in cell} n_i$
+\pagebreak
+
+$V_{out} \approx V_{in}$
+\pagebreak
+
+$\left|V_{out}-V_{in}\right|^2<tol$
+\pagebreak
+
+$\left|V_{out}\right> \approx H \left|V_{in}\right>$
+\pagebreak
+
+$\left<V_{in}\right|H^{\dagger}H\left|V_{in}\right>$
+\pagebreak
+
+$\left|V_{out} - H \cdot V_{in}\right|^2<tol$
+\pagebreak
+
+$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}$
+\pagebreak
+
+$\left<V_{in1}\right|H^2\left|V_{in1}\right>$
+\pagebreak
+
+$\left<V_{in2}\right|H\left|V_{in1}\right>$
+\pagebreak
+
+$\big<V_{in2}\big|V_{in2}\big>$
+\pagebreak
+
+$\left|V_{out} - 2H \cdot V_{in1} - V_{in2}\right|^2<tol$
+\pagebreak
+
+$V_{out} \approx e^{H \cdot \delta t} V_{in}.$
+\pagebreak
+
+$\delta t$
+\pagebreak
+
+$O(\delta t^2)$
+\pagebreak
+
+$O(\delta t^3)$
+\pagebreak
+
+$O(\delta t^5)$
+\pagebreak
+
+$Q \in q1 \otimes q2$
+\pagebreak
+
+$3nj$
+\pagebreak
+
+$3j$
+\pagebreak
+
+$6j$
+\pagebreak
+
+$9j$
+\pagebreak
+
+$2M$
+\pagebreak
+
+$N_{\uparrow}$
+\pagebreak
+
+$N_{\downarrow}$
+\pagebreak
+
+$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}$
+\pagebreak
+
+$N=N_{\uparrow}+N_{\downarrow}$
+\pagebreak
+
+$SU(2)$
+\pagebreak
+
+$O(1)$
+\pagebreak
+
+$\to$
+\pagebreak
+
+$q \rightarrow q * N_{cells}$
+\pagebreak
+
+$N_{cells}$
+\pagebreak
+
+$a<b$
+\pagebreak
+
+$a$
+\pagebreak
+
+$i+a=j$
+\pagebreak
+
+$C^{i,a\rightarrow j}_{m_i,m_a\rightarrow m_j}$
+\pagebreak
+
+$\left<H^2\right>$
+\pagebreak
+
+$H^2$
+\pagebreak
+
+$\left<\Psi|H|\Psi\right>$
+\pagebreak
+
+$\left<\Psi|H^2|\Psi\right>$
+\pagebreak
+
+$Tr C^{\dagger} C = 1$
+\pagebreak
+
+$\epsilon_L=\big|A_C-A_LC\big|^2$
+\pagebreak
+
+$\epsilon_R=\big|A_C-CA_R\big|^2$
+\pagebreak
+
+$l-1 mod L$
+\pagebreak
+
+$A[g] \rightarrow G_L*A[g]*G_L^{-1}$
+\pagebreak
+
+$A[g] \rightarrow G_R^{-1}*A[g]*G_R$
+\pagebreak
+
+$<Oalfa_i Obeta_j>$
+\pagebreak
+
+$h_L$
+\pagebreak
+
+$h_R$
+\pagebreak
+
+$Y_{Ra}$
+\pagebreak
+
+$1-T_L+|R><1|$
+\pagebreak
+
+$1-T_R+|1><R|$
+\pagebreak
+
+$<L_a|$
+\pagebreak
+
+$|R_a>$
+\pagebreak
+
+$H_L$
+\pagebreak
+
+$H_R$
+\pagebreak
+
+$Y_{L_{0}}$
+\pagebreak
+
+$Y_{R_{dW-1}}$
+\pagebreak
+
+$C \cdot C^{\dagger}$
+\pagebreak
+
+$C^{\dagger} \cdot C$
+\pagebreak
+
+$T_L$
+\pagebreak
+
+$T_R$
+\pagebreak
+
+\end{document}
