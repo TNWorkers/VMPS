@@ -19,6 +19,9 @@
 <script type="text/javascript" src="search/search.js"></script>
 $darkmode
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only-darkmode-toggle.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
 <script type="text/javascript">
   DoxygenAwesomeDarkModeToggle.lightModeIcon = '🌞'
@@ -397,11 +400,11 @@ template&lt;typename Symmetry , typename MpoScalar , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Calculates the expectation value <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|O|\Psi_{ket}\right&gt;$" src="form_34.png"/> </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Calculates the expectation value <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|O|\Psi_{ket}\right&gt;$" src="form_36.png"/> </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_32.png"/> </td></tr>
+    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_34.png"/> </td></tr>
     <tr><td class="paramname">O</td><td>: input <a class="el" href="classMpo.html">Mpo</a> </td></tr>
-    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_33.png"/> </td></tr>
+    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_35.png"/> </td></tr>
     <tr><td class="paramname">USE_SQUARE</td><td>: If <code>true</code>, uses the square of <code>O</code> stored in <code>O</code> itself. Call <a class="el" href="classMpoTerms.html#a240777a5c1097a3f8f047614c9e6f8e0">Mpo::check_SQUARE()</a> first to see whether it was calculated. </td></tr>
     <tr><td class="paramname">DIR</td><td>: whether to contract going left or right (should obviously make no difference, useful for testing purposes) </td></tr>
   </table>
@@ -481,13 +484,13 @@ template&lt;typename Symmetry , typename MpoScalar , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Calculates the expectation value <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right&gt;$" src="form_35.png"/> Only a left-to-right contraction is implemented. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Calculates the expectation value <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right&gt;$" src="form_37.png"/> Only a left-to-right contraction is implemented. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_32.png"/> </td></tr>
+    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_34.png"/> </td></tr>
     <tr><td class="paramname">O1</td><td>: input <a class="el" href="classMpo.html">Mpo</a> </td></tr>
     <tr><td class="paramname">O2</td><td>: input <a class="el" href="classMpo.html">Mpo</a> </td></tr>
-    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_33.png"/> </td></tr>
-    <tr><td class="paramname">Qtarget</td><td>: The quantum number of the product of <img class="formulaInl" alt="$O_1\cdot O_2$" src="form_36.png"/>. For abelian symmetries simply O1.Qtarget()+O2.Qtarget() </td></tr>
+    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_35.png"/> </td></tr>
+    <tr><td class="paramname">Qtarget</td><td>: The quantum number of the product of <img class="formulaInl" alt="$O_1\cdot O_2$" src="form_38.png"/>. For abelian symmetries simply O1.Qtarget()+O2.Qtarget() </td></tr>
   </table>
   </dd>
 </dl>
@@ -747,10 +750,10 @@ template&lt;typename Symmetry , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Calculates the scalar product <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|\Psi_{ket}\right&gt;$" src="form_31.png"/>. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Calculates the scalar product <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|\Psi_{ket}\right&gt;$" src="form_33.png"/>. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_32.png"/> </td></tr>
-    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_33.png"/> </td></tr>
+    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_34.png"/> </td></tr>
+    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_35.png"/> </td></tr>
   </table>
   </dd>
 </dl>
@@ -824,10 +827,10 @@ template&lt;typename Symmetry , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Calculates the scalar product <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|\Psi_{ket}\right&gt;$" src="form_31.png"/> for a heterogenic MPS. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Calculates the scalar product <img class="formulaInl" alt="$\left&lt;\Psi_{bra}|\Psi_{ket}\right&gt;$" src="form_33.png"/> for a heterogenic MPS. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_32.png"/> </td></tr>
-    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_33.png"/> </td></tr>
+    <tr><td class="paramname">Vbra</td><td>: input <img class="formulaInl" alt="$\left&lt;\Psi_{bra}\right|$" src="form_34.png"/> </td></tr>
+    <tr><td class="paramname">Vket</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{ket}\right&gt;$" src="form_35.png"/> </td></tr>
     <tr><td class="paramname">Ncellshift</td><td>: Shift <code>Vbra</code> by this many unit cells (negative=left-shift, positive=right-shift). </td></tr>
   </table>
   </dd>
@@ -900,11 +903,11 @@ template&lt;typename Symmetry , typename MpoScalar , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Apply an <a class="el" href="classMpo.html">Mpo</a> to an <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt; = H \left|\Psi_{in}\right&gt;$" src="form_37.png"/> by using the zip-up algorithm (Stoudenmire, White 2010). </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Apply an <a class="el" href="classMpo.html">Mpo</a> to an <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt; = H \left|\Psi_{in}\right&gt;$" src="form_39.png"/> by using the zip-up algorithm (Stoudenmire, White 2010). </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">H</td><td>: input Hamiltonian </td></tr>
-    <tr><td class="paramname">Vin</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{in}\right&gt;$" src="form_38.png"/> </td></tr>
-    <tr><td class="paramname">Vout</td><td>: output <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt;$" src="form_39.png"/> </td></tr>
+    <tr><td class="paramname">Vin</td><td>: input <img class="formulaInl" alt="$\left|\Psi_{in}\right&gt;$" src="form_40.png"/> </td></tr>
+    <tr><td class="paramname">Vout</td><td>: output <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt;$" src="form_41.png"/> </td></tr>
     <tr><td class="paramname">VERBOSE</td><td>: print info if <code>true</code> </td></tr>
   </table>
   </dd>
@@ -1340,7 +1343,7 @@ template&lt;typename Symmetry , typename MpoScalar , typename Scalar &gt; </div>
     <tr><td class="paramname">O</td><td>: input MPO </td></tr>
     <tr><td class="paramname">Vin</td><td>: input MPS </td></tr>
     <tr><td class="paramname">Vout</td><td>: output MPS </td></tr>
-    <tr><td class="paramname">tol_compr</td><td>: if <img class="formulaInl" alt="$tol_compr &lt; 1$" src="form_45.png"/>, compresses the result with this tolerance </td></tr>
+    <tr><td class="paramname">tol_compr</td><td>: if <img class="formulaInl" alt="$tol_compr &lt; 1$" src="form_47.png"/>, compresses the result with this tolerance </td></tr>
     <tr><td class="paramname">VERBOSITY</td><td>: verbosity level, which is also passed on to the <a class="el" href="classMpsCompressor.html">MpsCompressor</a> class </td></tr>
   </table>
   </dd>
@@ -1469,14 +1472,14 @@ template&lt;typename Symmetry , typename MpoScalar , typename Scalar &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Performs an orthogonal polynomial iteration step <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt; = \cdot H \left|\Psi_{in,1}\right&gt; - B \left|\Psi_{in,2}\right&gt;$" src="form_40.png"/> as needed in the polynomial recursion relation <img class="formulaInl" alt="$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}$" src="form_41.png"/>. </p><dl class="section warning"><dt>Warning</dt><dd>The Hamiltonian is assumed to be rescaled by <code>C_n</code> and <code>A_n</code> already. </dd></dl>
+<p>Performs an orthogonal polynomial iteration step <img class="formulaInl" alt="$\left|\Psi_{out}\right&gt; = \cdot H \left|\Psi_{in,1}\right&gt; - B \left|\Psi_{in,2}\right&gt;$" src="form_42.png"/> as needed in the polynomial recursion relation <img class="formulaInl" alt="$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}$" src="form_43.png"/>. </p><dl class="section warning"><dt>Warning</dt><dd>The Hamiltonian is assumed to be rescaled by <code>C_n</code> and <code>A_n</code> already. </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">H</td><td>: input Hamiltonian </td></tr>
-    <tr><td class="paramname">Vin1</td><td>: input <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n-1}\right&gt;$" src="form_42.png"/> </td></tr>
+    <tr><td class="paramname">Vin1</td><td>: input <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n-1}\right&gt;$" src="form_44.png"/> </td></tr>
     <tr><td class="paramname">polyB</td><td>: the coefficient before the subtracted vector </td></tr>
-    <tr><td class="paramname">Vin2</td><td>: input <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n-2}\right&gt;$" src="form_43.png"/> </td></tr>
-    <tr><td class="paramname">Vout</td><td>: output <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n}\right&gt;$" src="form_44.png"/> </td></tr>
+    <tr><td class="paramname">Vin2</td><td>: input <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n-2}\right&gt;$" src="form_45.png"/> </td></tr>
+    <tr><td class="paramname">Vout</td><td>: output <a class="el" href="classMps.html">Mps</a> <img class="formulaInl" alt="$\left|T_{n}\right&gt;$" src="form_46.png"/> </td></tr>
     <tr><td class="paramname">VERBOSE</td><td>: print info if <code>true</code> </td></tr>
   </table>
   </dd>
@@ -1690,7 +1693,7 @@ template&lt;typename Symmetry , typename Scalar &gt; </div>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="DmrgLinearAlgebra_8h.html">DmrgLinearAlgebra.h</a></li>
-    <li class="footer">Generated on Wed May 1 2024 11:07:07 for VMPS++ by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1 </li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1 </li>
   </ul>
 </div>
 <script type="text/javascript">

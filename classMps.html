@@ -19,6 +19,9 @@
 <script type="text/javascript" src="search/search.js"></script>
 $darkmode
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only-darkmode-toggle.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
 <script type="text/javascript">
   DoxygenAwesomeDarkModeToggle.lightModeIcon = '🌞'
@@ -126,11 +129,12 @@ class Mps&lt; Symmetry, Scalar &gt;</h3>
 
 <p>Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries). </p><dl class="tparams"><dt>Template Parameters</dt><dd>
   <table class="tparams">
-    <tr><td class="paramname">Symmetry</td><td>: A class providing all relevant functions and infos that are determined by the Symmetry. Click <a href="group__Symmetry.html">here</a> for more information. \describe_Scalar </td></tr>
+    <tr><td class="paramname">Symmetry</td><td>: A class providing all relevant functions and infos that are determined by the Symmetry. Click <a href="group__Symmetry.html">here</a> for more information. </td></tr>
+    <tr><td class="paramname">Scalar</td><td>: <code>double</code> or <code>complex&lt;double&gt;</code> </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section note"><dt>Note</dt><dd>We define the quantum number flow for the <img class="formulaInl" alt="$A$" src="form_84.png"/>-tensors as follows: left auxiliary leg <img class="formulaInl" alt="$i$" src="form_85.png"/> is combined with the physical index <img class="formulaInl" alt="$\sigma$" src="form_86.png"/> to obtain the right auxiliary leg <img class="formulaInl" alt="$j$" src="form_87.png"/>. For U(1) this means that <img class="formulaInl" alt="$i+\sigma=j $" src="form_88.png"/>. For SU(2) this means that the <img class="formulaInl" alt="$A$" src="form_84.png"/>-tensor decompose with the CGC <img class="formulaInl" alt="$C^{i,\sigma\rightarrow j}_{m_i,m_\sigma\rightarrow m_j}$" src="form_89.png"/>. </dd></dl>
+<dl class="section note"><dt>Note</dt><dd>We define the quantum number flow for the <img class="formulaInl" alt="$A$" src="form_86.png"/>-tensors as follows: left auxiliary leg <img class="formulaInl" alt="$i$" src="form_87.png"/> is combined with the physical index <img class="formulaInl" alt="$\sigma$" src="form_88.png"/> to obtain the right auxiliary leg <img class="formulaInl" alt="$j$" src="form_89.png"/>. For U(1) this means that <img class="formulaInl" alt="$i+\sigma=j $" src="form_90.png"/>. For SU(2) this means that the <img class="formulaInl" alt="$A$" src="form_86.png"/>-tensor decompose with the CGC <img class="formulaInl" alt="$C^{i,\sigma\rightarrow j}_{m_i,m_\sigma\rightarrow m_j}$" src="form_91.png"/>. </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Mps_8h_source.html#l00038">38</a> of file <a class="el" href="Mps_8h_source.html">Mps.h</a>.</p>
 </div>
@@ -1644,7 +1648,7 @@ template&lt;typename Symmetry , typename Scalar  = double&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>\describe_info </p>
+<p>Prints some info about this class. </p>
 
 </div>
 </div>
@@ -1874,7 +1878,7 @@ template&lt;typename Symmetry , typename Scalar  = double&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>\describe_memory </p>
+<p>Calculates the (theoretically) allocated memory (note: by default in GB). </p>
 
 </div>
 </div>
@@ -2784,7 +2788,7 @@ template&lt;typename Symmetry , typename Scalar  = double&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Tests the orthogonality of the <a class="el" href="classMps.html">Mps</a>. Returns a string with "A"=left-canonical ( <img class="formulaInl" alt="$\sum_s {A^s}^\dag A^s=I$" src="form_90.png"/>), "B"=right-canonical ( <img class="formulaInl" alt="$\sum_s B^s {B^s}^\dag=I$" src="form_91.png"/>), "X"=both, "M"=neither; with the pivot site underlined. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Tests the orthogonality of the <a class="el" href="classMps.html">Mps</a>. Returns a string with "A"=left-canonical ( <img class="formulaInl" alt="$\sum_s {A^s}^\dag A^s=I$" src="form_31.png"/>), "B"=right-canonical ( <img class="formulaInl" alt="$\sum_s B^s {B^s}^\dag=I$" src="form_32.png"/>), "X"=both, "M"=neither; with the pivot site underlined. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">tol</td><td>: The check is <img class="formulaInl" alt="$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} &lt; tol$" src="form_92.png"/> </td></tr>
   </table>
@@ -3575,7 +3579,7 @@ template&lt;typename Symmetry , typename Scalar  = double&gt; </div>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="classMps.html">Mps</a></li>
-    <li class="footer">Generated on Wed May 1 2024 11:07:08 for VMPS++ by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1 </li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1 </li>
   </ul>
 </div>
 <script type="text/javascript">
