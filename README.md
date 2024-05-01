@@ -17,7 +17,11 @@ This is a library for dealing with many-body Hamiltonians using algorithms based
 
 - C++, Eigen, Boost
 
-## Contributing
+## Documentation
+
+Browse doxygen [documentation](https://tnworkers.github.io/VMPS) to explore the interface and general documentation.
+
+## Contributers
 
 Roman Rausch, Matthias Peschke, Cassian Plorin
 
