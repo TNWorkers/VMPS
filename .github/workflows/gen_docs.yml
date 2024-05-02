@@ -1,0 +1,24 @@
+name: Doxygen GitHub Pages Deploy Action
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ssciwr/doxygen-install@v1
+        with:
+          version: "1.9.6"
+
+      - run: doxygen --version
+        
+      - uses: DenverCoder1/doxygen-github-pages-action@v1.3.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          folder: DOXY/html
+          config_file: Doxyfile
