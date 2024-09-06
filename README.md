@@ -15,7 +15,7 @@ This is a library for dealing with many-body Hamiltonians using algorithms based
 
 ## Dependencies
 
-- C++, Eigen, Boost
+- C++, Eigen, Boost, GSL
 
 ## Documentation
 
