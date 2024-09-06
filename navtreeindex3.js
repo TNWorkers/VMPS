@@ -1,5 +1,7 @@
 var NAVTREEINDEX3 =
 {
+"classDmrgSolver.html#a44646549f7d190ebe0f75de89f70467c":[6,8,65],
+"classDmrgSolver.html#a495b8dc1bb1b3cb7382cfefd3b24147e":[6,8,5],
 "classDmrgSolver.html#a4a6f0d07fc08c26bf2d25a610da1b03a":[6,8,11],
 "classDmrgSolver.html#a4b14e78c357868ca1e0bff3b7ab5083d":[6,8,2],
 "classDmrgSolver.html#a4c565b72b5186857fd942dec5d43e4bd":[6,8,12],
@@ -247,7 +249,5 @@ var NAVTREEINDEX3 =
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a6edd9c769251deea76e7474e72a07c3e":[6,14,3],
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a6fbdb8ce89000601add1cdbc008e393e":[6,14,2],
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a83aca0abccce96686d31c1808953a697":[6,14,16],
-"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8766a22c79383eb31c09c75ba08533d8":[6,14,11],
-"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8a2eb3deeda347922e5b5a7a08d00725":[6,14,20],
-"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8af74ff9b551f24838ce49d0ece34ec9":[6,14,12]
+"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8766a22c79383eb31c09c75ba08533d8":[6,14,11]
 };

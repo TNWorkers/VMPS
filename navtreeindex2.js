@@ -1,5 +1,7 @@
 var NAVTREEINDEX2 =
 {
+"SU2Wrappers_8h.html#a59224a8f4beb86e56f18e03300430fca":[7,6,5,0],
+"SU2Wrappers_8h.html#a67e325b7c27dd64bd43167751c4e792d":[7,6,5,1],
 "SU2Wrappers_8h.html#a9d1bc6f2e108b46e70ff81967b36981d":[7,6,5,6],
 "SU2Wrappers_8h.html#aa86900a74aa3681421c09112fad450c5":[7,6,5,4],
 "SU2Wrappers_8h.html#ad7172bff641bd6e7f5e7f7c06b0dbe8f":[7,6,5,5],
@@ -247,7 +249,5 @@ var NAVTREEINDEX2 =
 "classDmrgSolver.html#a32a8c6e69264f1c9c284f11d427242df":[6,8,61],
 "classDmrgSolver.html#a342ebf1a7e96a80cd1c97486c3d89f43":[6,8,45],
 "classDmrgSolver.html#a3cf5c144ccbfb74c85fb7e083a9f263b":[6,8,15],
-"classDmrgSolver.html#a417f27b9d3d89f6c44bbd6b1e62e9597":[6,8,57],
-"classDmrgSolver.html#a44646549f7d190ebe0f75de89f70467c":[6,8,65],
-"classDmrgSolver.html#a495b8dc1bb1b3cb7382cfefd3b24147e":[6,8,5]
+"classDmrgSolver.html#a417f27b9d3d89f6c44bbd6b1e62e9597":[6,8,57]
 };

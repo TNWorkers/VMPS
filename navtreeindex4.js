@@ -1,5 +1,7 @@
 var NAVTREEINDEX4 =
 {
+"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8a2eb3deeda347922e5b5a7a08d00725":[6,14,20],
+"classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8af74ff9b551f24838ce49d0ece34ec9":[6,14,12],
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a8dd6a6daefa1c9c74b2cd997863fa2fd":[6,14,6],
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a9449e5ee8fc15014dc053074d12b405b":[6,14,18],
 "classFermionSite_3_01Sym_1_1S1xS2_3_01Sym_1_1S1xS2_3_01Sym_1_1SU2_3_01Sym_1_1SpinSU2_01_4_00_01Scde795b0e79610a2c4ded430ed682683.html#a991dd3389189e672308c140c66afc2da":[6,14,8],
@@ -247,7 +249,5 @@ var NAVTREEINDEX4 =
 "classGreenPropagator.html#a95f4244e534417686ee2a7379f34ae11":[6,24,11],
 "classGreenPropagator.html#a96144c376e844d1531dab4dad52e701a":[6,24,49],
 "classGreenPropagator.html#a967f5af5c11a1580993d4963b42c505e":[6,24,21],
-"classGreenPropagator.html#a9797c7f991aa8ef4c42c16881e124876":[6,24,66],
-"classGreenPropagator.html#a99cee9a396bf92c9eb3ffdb12b43301c":[6,24,4],
-"classGreenPropagator.html#a9a673c144eae037317ee4b3fd80134fd":[6,24,7]
+"classGreenPropagator.html#a9797c7f991aa8ef4c42c16881e124876":[6,24,66]
 };

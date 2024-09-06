@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"classGreenPropagator.html#a99cee9a396bf92c9eb3ffdb12b43301c":[6,24,4],
+"classGreenPropagator.html#a9a673c144eae037317ee4b3fd80134fd":[6,24,7],
 "classGreenPropagator.html#a9db5b08075489ce7ec5752067404963d":[6,24,31],
 "classGreenPropagator.html#aa301178048ea8632c3397e7c6954a545":[6,24,15],
 "classGreenPropagator.html#aa63a2ea98cc8745be0604ba60e8a5452":[6,24,35],
@@ -140,16 +142,16 @@ var NAVTREEINDEX5 =
 "classHubbardKspace.html#a54ac0f9385e3df19ec86c9c6e2c0aadb":[6,29,1],
 "classHubbardKspace.html#a60e65a27db3ffea1c6af263b28efbcf2":[6,29,3],
 "classHubbardKspace.html#a762b8de3cff54cca5a53dbc279793050":[6,29,20],
-"classHubbardKspace.html#a850bc95c9490aa46b5ff5b8db7870d55":[6,29,5],
 "classHubbardKspace.html#a850bc95c9490aa46b5ff5b8db7870d55":[6,29,4],
+"classHubbardKspace.html#a850bc95c9490aa46b5ff5b8db7870d55":[6,29,5],
 "classHubbardKspace.html#a9f22234ca6564afd86265676d6226df5":[6,29,21],
 "classHubbardKspace.html#aa472df6aca30fad11809f3c92d71598c":[6,29,29],
 "classHubbardKspace.html#aaaa18ebeaca17be8627ed4e45c7885fe":[6,29,24],
 "classHubbardKspace.html#aaadff7d0ff1d5a53717896f0c05f73cf":[6,29,15],
 "classHubbardKspace.html#ab5ec5174b4a5112956d20586a17d88dc":[6,29,13],
 "classHubbardKspace.html#abc343cddfaf3aa1bceb9438916624b2d":[6,29,12],
-"classHubbardKspace.html#ac7c0fc8c45b71a52fcce7f5b7face7c9":[6,29,6],
 "classHubbardKspace.html#ac7c0fc8c45b71a52fcce7f5b7face7c9":[6,29,7],
+"classHubbardKspace.html#ac7c0fc8c45b71a52fcce7f5b7face7c9":[6,29,6],
 "classHubbardKspace.html#ad079e78bd7615dc829ce0463a0616ce1":[6,29,0],
 "classHubbardKspace.html#ad4e0341af427488c9ba7a73c383ad6e6":[6,29,19],
 "classHubbardKspace.html#ad8048ecf5d622e4112567ed724b12145":[6,29,22],
@@ -247,7 +249,5 @@ var NAVTREEINDEX5 =
 "classKondoNecklaceObservables.html#a01957802a86e40dbd8f15daaffaa31eb":[6,32,18],
 "classKondoNecklaceObservables.html#a025943d19b32467b6ae3ca3724d2d92c":[6,32,6],
 "classKondoNecklaceObservables.html#a038f6a938bf777ede1fd0f953989cbee":[6,32,20],
-"classKondoNecklaceObservables.html#a0dffafac79f6663deed86a7b8456eab0":[6,32,24],
-"classKondoNecklaceObservables.html#a0fecc89931e5b1fe3ce250cf44eac3ae":[6,32,3],
-"classKondoNecklaceObservables.html#a14338ac6a59bbf1a07d11778e8abcaba":[6,32,13]
+"classKondoNecklaceObservables.html#a0dffafac79f6663deed86a7b8456eab0":[6,32,24]
 };

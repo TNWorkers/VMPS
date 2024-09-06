@@ -1,26 +1,27 @@
 <map id="SpinSiteSU2.h" name="SpinSiteSU2.h">
-<area shape="rect" id="node1" title=" " alt="" coords="805,5,918,31"/>
-<area shape="rect" id="node2" href="$SpinSite_8h.html" title=" " alt="" coords="818,79,905,104"/>
-<area shape="rect" id="node3" href="$SpinBase_8h.html" title=" " alt="" coords="814,152,909,177"/>
-<area shape="rect" id="node4" href="$DoubleHeisenbergObservables_8h.html" title=" " alt="" coords="5,225,240,251"/>
-<area shape="rect" id="node5" href="$DoubleHeisenbergSU2_8h.html" title=" " alt="" coords="22,299,202,324"/>
-<area shape="rect" id="node6" href="$HeisenbergObservables_8h.html" title=" " alt="" coords="429,225,619,251"/>
-<area shape="rect" id="node7" href="$HeisenbergSU2_8h.html" title=" " alt="" coords="226,299,361,324"/>
-<area shape="rect" id="node14" href="$KondoNecklace_8h.html" title=" " alt="" coords="587,299,722,324"/>
-<area shape="rect" id="node15" href="$KondoNecklaceObservables_8h.html" title=" " alt="" coords="754,225,969,251"/>
-<area shape="rect" id="node16" href="$KondoNecklaceSU2_8h.html" title=" " alt="" coords="747,299,907,324"/>
-<area shape="rect" id="node17" href="$KondoNecklaceU1_8h.html" title=" " alt="" coords="931,299,1083,324"/>
-<area shape="rect" id="node18" href="$KondoObservables_8h.html" title=" " alt="" coords="1296,225,1451,251"/>
-<area shape="rect" id="node19" href="$KondoSU2xSU2_8h.html" title=" " alt="" coords="1107,299,1242,324"/>
-<area shape="rect" id="node20" href="$KondoSU2xU1_8h.html" title=" " alt="" coords="1266,299,1393,324"/>
-<area shape="rect" id="node21" href="$KondoU0xSU2_8h.html" title=" " alt="" coords="1559,299,1686,324"/>
-<area shape="rect" id="node22" href="$KondoU1xSU2_8h.html" title=" " alt="" coords="1710,299,1837,324"/>
-<area shape="rect" id="node8" href="$HeisenbergU1_8h.html" title=" " alt="" coords="385,299,511,324"/>
-<area shape="rect" id="node12" href="$HeisenbergU1Complex_8h.html" title=" " alt="" coords="504,372,688,397"/>
-<area shape="rect" id="node9" href="$Heisenberg_8h.html" title=" " alt="" coords="194,372,302,397"/>
-<area shape="rect" id="node13" href="$HeisenbergU1XXZ_8h.html" title=" " alt="" coords="326,372,479,397"/>
-<area shape="rect" id="node10" href="$HeisenbergXXZ_8h.html" title=" " alt="" coords="102,445,237,471"/>
-<area shape="rect" id="node11" href="$HeisenbergXYZ_8h.html" title=" " alt="" coords="261,445,395,471"/>
-<area shape="rect" id="node23" href="$KondoU1xU1_8h.html" title=" " alt="" coords="1417,299,1535,324"/>
-<area shape="rect" id="node24" href="$KondoU1_8h.html" title=" " alt="" coords="1430,372,1522,397"/>
+<area shape="rect" id="node1" title=" " alt="" coords="920,5,1033,31"/>
+<area shape="rect" id="node2" href="$SpinSite_8h.html" title=" " alt="" coords="933,79,1020,104"/>
+<area shape="rect" id="node3" href="$SpinBase_8h.html" title=" " alt="" coords="929,152,1024,177"/>
+<area shape="rect" id="node4" href="$DoubleHeisenbergObservables_8h.html" title=" " alt="" coords="115,225,350,251"/>
+<area shape="rect" id="node5" href="$DoubleHeisenbergSU2_8h.html" title=" " alt="" coords="5,299,185,324"/>
+<area shape="rect" id="node6" href="$HeisenbergObservables_8h.html" title=" " alt="" coords="425,225,614,251"/>
+<area shape="rect" id="node7" href="$HeisenbergSU2_8h.html" title=" " alt="" coords="225,299,360,324"/>
+<area shape="rect" id="node14" href="$HeisenbergU1xU1_8h.html" title=" " alt="" coords="601,372,753,397"/>
+<area shape="rect" id="node15" href="$KondoNecklace_8h.html" title=" " alt="" coords="689,299,824,324"/>
+<area shape="rect" id="node16" href="$KondoNecklaceObservables_8h.html" title=" " alt="" coords="797,225,1012,251"/>
+<area shape="rect" id="node17" href="$KondoNecklaceSU2_8h.html" title=" " alt="" coords="849,299,1009,324"/>
+<area shape="rect" id="node18" href="$KondoNecklaceU1_8h.html" title=" " alt="" coords="1033,299,1185,324"/>
+<area shape="rect" id="node19" href="$KondoObservables_8h.html" title=" " alt="" coords="1398,225,1553,251"/>
+<area shape="rect" id="node20" href="$KondoSU2xSU2_8h.html" title=" " alt="" coords="1209,299,1344,324"/>
+<area shape="rect" id="node21" href="$KondoSU2xU1_8h.html" title=" " alt="" coords="1368,299,1495,324"/>
+<area shape="rect" id="node22" href="$KondoU0xSU2_8h.html" title=" " alt="" coords="1661,299,1788,324"/>
+<area shape="rect" id="node23" href="$KondoU1xSU2_8h.html" title=" " alt="" coords="1812,299,1939,324"/>
+<area shape="rect" id="node8" href="$HeisenbergU1_8h.html" title=" " alt="" coords="436,299,563,324"/>
+<area shape="rect" id="node12" href="$HeisenbergU1Complex_8h.html" title=" " alt="" coords="82,372,266,397"/>
+<area shape="rect" id="node9" href="$Heisenberg_8h.html" title=" " alt="" coords="291,372,399,397"/>
+<area shape="rect" id="node13" href="$HeisenbergU1XXZ_8h.html" title=" " alt="" coords="423,372,576,397"/>
+<area shape="rect" id="node10" href="$HeisenbergXXZ_8h.html" title=" " alt="" coords="197,445,332,471"/>
+<area shape="rect" id="node11" href="$HeisenbergXYZ_8h.html" title=" " alt="" coords="356,445,491,471"/>
+<area shape="rect" id="node24" href="$KondoU1xU1_8h.html" title=" " alt="" coords="1519,299,1637,324"/>
+<area shape="rect" id="node25" href="$KondoU1_8h.html" title=" " alt="" coords="1532,372,1624,397"/>
 </map>

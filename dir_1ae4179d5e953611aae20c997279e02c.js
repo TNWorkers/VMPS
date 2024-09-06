@@ -9,6 +9,7 @@ var dir_1ae4179d5e953611aae20c997279e02c =
     [ "HeisenbergSU2.h", "HeisenbergSU2_8h.html", null ],
     [ "HeisenbergU1.h", "HeisenbergU1_8h.html", null ],
     [ "HeisenbergU1Complex.h", "HeisenbergU1Complex_8h.html", "HeisenbergU1Complex_8h" ],
+    [ "HeisenbergU1xU1.h", "HeisenbergU1xU1_8h.html", "HeisenbergU1xU1_8h" ],
     [ "HeisenbergXYZ.h", "HeisenbergXYZ_8h.html", null ],
     [ "Hubbard.h", "Hubbard_8h.html", null ],
     [ "HubbardComplex.h", "HubbardComplex_8h.html", "HubbardComplex_8h" ],

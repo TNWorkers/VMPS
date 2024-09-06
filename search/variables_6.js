@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['g_0',['g',['../classSpectralManager.html#a5c88958c54df6d18a40991b529dfef77',1,'SpectralManager::g()'],['../classNuclearManager.html#a06f7cfd1bbba3fe90eca455967fd84f5',1,'NuclearManager::g()']]],
-  ['g_1',['G',['../classKondoObservables.html#ab30fe39a04328af7d810e66af8364adf',1,'KondoObservables::G()'],['../classHubbardObservables.html#a5c05a2458d7898945443e74fd5c6b50f',1,'HubbardObservables::G()']]],
+  ['g_0',['G',['../classKondoObservables.html#ab30fe39a04328af7d810e66af8364adf',1,'KondoObservables::G()'],['../classHubbardObservables.html#a5c05a2458d7898945443e74fd5c6b50f',1,'HubbardObservables::G()']]],
+  ['g_1',['g',['../classSpectralManager.html#a5c88958c54df6d18a40991b529dfef77',1,'SpectralManager::g()'],['../classNuclearManager.html#a06f7cfd1bbba3fe90eca455967fd84f5',1,'NuclearManager::g()']]],
   ['g0q_2',['G0q',['../classGreenPropagator.html#aca6e322d22e7ab57f5637ccd4f24504d',1,'GreenPropagator']]],
   ['g0qcell_3',['G0qCell',['../classGreenPropagator.html#a58298307ae28998092cd1874f8beaa3f',1,'GreenPropagator']]],
   ['g0qqmulti_4',['G0qQmulti',['../classGreenPropagator.html#a6c8bd28ffd707cb4a99dffb3395a3afa',1,'GreenPropagator']]],

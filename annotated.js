@@ -32,6 +32,7 @@ var annotated =
       [ "HeisenbergSU2", "classVMPS_1_1HeisenbergSU2.html", "classVMPS_1_1HeisenbergSU2" ],
       [ "HeisenbergU1", "classVMPS_1_1HeisenbergU1.html", "classVMPS_1_1HeisenbergU1" ],
       [ "HeisenbergU1Complex", "classVMPS_1_1HeisenbergU1Complex.html", "classVMPS_1_1HeisenbergU1Complex" ],
+      [ "HeisenbergU1xU1", "classVMPS_1_1HeisenbergU1xU1.html", "classVMPS_1_1HeisenbergU1xU1" ],
       [ "HeisenbergU1XXZ", "classVMPS_1_1HeisenbergU1XXZ.html", "classVMPS_1_1HeisenbergU1XXZ" ],
       [ "HeisenbergXXZ", "classVMPS_1_1HeisenbergXXZ.html", "classVMPS_1_1HeisenbergXXZ" ],
       [ "HeisenbergXYZ", "classVMPS_1_1HeisenbergXYZ.html", "classVMPS_1_1HeisenbergXYZ" ],
